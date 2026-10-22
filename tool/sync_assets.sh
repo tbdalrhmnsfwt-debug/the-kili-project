@@ -1,9 +1,9 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Copy the content assets recovered from the original APK into the app.
 #
-# The payloads are large (mostly the manhaji textbook figures), so they are
-# kept out of git.  Run this once after cloning, or whenever the extraction
-# under work/ is refreshed.
+# The payloads are large (mostly the manhaji textbook figures) but they are
+# committed, because the CI build validates every asset path in pubspec.yaml.
+# Run this only to refresh them after a new extraction under work/.
 #
 # Usage: tool/sync_assets.sh [source-assets-dir]
 set -euo pipefail

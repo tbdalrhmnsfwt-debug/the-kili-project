@@ -4,18 +4,12 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 
 /**
  * Foreground service that keeps the app's long AI jobs alive.
@@ -31,9 +25,7 @@ import kotlinx.coroutines.launch
  * platform channel (`zaker/ai_jobs`) lets Dart report progress and the
  * service mirrors that into the notification.
  */
-class AiJobService : LifecycleService() {
-
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+class AiJobService : Service() {
 
     override fun onCreate() {
         super.onCreate()
@@ -41,8 +33,8 @@ class AiJobService : LifecycleService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        super.onStartCommand(intent, flags, startId)
-
+        // `Service.onStartCommand` is the platform method; there is no
+        // superclass behaviour to delegate to here.
         val title = intent?.getStringExtra(EXTRA_TITLE) ?: getString(R.string.ai_job_default_title)
         val progress = intent?.getIntExtra(EXTRA_PROGRESS, 0) ?: 0
 
@@ -58,11 +50,6 @@ class AiJobService : LifecycleService() {
             },
         )
         return START_STICKY
-    }
-
-    override fun onDestroy() {
-        scope.cancel()
-        super.onDestroy()
     }
 
     private fun createChannel() {

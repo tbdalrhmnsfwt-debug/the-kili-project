@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Titles and channel names used by the two foreground services. -->
+    <string name="ai_job_default_title">شغل ذكاء اصطناعي</string>
+    <string name="ai_job_channel_name">مهام الذكاء الاصطناعي</string>
+    <string name="recording_channel_name">تسجيل المحاضرات</string>
+    <string name="recording_title">جاري تسجيل المحاضرة</string>
+</resources>

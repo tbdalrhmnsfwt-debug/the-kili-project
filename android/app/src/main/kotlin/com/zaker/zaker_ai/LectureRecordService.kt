@@ -4,12 +4,12 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import androidx.lifecycle.LifecycleService
 
 /**
  * Foreground service that records a lecture.
@@ -24,11 +24,9 @@ import androidx.lifecycle.LifecycleService
  * service exists to hold the foreground lifetime and to keep the
  * microphone-typed foreground notification visible while recording.
  */
-class LectureRecordService : LifecycleService() {
+class LectureRecordService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        super.onStartCommand(intent, flags, startId)
-
         val elapsed = intent?.getLongExtra(EXTRA_ELAPSED_MS, 0L) ?: 0L
         val notification = buildNotification(elapsed)
 

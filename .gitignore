@@ -6,8 +6,7 @@ build/
 android/local.properties
 android/.gradle/
 
-# Recovered APK content assets are large; sync them with tool/sync_assets.sh
-assets/manhaji/
-assets/courses/
-assets/tessdata/
-assets/tessdata_config.json
+# The recovered content assets are committed: `flutter build apk` validates
+# every path listed under `flutter: assets:` in pubspec.yaml, so a checkout
+# without them cannot build. tool/sync_assets.sh refreshes them from a fresh
+# APK extraction when needed.

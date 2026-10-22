@@ -8,8 +8,10 @@
   inline.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:package="com.zakerly.ai">
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- The package/namespace is declared by Gradle (namespace =
+         com.zaker.zaker_ai), not here: AGP 8 rejects a package attribute in a
+         source manifest. -->
 
     <!-- Core. -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -24,7 +26,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-permission android:name="Manifest.permission.CAPTURE_AUDIO_OUTPUT" />
+    <uses-permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT" />
 
     <!--
       The focus timer draws a system overlay so the countdown stays visible

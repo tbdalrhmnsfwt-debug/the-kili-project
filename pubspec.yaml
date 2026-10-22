@@ -6,10 +6,13 @@ version: 1.1.0+86
 environment:
   sdk: ">=3.4.0 <4.0.0"
 
-# Dependency set reconstructed from the license/notice manifest shipped inside
-# the original APK (assets/flutter_assets/NOTICES.Z), filtered to the packages
-# the application actually links. Versions are the ones published on pub.dev at
-# the time of the build unless a newer compatible release is required.
+# Dependency set limited to the packages the application actually imports,
+# plus the plugins whose Android components the manifest or the Kotlin sources
+# reference. The original APK's notice manifest lists many more packages, but
+# several of them are mutually incompatible (jni 0.7 vs 1.1, llm_core 0.2 vs
+# 0.7, intl 0.19 vs flutter_localizations' 0.20) and none of their Dart APIs
+# are used here. Keeping the set minimal is what lets `flutter pub get` — and
+# therefore the GitHub Actions APK build — resolve.
 dependencies:
   flutter:
     path: ../vendor/flutter/flutter
@@ -18,122 +21,42 @@ dependencies:
 
   # State management
   flutter_riverpod: ^2.5.1
-  get: ^4.6.6
-  provider: ^6.1.2
-  equatable: ^2.0.5
 
   # Networking
   dio: ^5.4.3+1
-  http: ^1.2.2
-  connectivity_plus: ^6.0.5
-  web_socket_channel: ^3.0.1
 
   # Routing
   go_router: ^14.2.7
-  preload_page_view: ^0.2.0
 
   # Local storage
   shared_preferences: ^2.2.3
-  get_storage: ^2.1.1
-  sqflite: ^2.3.3
-  flutter_secure_storage: ^9.2.2
-  safe_local_storage: ^2.0.6
   path_provider: ^2.1.4
-
-  # Firebase
-  firebase_core: ^3.6.0
-  firebase_auth: ^5.3.1
-  firebase_database: ^11.0.2
-  firebase_messaging: ^15.1.3
-  google_sign_in: ^6.2.1
 
   # Payments
   in_app_purchase: ^3.1.5
-  in_app_review: ^2.0.9
 
   # UI
-  lottie: ^3.1.2
-  flutter_animate: ^4.3.2
-  flutter_svg: ^2.0.10+1
-  google_fonts: ^6.2.1
-  google_nav_bar: ^2.1.0
-  salomon_bottom_bar: ^3.1.0
-  flutter_zoom_drawer: ^1.0.4
-  flutter_staggered_grid_view: ^0.7.0
   flutter_markdown: ^0.7.3+1
-  awesome_snackbar_content: ^0.1.8
-  toastification: ^2.0.0
-  cupertino_icons: ^1.0.8
-  flutter_scale_kit: ^1.6.0
-  intl: ^0.19.0
-  arabic_justified_text: ^1.0.0
-
-  # Media
-  just_audio: ^0.9.36
-  just_audio_media_kit: ^0.0.1
-  media_kit: ^1.2.6
-  audio_service: ^0.18.15
-  audio_session: ^0.1.21
-  flutter_sound: ^9.28.0
-  flutter_sound_web: ^9.28.0
-  video_player: ^2.9.2
-  ffmpeg_kit_flutter_new_min_gpl: ^1.0.0
-  sherpa_onnx: ^1.10.0
-  flutter_nnnoiseless: ^1.4.0
-  flutter_tts: ^4.2.0
-  speech_to_text: ^7.0.0
-  youtube_explode_dart: ^1.2.0
 
   # Capture / scanning / OCR
-  camera: ^0.11.0+2
-  mobile_scanner: ^5.2.3
-  barcode_widget: ^2.0.4
   image_picker: ^1.1.2
-  google_mlkit_document_scanner: ^0.3.0
   flutter_tesseract_ocr: ^0.4.0
-  permission_handler: ^11.3.1
-  local_auth: ^2.3.0
 
   # Documents
   pdf: ^3.11.1
   printing: ^5.13.1
-  syncfusion_flutter_pdf: ^26.1.35
-  syncfusion_flutter_core: ^26.1.35
-  pdf_widget_wrapper: ^1.0.4
-  open_filex: ^4.5.0
-  gal: ^2.3.0
+  syncfusion_flutter_pdf: ^35.1.41
   share_plus: ^10.0.2
   file_picker: ^8.1.2
-  webview_flutter: ^4.10.0
   url_launcher: ^6.3.0
 
-  # Quran
-  quran_library: ^2.0.0
-
-  # On-device LLM
-  llm_core: ^0.2.0
-  llm_llamacpp: ^0.7.0
-
-  # Misc
+  # Notifications + home-screen widgets
   home_widget: ^0.7.0
   flutter_local_notifications: ^17.2.3
-  flutter_overlay_window: ^0.3.1
-  flutter_shaders: ^0.1.5
-  flutter_rust_bridge: ^2.10.0
-  jni: ^0.7.0
-  jni_flutter: ^1.0.4
-  crypto: ^3.0.5
-  uuid: ^4.5.1
   timezone: ^0.9.4
+
+  # Misc
   logger: ^2.4.0
-  logging: ^1.2.0
-  rxdart: ^0.28.0
-  vector_graphics: ^1.1.3
-  vector_math: ^2.1.4
-  collection: ^1.18.0
-  path: ^1.9.0
-  yaml: ^3.1.2
-  web_socket: ^1.0.1
 
 dev_dependencies:
   flutter_test:
