@@ -386,8 +386,9 @@ class _RemindersSheet extends ConsumerWidget {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: () {
+                  final router = GoRouter.of(context);
                   Navigator.of(context).pop();
-                  context.push(ZakerRoutes.planner);
+                  router.push(ZakerRoutes.planner);
                 },
                 icon: const Icon(Icons.flag_rounded),
                 label: const Text('افتح أهداف اليوم'),

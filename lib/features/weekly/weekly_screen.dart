@@ -455,6 +455,7 @@ class _NextWeekCard extends ConsumerWidget {
   Future<void> _planNextWeek(BuildContext context, WidgetRef ref) async {
     try {
       final grades = await ref.read(gradesProvider.future);
+      if (!context.mounted) return;
       if (grades.isEmpty) {
         _toast(context, 'مفيش كتب متاحة دلوقتي.');
         return;

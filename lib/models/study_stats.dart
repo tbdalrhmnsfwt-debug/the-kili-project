@@ -39,8 +39,11 @@ class StudyStats {
   ///
   /// A streak that ended yesterday still counts until the day is over, so the
   /// home card does not drop to zero at midnight before the user studies.
-  int get streakDays {
-    var day = _dateOnly(DateTime.now());
+  int get streakDays => streakAsOf();
+
+  /// [streakDays] as it would read on [now].
+  int streakAsOf([DateTime? now]) {
+    var day = _dateOnly(now ?? DateTime.now());
     if (minutesOn(day) == 0) {
       day = day.subtract(const Duration(days: 1));
     }

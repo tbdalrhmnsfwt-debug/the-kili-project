@@ -129,7 +129,9 @@ class LessonReaderScreen extends ConsumerWidget {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => const QuizScreen()),
       );
-      ref.read(examSessionProvider.notifier).state = null;
+      if (context.mounted) {
+        ref.read(examSessionProvider.notifier).state = null;
+      }
     } catch (e) {
       if (!context.mounted) return;
       messenger
