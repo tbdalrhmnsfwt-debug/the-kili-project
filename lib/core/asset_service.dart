@@ -112,6 +112,10 @@ class AssetService {
   final Map<String, Grade> _gradeCache = {};
   final Map<String, dynamic> _bookCache = {};
 
+  /// Books whose payload is known not to decode, so repeated attempts are
+  /// cheap when the quiz scans the library for readable content.
+  final Set<String> _unavailable = {};
+
   /// The grade ids the app ships content for, in the order shown in the UI.
   static const List<String> gradeOrder = [
     'prep1',
@@ -163,6 +167,9 @@ class AssetService {
   Future<Map<String, dynamic>> loadBook(Book book) async {
     final cached = _bookCache[book.cacheKey];
     if (cached != null) return cached;
+    if (_unavailable.contains(book.cacheKey)) {
+      throw BookContentUnavailable(book);
+    }
 
     final plaintext = await _tryLoadPlaintext(book);
     if (plaintext != null) {
@@ -179,10 +186,13 @@ class AssetService {
       _bookCache[book.cacheKey] = json;
       return json;
     } on BookContentUnavailable {
+      _unavailable.add(book.cacheKey);
       rethrow;
     } on FormatException catch (e) {
+      _unavailable.add(book.cacheKey);
       throw BookContentUnavailable(book, e.message);
     } catch (e) {
+      _unavailable.add(book.cacheKey);
       throw BookContentUnavailable(book, e.toString());
     }
   }

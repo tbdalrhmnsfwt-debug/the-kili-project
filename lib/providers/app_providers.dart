@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/ai_service.dart';
 import '../core/api_client.dart';
 import '../core/asset_service.dart';
+import '../core/quiz_generator.dart';
 import '../models/ai.dart';
 import '../models/arena.dart';
 import '../models/exam.dart';
@@ -90,6 +91,48 @@ final selectedSubjectProvider = StateProvider<String?>((ref) => null);
 
 /// The exam session in progress, if any.
 final examSessionProvider = StateProvider<ExamSession?>((ref) => null);
+
+/// The questions shown by the quiz runner.
+///
+/// An explicit exam session wins. Otherwise the questions are derived from
+/// the first readable book, preferring the selected grade and Arabic books,
+/// so the quiz always reflects real textbook content when any is available.
+final quizQuestionsProvider = FutureProvider<List<ExamQuestion>>((ref) async {
+  final session = ref.watch(examSessionProvider);
+  final sessionQuestions = session?.questions ?? const <ExamQuestion>[];
+  if (sessionQuestions.isNotEmpty) return sessionQuestions;
+
+  final service = ref.watch(assetServiceProvider);
+  final grades = await ref.watch(gradesProvider.future);
+  final preferredGrade = ref.watch(selectedGradeProvider);
+
+  final orderedGrades = [
+    ...grades.where((g) => g.id == preferredGrade),
+    ...grades.where((g) => g.id != preferredGrade),
+  ];
+
+  for (final grade in orderedGrades) {
+    final books = [
+      ...grade.books.where((b) => b.lang == 'ar'),
+      ...grade.books.where((b) => b.lang != 'ar'),
+    ];
+    for (final book in books) {
+      try {
+        final json = await service.loadBook(book);
+        final lessons = service.parseLessons(json);
+        final questions = generateClozeQuestions(
+          book: book,
+          lessons: lessons,
+        );
+        if (questions.isNotEmpty) return questions;
+      } catch (_) {
+        // Encrypted or unreadable book — move on to the next one.
+      }
+    }
+  }
+
+  return demoExamQuestions();
+});
 
 /// The user's task list.
 final taskListProvider = StateProvider<TaskList>(

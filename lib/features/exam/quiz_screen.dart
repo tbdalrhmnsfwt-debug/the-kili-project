@@ -1,5 +1,8 @@
 /// The quiz runner: one question at a time, instant grading, and a results
 /// screen with the score.
+///
+/// Questions come from [quizQuestionsProvider]: the active exam session when
+/// one exists, otherwise cloze questions derived from a readable textbook.
 library;
 
 import 'package:flutter/material.dart';
@@ -7,26 +10,65 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../models/exam.dart';
+import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 
 /// A question's four answer kinds, as listed in the app's UI strings:
 /// "اختيار من متعدد، صح وخطأ، أكمل، وع…".
 enum QuizQuestionType { multipleChoice, trueFalse, fillBlank, written }
 
-/// Runs a quiz.
-class QuizScreen extends ConsumerStatefulWidget {
+/// Loads the questions, then hands off to the stateful runner.
+class QuizScreen extends ConsumerWidget {
   const QuizScreen({super.key});
 
   @override
-  ConsumerState<QuizScreen> createState() => _QuizScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final questions = ref.watch(quizQuestionsProvider);
+    return questions.when(
+      loading: () => Scaffold(
+        appBar: AppBar(title: const Text('الاختبار')),
+        body: const LoadingBox(label: 'بنجهز الأسئلة…'),
+      ),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(title: const Text('الاختبار')),
+        body: EmptyState(
+          icon: Icons.quiz_outlined,
+          title: 'مش قادرين نجهز الأسئلة',
+          message: '$e',
+        ),
+      ),
+      data: (list) {
+        if (list.isEmpty) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('الاختبار')),
+            body: const EmptyState(
+              icon: Icons.quiz_outlined,
+              title: 'مفيش أسئلة متاحة',
+              message: 'افتح كتاب فيه محتوى وابدأ منه.',
+            ),
+          );
+        }
+        return _QuizRunner(questions: list);
+      },
+    );
+  }
 }
 
-class _QuizScreenState extends ConsumerState<QuizScreen> {
-  late final List<ExamQuestion> _questions = _demoQuestions();
+class _QuizRunner extends StatefulWidget {
+  const _QuizRunner({required this.questions});
+
+  final List<ExamQuestion> questions;
+
+  @override
+  State<_QuizRunner> createState() => _QuizRunnerState();
+}
+
+class _QuizRunnerState extends State<_QuizRunner> {
   int _index = 0;
   final Map<String, AnswerResult> _results = {};
   bool _revealed = false;
 
+  List<ExamQuestion> get _questions => widget.questions;
   ExamQuestion get _current => _questions[_index];
 
   @override
@@ -96,15 +138,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               Expanded(
                 flex: 2,
                 child: FilledButton(
-                  onPressed: _revealed
-                      ? () => _next()
-                      : (question.options.isEmpty ? null : () {}),
+                  onPressed: _revealed ? _next : null,
                   child: Text(
                     _revealed
                         ? (_index == _questions.length - 1
                               ? 'شوف النتيجة'
                               : 'التالي')
-                        : 'ثبّت الإجابة',
+                        : 'اختار إجابة',
                   ),
                 ),
               ),
@@ -175,8 +215,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             const SizedBox(height: ZakerSpacing.md),
             Text(
               'النتيجة',
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: ZakerSpacing.sm),
             Text(
@@ -199,32 +240,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       ),
     );
   }
-
-  /// A small built-in bank so the screen is usable without a backend.
-  List<ExamQuestion> _demoQuestions() => const [
-    ExamQuestion(
-      id: 'q1',
-      prompt: 'ناتج 12 × 8 يساوي كام؟',
-      answerKind: AnswerKind.multipleChoice,
-      options: ['96', '88', '104', '92'],
-      correctIndex: 0,
-      explanation: '12 × 8 = 96',
-    ),
-    ExamQuestion(
-      id: 'q2',
-      prompt: 'المستقيمان المتوازيان لا يتقاطعان أبدًا.',
-      answerKind: AnswerKind.multipleChoice,
-      options: ['صح', 'خطأ'],
-      correctIndex: 0,
-    ),
-    ExamQuestion(
-      id: 'q3',
-      prompt: 'أكمّل: مجموع زوايا المثلث يساوي ... درجة',
-      answerKind: AnswerKind.multipleChoice,
-      options: ['90', '180', '270', '360'],
-      correctIndex: 1,
-    ),
-  ];
 }
 
 /// Visual state of an answer option.
