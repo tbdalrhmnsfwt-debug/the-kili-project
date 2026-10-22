@@ -13,7 +13,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/router.dart';
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
 import '../../models/mistakes.dart';
@@ -74,10 +76,11 @@ class WeaknessScreen extends ConsumerWidget {
           else
             for (final s in spots) _WeakSpotTile(spot: s),
           const SizedBox(height: ZakerSpacing.lg),
-          const FeatureTile(
+          FeatureTile(
             title: ZakerStrings.s_10f87, // اتعلم من الغلط
             subtitle: ZakerStrings.s_32870, // راجع النقاط الضعيفة
             icon: Icons.school_rounded,
+            onTap: () => context.push(ZakerRoutes.mistakes),
           ),
         ],
       ),

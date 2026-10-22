@@ -79,10 +79,11 @@ class WordsScreen extends ConsumerWidget {
             actionLabel: 'ابدأ',
             onAction: () => _startReview(context, ref, due),
           ),
-          const FeatureTile(
+          FeatureTile(
             title: 'لعبة الذاكرة',
             subtitle: 'مذاكرة على شكل لعبة — تجاوب صح تتقدم وتكسب.',
             icon: Icons.extension_rounded,
+            onTap: () => _startReview(context, ref, due),
           ),
         ],
       ),

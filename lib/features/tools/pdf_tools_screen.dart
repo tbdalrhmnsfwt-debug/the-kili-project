@@ -31,11 +31,12 @@ import '../../models/exam.dart';
 import '../../models/manhaji.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import 'pdf_viewer_screen.dart';
 import 'scan_screen.dart';
 import '../../widgets/tr_text.dart';
 
 /// The operations offered by the tools grid.
-enum _PdfTool { images, solved, questions, formatted, print, compress }
+enum _PdfTool { viewer, images, solved, questions, formatted, print, compress }
 
 /// The sources offered when adding a new sheet.
 enum _SheetSource { camera, gallery, pdf, library }
@@ -96,7 +97,9 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
       _toast('استنى العملية الحالية تخلص.');
       return;
     }
-    if (tool == _PdfTool.images) {
+    if (tool == _PdfTool.viewer) {
+      _openViewer();
+    } else if (tool == _PdfTool.images) {
       _openScan();
     } else if (tool == _PdfTool.solved) {
       await _exportQuestions(withAnswers: true);
@@ -109,6 +112,13 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
     } else {
       await _compressPdf();
     }
+  }
+
+  /// Opens the on-device PDF reader.
+  void _openViewer() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const PdfViewerScreen()),
+    );
   }
 
   /// Opens the scan / OCR pipeline, which also exports its pages as a PDF.
@@ -540,6 +550,7 @@ class _ToolGrid extends StatelessWidget {
   final ValueChanged<_PdfTool> onSelect;
 
   static const _tools = <({_PdfTool tool, String label, IconData icon})>[
+    (tool: _PdfTool.viewer, label: 'اعرض PDF', icon: Icons.auto_stories_rounded),
     (tool: _PdfTool.images, label: 'PDF من صور', icon: Icons.image_outlined),
     (tool: _PdfTool.solved, label: 'PDF بالحل', icon: Icons.task_alt_rounded),
     (

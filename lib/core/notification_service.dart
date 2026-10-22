@@ -34,6 +34,11 @@ class NotificationService {
 
   bool _initialized = false;
 
+  /// Called with the notification payload when the user taps a notification.
+  ///
+  /// The app sets this in `main` to route task reminders to the task list.
+  void Function(String? payload)? onTap;
+
   /// Prepares the plugin once per process.
   Future<void> init() async {
     if (_initialized) return;
@@ -42,7 +47,11 @@ class NotificationService {
       iOS: DarwinInitializationSettings(),
     );
     try {
-      await _plugin.initialize(settings);
+      await _plugin.initialize(
+        settings,
+        onDidReceiveNotificationResponse: (response) =>
+            onTap?.call(response.payload),
+      );
       _initialized = true;
     } catch (e) {
       debugPrint('notifications: initialization failed ($e)');
@@ -118,6 +127,7 @@ class NotificationService {
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'tasks',
       );
       return true;
     } catch (e) {
@@ -134,6 +144,74 @@ class NotificationService {
       await _plugin.cancel(dailyReminderId);
     } catch (e) {
       debugPrint('notifications: could not cancel the reminder ($e)');
+    }
+  }
+
+  /// The first notification id reserved for per-task reminders.
+  static const int _taskReminderBaseId = 2000;
+
+  /// The notification id for a task, stable across app launches.
+  static int taskReminderId(String taskId) =>
+      _taskReminderBaseId + (taskId.hashCode & 0x7fffffff) % 100000;
+
+  /// Schedules a one-shot reminder for a task at [when].
+  ///
+  /// Returns `false` when the time is in the past, notifications are not
+  /// permitted, or the platform scheduler fails — the task itself is always
+  /// kept either way.
+  Future<bool> scheduleTaskReminder({
+    required String taskId,
+    required String title,
+    required DateTime when,
+    String? notes,
+  }) async {
+    if (!when.isAfter(DateTime.now())) return false;
+    await init();
+    if (!_initialized) return false;
+    if (!await requestPermission()) return false;
+
+    final body = (notes == null || notes.trim().isEmpty)
+        ? 'مهمتك مستنياك — افتح ذاكرلي وخلصها.'
+        : notes.trim();
+    try {
+      final id = taskReminderId(taskId);
+      await _plugin.cancel(id);
+      await _plugin.zonedSchedule(
+        id,
+        'تذكير: $title',
+        body,
+        tz.TZDateTime.from(when, tz.local),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channelId,
+            _channelName,
+            channelDescription: _channelDescription,
+            importance: Importance.high,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.reminder,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'tasks',
+      );
+      return true;
+    } catch (e) {
+      debugPrint('notifications: could not schedule the task reminder ($e)');
+      return false;
+    }
+  }
+
+  /// Removes a task's scheduled reminder (if one exists).
+  Future<void> cancelTaskReminder(String taskId) async {
+    await init();
+    if (!_initialized) return;
+    try {
+      await _plugin.cancel(taskReminderId(taskId));
+    } catch (e) {
+      debugPrint('notifications: could not cancel the task reminder ($e)');
     }
   }
 

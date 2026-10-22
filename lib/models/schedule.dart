@@ -36,6 +36,47 @@ class ScheduleEntry {
 
   final DateTime? createdAt;
 
+  /// Whether [when] falls on the same calendar day as [dueAt].
+  bool isDueOn(DateTime when) {
+    final due = dueAt;
+    return due != null &&
+        due.year == when.year &&
+        due.month == when.month &&
+        due.day == when.day;
+  }
+
+  /// Whether the task is still pending and its due time has already passed.
+  bool isOverdue([DateTime? now]) {
+    final due = dueAt;
+    return !done && due != null && due.isBefore(now ?? DateTime.now());
+  }
+
+  /// Returns a copy with the given fields replaced.
+  ///
+  /// The nullable [dueAt] and [dayOfWeek] need their own flags: passing
+  /// `null` through would otherwise mean "keep the current value".
+  ScheduleEntry copyWith({
+    String? id,
+    String? title,
+    String? notes,
+    bool? done,
+    bool? important,
+    DateTime? dueAt,
+    bool clearDueAt = false,
+    int? dayOfWeek,
+    bool clearDayOfWeek = false,
+    DateTime? createdAt,
+  }) => ScheduleEntry(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    notes: notes ?? this.notes,
+    done: done ?? this.done,
+    important: important ?? this.important,
+    dueAt: clearDueAt ? null : dueAt ?? this.dueAt,
+    dayOfWeek: clearDayOfWeek ? null : dayOfWeek ?? this.dayOfWeek,
+    createdAt: createdAt ?? this.createdAt,
+  );
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
@@ -88,6 +129,31 @@ class TaskSchedule {
 
   /// Entries pending review for any day.
   List<ScheduleEntry> pending([DateTime? now]) => forDay(now);
+
+  /// An empty schedule with the same list title.
+  TaskSchedule empty() => TaskSchedule(title: title);
+
+  /// A copy of this schedule with a different entry list.
+  TaskSchedule copyWith({String? title, List<ScheduleEntry>? entries}) =>
+      TaskSchedule(title: title ?? this.title, entries: entries ?? this.entries);
+
+  /// Inserts [entry], replacing any entry with the same id.
+  TaskSchedule upsert(ScheduleEntry entry) => copyWith(
+    entries: [
+      entry,
+      for (final e in entries)
+        if (e.id != entry.id) e,
+    ],
+  );
+
+  /// Removes the entry with [id].
+  TaskSchedule remove(String id) =>
+      copyWith(entries: [for (final e in entries) if (e.id != id) e]);
+
+  /// Replaces the entry with [entry]'s id.
+  TaskSchedule replace(ScheduleEntry entry) => copyWith(
+    entries: [for (final e in entries) if (e.id == entry.id) entry else e],
+  );
 }
 
 String encodeTaskSchedule(TaskSchedule s) =>

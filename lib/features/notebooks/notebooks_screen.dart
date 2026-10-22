@@ -20,7 +20,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/notebook.dart';
 import '../../providers/app_providers.dart';
@@ -74,10 +76,21 @@ class NotebooksScreen extends ConsumerWidget {
           ),
           const _NotebookTypeChips(),
           const SizedBox(height: ZakerSpacing.lg),
-          const FeatureTile(
+          FeatureTile(
             title: 'تحدث مع النوتة',
             subtitle: 'اسأل نوتتك أي حاجة',
             icon: Icons.forum_rounded,
+            onTap: () {
+              final subject = notebooks.isEmpty
+                  ? null
+                  : notebooks.first.subject;
+              context.push(
+                subject == null
+                    ? ZakerRoutes.chat
+                    : '${ZakerRoutes.chat}?subject='
+                          '${Uri.encodeQueryComponent(subject)}',
+              );
+            },
           ),
         ],
       ),

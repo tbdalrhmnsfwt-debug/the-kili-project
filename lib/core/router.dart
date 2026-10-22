@@ -31,7 +31,9 @@ import '../features/question_bank/question_bank_screen.dart';
 import '../features/recall/active_recall_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/subscription/subscription_screen.dart';
+import '../features/tasks/tasks_screen.dart';
 import '../features/tools/pdf_tools_screen.dart';
+import '../features/tools/pdf_viewer_screen.dart';
 import '../features/tools/scan_screen.dart';
 import '../features/translate/translate_screen.dart';
 import '../features/wallet/wallet_screen.dart';
@@ -61,6 +63,7 @@ class ZakerRoutes {
   static const String recall = '/recall';
   static const String mindMap = '/mindmap';
   static const String planner = '/planner';
+  static const String tasks = '/tasks';
   static const String leaderboard = '/leaderboard';
   static const String garden = '/garden';
   static const String mistakes = '/mistakes';
@@ -75,6 +78,7 @@ class ZakerRoutes {
   static const String weekly = '/weekly';
   static const String tasbih = '/tasbih';
   static const String pdfTools = '/pdf-tools';
+  static const String pdfViewer = '/pdf-viewer';
   static const String scan = '/scan';
   static const String wallet = '/wallet';
   static const String achievements = '/achievements';
@@ -164,6 +168,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const PlannerScreen(),
     ),
     GoRoute(
+      path: ZakerRoutes.tasks,
+      builder: (context, state) => const TasksScreen(),
+    ),
+    GoRoute(
       path: ZakerRoutes.leaderboard,
       builder: (context, state) => const LeaderboardScreen(),
     ),
@@ -218,6 +226,13 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.pdfTools,
       builder: (context, state) => const PdfToolsScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.pdfViewer,
+      builder: (context, state) => PdfViewerScreen(
+        path: state.uri.queryParameters['path'],
+        title: state.uri.queryParameters['title'],
+      ),
     ),
     GoRoute(
       path: ZakerRoutes.scan,

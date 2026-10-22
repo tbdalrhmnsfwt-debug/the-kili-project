@@ -28,6 +28,7 @@ enum _Direction { engToArabic, arabicToEnglish }
 class _TranslateScreenState extends ConsumerState<TranslateScreen> {
   final TextEditingController _source = TextEditingController();
   final TextEditingController _target = TextEditingController();
+  final FocusNode _sourceFocus = FocusNode();
   _Direction _dir = _Direction.engToArabic;
   bool _busy = false;
 
@@ -35,6 +36,7 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
   void dispose() {
     _source.dispose();
     _target.dispose();
+    _sourceFocus.dispose();
     super.dispose();
   }
 
@@ -86,6 +88,7 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
           const SizedBox(height: ZakerSpacing.md),
           TextField(
             controller: _source,
+            focusNode: _sourceFocus,
             maxLines: 6,
             minLines: 4,
             decoration: InputDecoration(
@@ -180,10 +183,11 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
             title: ZakerStrings.s_b7323, // ترجمة وشرح المصطلحات
             icon: Icons.spellcheck_rounded,
           ),
-          const FeatureTile(
+          FeatureTile(
             title: ZakerStrings.s_9fe71, // ترجمة كلمة
             subtitle: 'معنى أي كلمة إنجليزي',
             icon: Icons.abc_rounded,
+            onTap: () => _sourceFocus.requestFocus(),
           ),
         ],
       ),

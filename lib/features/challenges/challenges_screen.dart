@@ -10,8 +10,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/live_service.dart';
+import '../../core/router.dart';
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
 import '../../models/arena.dart';
@@ -50,20 +52,22 @@ class ChallengesScreen extends ConsumerWidget {
             icon: Icons.bolt_rounded,
           ),
           Row(
-            children: const [
+            children: [
               Expanded(
                 child: FeatureTile(
                   title: ZakerStrings.s_dd129, // تحدي ٣٠ ثانية
                   subtitle: ZakerStrings.s_dfb31, // اختيارات وتحديات قصيرة
                   icon: Icons.timer_rounded,
+                  onTap: () => context.push(ZakerRoutes.quiz),
                 ),
               ),
-              SizedBox(width: ZakerSpacing.md),
+              const SizedBox(width: ZakerSpacing.md),
               Expanded(
                 child: FeatureTile(
                   title: ZakerStrings.s_f628c, // تحدي ٦٠ ثانية
                   subtitle: ZakerStrings.s_dfb31,
                   icon: Icons.timer_outlined,
+                  onTap: () => context.push(ZakerRoutes.quiz),
                 ),
               ),
             ],

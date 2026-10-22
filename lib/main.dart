@@ -19,6 +19,10 @@ import 'providers/app_providers.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = await LocalStore.open();
+  // Tapping a reminder opens the task list.
+  NotificationService.instance.onTap = (payload) {
+    if (payload == 'tasks') appRouter.go(ZakerRoutes.tasks);
+  };
   // Register the notification channel early so an already-scheduled reminder
   // can be shown right after a reboot, before the first frame.
   await NotificationService.instance.init();

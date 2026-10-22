@@ -211,6 +211,12 @@ class HomeScreen extends ConsumerWidget {
             onTap: () => context.push(ZakerRoutes.mindMap),
           ),
           (
+            title: 'المهام',
+            icon: Icons.checklist_rounded,
+            subtitle: 'واجباتك وتذكيراتك',
+            onTap: () => context.push(ZakerRoutes.tasks),
+          ),
+          (
             title: 'أهداف اليوم',
             icon: Icons.flag_rounded,
             subtitle: 'خطتك النهارده',
@@ -445,6 +451,11 @@ class _NotificationsSheet extends ConsumerWidget {
               for (final task in tasks.take(5))
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  onTap: () {
+                    final router = GoRouter.of(context);
+                    Navigator.of(context).pop();
+                    router.push(ZakerRoutes.tasks);
+                  },
                   leading: Icon(
                     task.important
                         ? Icons.priority_high_rounded
@@ -461,6 +472,19 @@ class _NotificationsSheet extends ConsumerWidget {
                           '${task.dueAt!.minute.toString().padLeft(2, '0')}',
                         ),
                 ),
+            const SizedBox(height: ZakerSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  final router = GoRouter.of(context);
+                  Navigator.of(context).pop();
+                  router.push(ZakerRoutes.tasks);
+                },
+                icon: const Icon(Icons.checklist_rounded),
+                label: const TrText('كل المهام'),
+              ),
+            ),
             const SizedBox(height: ZakerSpacing.sm),
             SizedBox(
               width: double.infinity,
