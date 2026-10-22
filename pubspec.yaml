@@ -142,30 +142,65 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  # Directory entries are not recursive in the Flutter asset bundler, so each
+  # level is listed explicitly. The payloads themselves are recovered from the
+  # original APK and copied in by tool/sync_assets.sh.
   assets:
     - assets/images/
     - assets/lottie/
     - assets/fonts/
     - assets/shaders/
     - assets/data/
+    - assets/dictionary/
+    - assets/i18n/
+    - assets/quran/
+    - assets/tessdata/
+    - assets/tessdata_config.json
+    - assets/courses/computer/
+    - assets/courses/computer/img/
+    - assets/manhaji/prep1/
+    - assets/manhaji/prep1/figs/
+    - assets/manhaji/prep2/
+    - assets/manhaji/prep2/figs/
+    - assets/manhaji/prep3/
+    - assets/manhaji/prep3/figs/
+    - assets/manhaji/prim1/
+    - assets/manhaji/prim1/figs/
+    - assets/manhaji/prim2/
+    - assets/manhaji/prim2/figs/
+    - assets/manhaji/prim3/
+    - assets/manhaji/prim3/figs/
+    - assets/manhaji/prim4/
+    - assets/manhaji/prim4/figs/
+    - assets/manhaji/prim5/
+    - assets/manhaji/prim5/figs/
+    - assets/manhaji/prim6/
+    - assets/manhaji/prim6/figs/
+    - assets/manhaji/sec1/
+    - assets/manhaji/sec1/figs/
+    - assets/manhaji/sec2/
+    - assets/manhaji/sec2/figs/
+    - assets/manhaji/sec3/
+    - assets/manhaji/sec3/figs/
   fonts:
+    # The APK ships the UI font as a single Cairo face plus the PDF-embed
+    # subsets of the other families; those subsets are valid TTFs and are the
+    # only variants present in the extraction.
     - family: Cairo
       fonts:
-        - asset: assets/fonts/Cairo-Regular.ttf
-        - asset: assets/fonts/Cairo-Bold.ttf
-          weight: 700
+        - asset: assets/fonts/Cairo.ttf
     - family: Tajawal
       fonts:
-        - asset: assets/fonts/Tajawal-Regular.ttf
-        - asset: assets/fonts/Tajawal-Bold.ttf
+        - asset: assets/fonts/TajawalPdf-Regular.ttf
+        - asset: assets/fonts/TajawalPdf-Bold.ttf
           weight: 700
     - family: Amiri
       fonts:
-        - asset: assets/fonts/Amiri-Regular.ttf
-        - asset: assets/fonts/Amiri-Bold.ttf
+        - asset: assets/fonts/AmiriPdf-Regular.ttf
+        - asset: assets/fonts/AmiriPdf-Bold.ttf
           weight: 700
     - family: Naskh
       fonts:
-        - asset: assets/fonts/Naskh-Regular.ttf
-        - asset: assets/fonts/Naskh-Bold.ttf
+        - asset: assets/fonts/NaskhPdf-Regular.ttf
+        - asset: assets/fonts/NaskhPdf-Bold.ttf
           weight: 700

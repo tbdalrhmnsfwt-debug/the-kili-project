@@ -53,7 +53,7 @@ class AppLocalizations {
     }
     final table = <String, String>{};
     try {
-      final raw = await rootBundle.loadString('assets/data/i18n/en.json');
+      final raw = await rootBundle.loadString('assets/i18n/en.json');
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
       decoded.forEach((k, v) => table[k] = v.toString());
     } catch (e) {
