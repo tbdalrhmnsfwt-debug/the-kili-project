@@ -13,8 +13,11 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../core/study_planner.dart';
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
 import '../../models/weekly.dart';
@@ -44,7 +47,16 @@ class WeeklyScreen extends ConsumerWidget {
     final report = ref.watch(weeklyReportProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(ZakerStrings.s_02316)), // تقدمي الأسبوعي
+      appBar: AppBar(
+        title: const Text(ZakerStrings.s_02316), // تقدمي الأسبوعي
+        actions: [
+          IconButton(
+            tooltip: 'شارك تقريرك',
+            icon: const Icon(Icons.share_rounded),
+            onPressed: () => _share(context, report),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -72,6 +84,26 @@ class WeeklyScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Shares the week's headline numbers, falling back to the clipboard.
+  Future<void> _share(BuildContext context, WeeklyReport report) async {
+    final text =
+        'تقريري الأسبوعي في ذاكرلي:\n'
+        '${report.totalMinutes} دقيقة مذاكرة • '
+        '${report.totalPoints} نقطة • '
+        '${report.activeDayCount} يوم نشاط.\n'
+        'سلسلتي ${report.streak} يوم 🔥';
+    try {
+      await Share.share(text);
+    } catch (_) {
+      if (!context.mounted) return;
+      await Clipboard.setData(ClipboardData(text: text));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('اتنسخ ملخص أسبوعك — الصقه في أي مكان.')),
+      );
+    }
   }
 }
 
@@ -379,11 +411,11 @@ class _SubjectBreakdown extends StatelessWidget {
 }
 
 /// The card that offers to plan the next week.
-class _NextWeekCard extends StatelessWidget {
+class _NextWeekCard extends ConsumerWidget {
   const _NextWeekCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Container(
@@ -411,11 +443,53 @@ class _NextWeekCard extends StatelessWidget {
           ),
           const SizedBox(height: ZakerSpacing.md),
           FilledButton(
-            onPressed: () {},
+            onPressed: () => _planNextWeek(context, ref),
             child: const Text(ZakerStrings.s_2c4ed), // اعمل خطة الأسبوع الجاي
           ),
         ],
       ),
     );
+  }
+
+  /// Adds seven study blocks starting next Saturday to the task schedule.
+  Future<void> _planNextWeek(BuildContext context, WidgetRef ref) async {
+    try {
+      final grades = await ref.read(gradesProvider.future);
+      if (grades.isEmpty) {
+        _toast(context, 'مفيش كتب متاحة دلوقتي.');
+        return;
+      }
+      final gradeId = ref.read(selectedGradeProvider);
+      final grade = grades.firstWhere(
+        (g) => g.id == gradeId,
+        orElse: () => grades.first,
+      );
+      if (grade.books.isEmpty) {
+        _toast(context, 'مفيش كتب متاحة للصف ده.');
+        return;
+      }
+
+      final plan = buildWeekSchedule(
+        books: grade.books,
+        start: nextWeekStart(),
+        idPrefix: 'week-plan',
+      );
+      final current = ref.read(taskScheduleProvider);
+      ref.read(taskScheduleProvider.notifier).state = mergePlan(
+        current,
+        plan,
+        idPrefix: 'week-plan',
+      );
+      _toast(context, 'اتعملت خطة الأسبوع الجاي — ٧ أيام.');
+    } catch (e) {
+      _toast(context, 'مقدرناش نجهز الخطة: $e');
+    }
+  }
+
+  void _toast(BuildContext context, String message) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }

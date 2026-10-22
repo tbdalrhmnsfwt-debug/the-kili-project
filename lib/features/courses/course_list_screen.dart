@@ -42,6 +42,27 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
 
   String get _gradeId => widget.gradeId ?? ref.read(selectedGradeProvider);
 
+  /// Searches every grade's books; picking one opens its lesson list.
+  Future<void> _search(BuildContext context, List<Grade>? grades) async {
+    if (grades == null || grades.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لسه بنحمّل الكتب — جرّب تاني بعد لحظة.')),
+      );
+      return;
+    }
+    final book = await showSearch<Book?>(
+      context: context,
+      delegate: _BookSearchDelegate(grades),
+    );
+    if (book == null || !context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            BookLessonsScreen(gradeId: book.grade, bookId: book.id),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final gradesAsync = ref.watch(gradesProvider);
@@ -50,7 +71,11 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
       appBar: AppBar(
         title: const Text('المواد'),
         actions: [
-          IconButton(icon: const Icon(Icons.search_rounded), onPressed: () {}),
+          IconButton(
+            tooltip: 'ابحث في كل الكتب',
+            icon: const Icon(Icons.search_rounded),
+            onPressed: () => _search(context, gradesAsync.valueOrNull),
+          ),
         ],
       ),
       body: gradesAsync.when(
@@ -235,6 +260,102 @@ class BookTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Searches the titles and subjects of every book in every grade.
+class _BookSearchDelegate extends SearchDelegate<Book?> {
+  _BookSearchDelegate(this.grades) : super(searchFieldLabel: 'ابحث عن كتاب…');
+
+  final List<Grade> grades;
+
+  @override
+  List<Widget> buildActions(BuildContext context) => [
+    if (query.isNotEmpty)
+      IconButton(
+        tooltip: 'مسح',
+        icon: const Icon(Icons.clear_rounded),
+        onPressed: () => query = '',
+      ),
+  ];
+
+  @override
+  Widget buildLeading(BuildContext context) => IconButton(
+    tooltip: 'رجوع',
+    icon: const BackButtonIcon(),
+    onPressed: () => close(context, null),
+  );
+
+  @override
+  Widget buildResults(BuildContext context) => _results(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _results(context);
+
+  Widget _results(BuildContext context) {
+    final term = query.trim();
+    if (term.isEmpty) {
+      return const EmptyState(
+        icon: Icons.search_rounded,
+        title: 'دوّر على كتاب',
+        message: 'اكتب اسم الكتاب أو المادة.',
+      );
+    }
+
+    final matches = <({String grade, Book book})>[];
+    for (final grade in grades) {
+      for (final book in grade.books) {
+        final hit =
+            book.title.contains(term) ||
+            book.subject.contains(term) ||
+            book.variant.contains(term);
+        if (hit) {
+          matches.add((
+            grade: kGradeLabels[grade.id] ?? grade.label,
+            book: book,
+          ));
+        }
+      }
+    }
+
+    if (matches.isEmpty) {
+      return EmptyState(
+        icon: Icons.search_off_rounded,
+        title: 'مفيش نتايج',
+        message: 'مفيش كتاب فيه «$term». جرّب كلمة تانية.',
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(ZakerSpacing.lg),
+      itemCount: matches.length,
+      separatorBuilder: (_, __) => const SizedBox(height: ZakerSpacing.sm),
+      itemBuilder: (context, index) {
+        final match = matches[index];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(
+                right: ZakerSpacing.xs,
+                bottom: 2,
+              ),
+              child: Text(
+                match.grade,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            BookTile(
+              book: match.book,
+              onTap: () => close(context, match.book),
+            ),
+          ],
+        );
+      },
     );
   }
 }

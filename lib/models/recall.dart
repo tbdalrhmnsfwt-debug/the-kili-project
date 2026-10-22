@@ -165,6 +165,24 @@ class RecallCard {
     );
   }
 
+  /// A copy with [dueAt] replaced, used when the user wants to practise a
+  /// card ahead of its schedule.
+  RecallCard copyWith({DateTime? dueAt}) => RecallCard(
+    id: id,
+    kind: kind,
+    front: front,
+    back: back,
+    lessonId: lessonId,
+    options: options,
+    correctIndex: correctIndex,
+    bookId: bookId,
+    lessonNumber: lessonNumber,
+    createdAt: createdAt,
+    reviews: reviews,
+    correctReviews: correctReviews,
+    dueAt: dueAt ?? this.dueAt,
+  );
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'kind': kind.name,

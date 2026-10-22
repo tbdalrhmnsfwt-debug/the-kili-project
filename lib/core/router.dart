@@ -32,6 +32,7 @@ import '../features/settings/settings_screen.dart';
 import '../features/tools/pdf_tools_screen.dart';
 import '../features/tools/scan_screen.dart';
 import '../features/translate/translate_screen.dart';
+import '../features/wallet/wallet_screen.dart';
 import '../features/weakness/weakness_screen.dart';
 import '../features/weekly/weekly_screen.dart';
 import '../features/whiteboard/whiteboard_screen.dart';
@@ -70,6 +71,7 @@ class ZakerRoutes {
   static const String tasbih = '/tasbih';
   static const String pdfTools = '/pdf-tools';
   static const String scan = '/scan';
+  static const String wallet = '/wallet';
   static const String achievements = '/achievements';
 
   /// Builds the path for a book's lesson list.
@@ -207,6 +209,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.scan,
       builder: (context, state) => const ScanScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.wallet,
+      builder: (context, state) => const WalletScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.achievements,

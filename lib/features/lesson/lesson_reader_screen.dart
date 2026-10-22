@@ -4,14 +4,21 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/quiz_generator.dart';
 import '../../core/theme.dart';
+import '../../models/exam.dart';
 import '../../models/manhaji.dart';
+import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../ai/chat_screen.dart';
+import '../exam/quiz_screen.dart';
 
 /// Displays a single lesson.
-class LessonReaderScreen extends StatelessWidget {
+class LessonReaderScreen extends ConsumerWidget {
   const LessonReaderScreen({
     super.key,
     required this.gradeId,
@@ -23,30 +30,31 @@ class LessonReaderScreen extends StatelessWidget {
   final Book book;
   final Lesson lesson;
 
+  String get _title =>
+      lesson.title.isEmpty ? 'الدرس ${lesson.number}' : lesson.title;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          lesson.title.isEmpty ? 'الدرس ${lesson.number}' : lesson.title,
-        ),
+        title: Text(_title),
         actions: [
           IconButton(
             tooltip: 'اسأل معلم AI',
             icon: const Icon(Icons.smart_toy_outlined),
-            onPressed: () => _hint(context, 'معلم AI'),
+            onPressed: () => _askAi(context),
           ),
           IconButton(
             tooltip: 'اعمل أسئلة',
             icon: const Icon(Icons.quiz_outlined),
-            onPressed: () => _hint(context, 'بنك الأسئلة'),
+            onPressed: () => _makeQuestions(context, ref),
           ),
           IconButton(
             tooltip: 'الملخص',
             icon: const Icon(Icons.summarize_outlined),
-            onPressed: () => _hint(context, 'الملخص'),
+            onPressed: () => _showSummary(context),
           ),
         ],
       ),
@@ -76,10 +84,154 @@ class LessonReaderScreen extends StatelessWidget {
     );
   }
 
-  void _hint(BuildContext context, String what) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('$what — لسه بيتشغّل')));
+  /// Opens the AI chat with this lesson as the opening question.
+  void _askAi(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ChatScreen(
+          subject: book.subject,
+          initialQuestion:
+              'اشرحلي «$_title» من كتاب ${book.title} ببساطة، ومعاه مثال.',
+        ),
+      ),
+    );
   }
+
+  /// Builds a question bank from the whole book and starts the quiz.
+  Future<void> _makeQuestions(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('بنجهز الأسئلة…')));
+    try {
+      final service = ref.read(assetServiceProvider);
+      final json = await service.loadBook(book);
+      final lessons = service.parseLessons(json);
+      final questions = generateClozeQuestions(book: book, lessons: lessons);
+      if (!context.mounted) return;
+      messenger.hideCurrentSnackBar();
+
+      if (questions.isEmpty) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('الكتاب ده مفيهوش نص كفاية لأسئلة.')),
+        );
+        return;
+      }
+
+      ref.read(examSessionProvider.notifier).state = ExamSession(
+        id: 'lesson-${DateTime.now().millisecondsSinceEpoch}',
+        title: 'بنك أسئلة — ${book.title}',
+        questions: questions,
+        bookId: book.id,
+        subject: book.subject,
+        startedAt: DateTime.now(),
+      );
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const QuizScreen()),
+      );
+      ref.read(examSessionProvider.notifier).state = null;
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('مقدرناش نجهز الأسئلة: $e')));
+    }
+  }
+
+  /// Shows a short extractive summary of the lesson's narrative.
+  void _showSummary(BuildContext context) {
+    final points = _lessonText
+        .split(RegExp(r'[\n\r]+|[.!؟?]'))
+        .map((s) => s.trim())
+        .where((s) => s.length > 24)
+        .take(8)
+        .toList();
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: ZakerRadius.sheet),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            ZakerSpacing.lg,
+            0,
+            ZakerSpacing.lg,
+            ZakerSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'ملخص $_title',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: ZakerSpacing.md),
+              if (points.isEmpty)
+                const Text('الدرس ده مفيهوش نص نلخصه.')
+              else
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final point in points)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: ZakerSpacing.sm,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.circle,
+                                  size: 7,
+                                  color: ZakerColors.accent,
+                                ),
+                                const SizedBox(width: ZakerSpacing.sm),
+                                Expanded(
+                                  child: Text(
+                                    point,
+                                    style: const TextStyle(height: 1.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (points.isNotEmpty) ...[
+                const SizedBox(height: ZakerSpacing.md),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      final text = points.map((p) => '• $p').join('\n');
+                      await Clipboard.setData(ClipboardData(text: text));
+                      if (context.mounted) Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.copy_rounded),
+                    label: const Text('انسخ الملخص'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String get _lessonText => lesson.figures
+      .map((f) => f.narrative.trim())
+      .where((text) => text.isNotEmpty)
+      .join('\n\n');
 }
 
 /// Renders one figure: the page image, its anachdit labels and its

@@ -19,10 +19,13 @@ import '../../widgets/common.dart';
 
 /// The chat screen.
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key, this.subject});
+  const ChatScreen({super.key, this.subject, this.initialQuestion});
 
   /// Scopes the conversation to one subject, when known.
   final String? subject;
+
+  /// A question to send as soon as the screen opens.
+  final String? initialQuestion;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -33,6 +36,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _scroll = ScrollController();
   final List<ChatMessage> _messages = [];
   bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialQuestion?.trim();
+    if (initial != null && initial.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _controller.text = initial;
+        _send();
+      });
+    }
+  }
 
   @override
   void dispose() {

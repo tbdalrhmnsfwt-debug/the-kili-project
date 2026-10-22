@@ -10,10 +10,13 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/study_planner.dart';
 import '../../core/theme.dart';
 import '../../models/planner.dart';
+import '../../models/schedule.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 
@@ -266,12 +269,14 @@ class _GoalTile extends StatelessWidget {
 }
 
 /// The study-schedule card.
-class _ScheduleCard extends StatelessWidget {
+class _ScheduleCard extends ConsumerWidget {
   const _ScheduleCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final schedule = ref.watch(taskScheduleProvider);
+    final entries = [...schedule.entries]..sort(_byDue);
     return Container(
       padding: const EdgeInsets.all(ZakerSpacing.lg),
       decoration: BoxDecoration(
@@ -301,16 +306,197 @@ class _ScheduleCard extends StatelessWidget {
             children: [
               Expanded(
                 child: FilledButton(
-                  onPressed: () {},
+                  onPressed: () => _generate(context, ref),
                   child: const Text('أنشئ جدول مذاكرة'),
                 ),
               ),
             ],
           ),
           const SizedBox(height: ZakerSpacing.sm),
-          TextButton(onPressed: () {}, child: const Text('اكتبها بنفسي')),
+          TextButton(
+            onPressed: () => _addManual(context, ref),
+            child: const Text('اكتبها بنفسي'),
+          ),
+          if (entries.isNotEmpty) ...[
+            const Divider(height: ZakerSpacing.xl),
+            for (final entry in entries)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: entry.done,
+                onChanged: (value) => _toggle(ref, entry, value ?? false),
+                controlAffinity: ListTileControlAffinity.leading,
+                title: Text(
+                  entry.title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    decoration: entry.done
+                        ? TextDecoration.lineThrough
+                        : null,
+                  ),
+                ),
+                subtitle: Text(_subtitle(entry)),
+                secondary: entry.important
+                    ? const Icon(
+                        Icons.priority_high_rounded,
+                        color: ZakerColors.accent,
+                      )
+                    : null,
+              ),
+          ],
         ],
       ),
     );
+  }
+
+  static int _byDue(ScheduleEntry a, ScheduleEntry b) {
+    if (a.done != b.done) return a.done ? 1 : -1;
+    final ad = a.dueAt;
+    final bd = b.dueAt;
+    if (ad == null && bd == null) return 0;
+    if (ad == null) return 1;
+    if (bd == null) return -1;
+    return ad.compareTo(bd);
+  }
+
+  static String _subtitle(ScheduleEntry entry) {
+    final due = entry.dueAt;
+    final day = due == null
+        ? ''
+        : '${due.day}/${due.month} • '
+              '${due.hour.toString().padLeft(2, '0')}:'
+              '${due.minute.toString().padLeft(2, '0')}';
+    if (entry.notes.isEmpty) return day;
+    return day.isEmpty ? entry.notes : '$day — ${entry.notes}';
+  }
+
+  /// Asks for a daily duration, then lays out a week from the grade's books.
+  Future<void> _generate(BuildContext context, WidgetRef ref) async {
+    final minutes = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('مدة المذاكرة اليومية'),
+        children: [
+          for (final option in const [30, 45, 60])
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(option),
+              child: Text('$option دقيقة'),
+            ),
+        ],
+      ),
+    );
+    if (minutes == null || !context.mounted) return;
+
+    try {
+      final grades = await ref.read(gradesProvider.future);
+      if (!context.mounted) return;
+      if (grades.isEmpty) {
+        _toast(context, 'مفيش كتب متاحة دلوقتي.');
+        return;
+      }
+      final gradeId = ref.read(selectedGradeProvider);
+      final grade = grades.firstWhere(
+        (g) => g.id == gradeId,
+        orElse: () => grades.first,
+      );
+      if (grade.books.isEmpty) {
+        _toast(context, 'مفيش كتب متاحة للصف ده.');
+        return;
+      }
+
+      final plan = buildWeekSchedule(
+        books: grade.books,
+        start: DateTime.now(),
+        minutesPerDay: minutes,
+      );
+      final current = ref.read(taskScheduleProvider);
+      ref.read(taskScheduleProvider.notifier).state = mergePlan(
+        current,
+        plan,
+        idPrefix: 'plan',
+      );
+      _toast(context, 'اتعملت خطة ٧ أيام — ابدأ النهارده.');
+    } catch (e) {
+      if (context.mounted) {
+        _toast(context, 'مقدرناش نجهز الجدول: $e');
+      }
+    }
+  }
+
+  /// Lets the user write a single task for today.
+  Future<void> _addManual(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('مهمة جديدة'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'اكتب المهمة…'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('ضيف'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (title == null || title.isEmpty || !context.mounted) return;
+
+    final now = DateTime.now();
+    final current = ref.read(taskScheduleProvider);
+    ref.read(taskScheduleProvider.notifier).state = TaskSchedule(
+      title: current.title,
+      entries: [
+        ...current.entries,
+        ScheduleEntry(
+          id: 'manual-${now.millisecondsSinceEpoch}',
+          title: title,
+          dueAt: DateTime(now.year, now.month, now.day, kStudyStartHour),
+          dayOfWeek: now.weekday % 7,
+          createdAt: now,
+        ),
+      ],
+    );
+    _toast(context, 'اتضافت لمهام النهارده.');
+  }
+
+  void _toggle(WidgetRef ref, ScheduleEntry task, bool done) {
+    final current = ref.read(taskScheduleProvider);
+    ref.read(taskScheduleProvider.notifier).state = TaskSchedule(
+      title: current.title,
+      entries: [
+        for (final entry in current.entries)
+          if (entry.id == task.id)
+            ScheduleEntry(
+              id: entry.id,
+              title: entry.title,
+              notes: entry.notes,
+              done: done,
+              important: entry.important,
+              dueAt: entry.dueAt,
+              dayOfWeek: entry.dayOfWeek,
+              createdAt: entry.createdAt,
+            )
+          else
+            entry,
+      ],
+    );
+    if (done) {
+      SystemSound.play(SystemSoundType.click);
+    }
+  }
+
+  void _toast(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }

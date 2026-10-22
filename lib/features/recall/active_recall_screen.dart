@@ -313,13 +313,13 @@ class _GradingBar extends StatelessWidget {
 }
 
 /// The empty state.
-class _NoCards extends StatelessWidget {
+class _NoCards extends ConsumerWidget {
   const _NoCards({required this.queue});
 
   final ReviewQueue queue;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (queue.cards.isEmpty) {
       return const EmptyState(
         icon: Icons.style_outlined,
@@ -330,10 +330,17 @@ class _NoCards extends StatelessWidget {
     return EmptyState(
       icon: Icons.check_circle_outline_rounded,
       title: 'مفيش مراجعة دلوقتي',
-      message: 'كل الكروت مستنية دورتها. ارجع تاني قريب.',
+      message: 'كل الكروت مستنية دورتها. تقدر تراجعها بدري لو عايز.',
       action: FilledButton(
-        onPressed: () {},
-        child: Text('${queue.total} كارت'),
+        onPressed: () {
+          final now = DateTime.now();
+          ref.read(reviewQueueProvider.notifier).state = ReviewQueue(
+            cards: [
+              for (final card in queue.cards) card.copyWith(dueAt: now),
+            ],
+          );
+        },
+        child: Text('راجع الـ ${queue.total} كارت'),
       ),
     );
   }

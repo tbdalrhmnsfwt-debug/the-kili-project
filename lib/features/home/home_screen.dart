@@ -25,6 +25,12 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final grades = ref.watch(gradesProvider);
     final stats = ref.watch(studyStatsProvider);
+    final notificationsOn = ref.watch(notificationsEnabledProvider);
+    final pending = ref
+        .watch(taskScheduleProvider)
+        .forDay()
+        .where((e) => !e.done)
+        .toList();
 
     return Scaffold(
       body: RefreshIndicator(
@@ -36,8 +42,20 @@ class HomeScreen extends ConsumerWidget {
               title: const Text('ذاكرلي'),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.notifications_none_rounded),
-                  onPressed: () {},
+                  tooltip: 'المنبهات',
+                  icon: Badge(
+                    isLabelVisible: notificationsOn && pending.isNotEmpty,
+                    label: Text('${pending.length}'),
+                    child: const Icon(Icons.notifications_none_rounded),
+                  ),
+                  onPressed: () => showModalBottomSheet<void>(
+                    context: context,
+                    showDragHandle: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: ZakerRadius.sheet,
+                    ),
+                    builder: (_) => const _NotificationsSheet(),
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.settings_outlined),
@@ -364,6 +382,98 @@ class _GreetingCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The reminders sheet opened from the bell in the app bar.
+class _NotificationsSheet extends ConsumerWidget {
+  const _NotificationsSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final enabled = ref.watch(notificationsEnabledProvider);
+    final tasks = ref
+        .watch(taskScheduleProvider)
+        .forDay()
+        .where((e) => !e.done)
+        .toList();
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          ZakerSpacing.lg,
+          0,
+          ZakerSpacing.lg,
+          ZakerSpacing.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'المنبهات',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: ZakerSpacing.xs),
+            Text(
+              enabled
+                  ? 'دي المهام اللي مستنياك النهارده.'
+                  : 'التنبيهات متوقفة — تقدر تفتحها من هنا.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('تذكير المذاكرة'),
+              value: enabled,
+              onChanged: (value) =>
+                  ref.read(notificationsEnabledProvider.notifier).state = value,
+            ),
+            if (tasks.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: ZakerSpacing.md),
+                child: Text('مفيش مهام مجدولة النهارده — يومك فاضي.'),
+              )
+            else
+              for (final task in tasks.take(5))
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    task.important
+                        ? Icons.priority_high_rounded
+                        : Icons.schedule_rounded,
+                    color: task.important
+                        ? ZakerColors.accent
+                        : theme.colorScheme.primary,
+                  ),
+                  title: Text(task.title),
+                  subtitle: task.dueAt == null
+                      ? null
+                      : Text(
+                          '${task.dueAt!.hour.toString().padLeft(2, '0')}:'
+                          '${task.dueAt!.minute.toString().padLeft(2, '0')}',
+                        ),
+                ),
+            const SizedBox(height: ZakerSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  context.push(ZakerRoutes.planner);
+                },
+                icon: const Icon(Icons.flag_rounded),
+                label: const Text('افتح أهداف اليوم'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

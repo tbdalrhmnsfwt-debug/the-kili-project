@@ -118,6 +118,16 @@ final selectedGradeProvider = StateProvider<String>((ref) {
 /// The currently selected subject within a grade.
 final selectedSubjectProvider = StateProvider<String?>((ref) => null);
 
+/// Whether study reminders are enabled in settings.
+final notificationsEnabledProvider = StateProvider<bool>((ref) {
+  return ref.watch(localStoreProvider).getBool('notifications') ?? true;
+});
+
+/// Whether feedback sounds and clicks are enabled in settings.
+final soundsEnabledProvider = StateProvider<bool>((ref) {
+  return ref.watch(localStoreProvider).getBool('sounds') ?? true;
+});
+
 /// The exam session in progress, if any.
 final examSessionProvider = StateProvider<ExamSession?>((ref) => null);
 
@@ -340,4 +350,10 @@ final persistenceProvider = Provider<void>((ref) {
   save(challengeResultsProvider, 'challenge_results', encodeChallengeResults);
   save(studyStatsProvider, 'study_stats', encodeStudyStats);
   save(selectedGradeProvider, 'selected_grade', (value) => value);
+  save(
+    notificationsEnabledProvider,
+    'notifications',
+    (value) => value ? '1' : '0',
+  );
+  save(soundsEnabledProvider, 'sounds', (value) => value ? '1' : '0');
 });

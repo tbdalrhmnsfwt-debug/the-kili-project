@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
@@ -54,16 +55,16 @@ class QuizScreen extends ConsumerWidget {
   }
 }
 
-class _QuizRunner extends StatefulWidget {
+class _QuizRunner extends ConsumerStatefulWidget {
   const _QuizRunner({required this.questions});
 
   final List<ExamQuestion> questions;
 
   @override
-  State<_QuizRunner> createState() => _QuizRunnerState();
+  ConsumerState<_QuizRunner> createState() => _QuizRunnerState();
 }
 
-class _QuizRunnerState extends State<_QuizRunner> {
+class _QuizRunnerState extends ConsumerState<_QuizRunner> {
   int _index = 0;
   final Map<String, AnswerResult> _results = {};
   bool _revealed = false;
@@ -171,16 +172,22 @@ class _QuizRunnerState extends State<_QuizRunner> {
 
   void _answer(int index) {
     final correct = _current.correctIndex;
+    final isCorrect = correct == null || correct == index;
+    if (ref.read(soundsEnabledProvider)) {
+      SystemSound.play(
+        isCorrect ? SystemSoundType.click : SystemSoundType.alert,
+      );
+    }
     setState(() {
       _revealed = true;
       _results[_current.id] = AnswerResult(
         questionId: _current.id,
-        isCorrect: correct == null || correct == index,
+        isCorrect: isCorrect,
         givenAnswer: index.toString(),
         correctAnswer: correct?.toString() ?? '',
-        feedback: correct == index
+        feedback: isCorrect
             ? 'برافو — إجابة صحيحة'
-            : 'الإجابة الصحيحة: ${_current.options[correct ?? 0]}',
+            : 'الإجابة الصحيحة: ${_current.options[correct]}',
       );
     });
   }

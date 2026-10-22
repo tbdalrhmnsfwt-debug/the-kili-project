@@ -42,6 +42,18 @@ class LocalStore {
   /// Reads a raw string, or `null` when it was never written.
   String? getString(String key) => _prefs?.getString('$keyPrefix$key');
 
+  /// Reads a boolean, or `null` when it was never written.
+  bool? getBool(String key) => _prefs?.getBool('$keyPrefix$key');
+
+  /// Writes a boolean. Failures are logged, never thrown.
+  Future<void> setBool(String key, bool value) async {
+    try {
+      await _prefs?.setBool('$keyPrefix$key', value);
+    } catch (e) {
+      debugPrint('local_store: could not save $key ($e)');
+    }
+  }
+
   /// Writes a raw string. Failures are logged, never thrown.
   Future<void> setString(String key, String value) async {
     try {
