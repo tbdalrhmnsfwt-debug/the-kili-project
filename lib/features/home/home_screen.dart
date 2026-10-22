@@ -24,6 +24,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final grades = ref.watch(gradesProvider);
+    final stats = ref.watch(studyStatsProvider);
 
     return Scaffold(
       body: RefreshIndicator(
@@ -52,7 +53,10 @@ class HomeScreen extends ConsumerWidget {
                   ZakerSpacing.lg,
                   0,
                 ),
-                child: _GreetingCard(streakDays: 7, minutesToday: 35),
+                child: _GreetingCard(
+                  streakDays: stats.streakDays,
+                  minutesToday: stats.minutesToday,
+                ),
               ),
             ),
             SliverToBoxAdapter(
@@ -312,7 +316,9 @@ class _GreetingCard extends StatelessWidget {
           ),
           const SizedBox(height: ZakerSpacing.xs),
           Text(
-            'كمّل خطتك النهارده — عندك $minutesToday دقيقة مذاكرة.',
+            minutesToday == 0
+                ? 'ابدأ أول جلسة النهارده وخلي سلسلتك تكبر.'
+                : 'كمّلت $minutesToday دقيقة مذاكرة النهارده — كمّل!',
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
             ),

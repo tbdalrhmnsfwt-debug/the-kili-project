@@ -9,21 +9,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/local_store.dart';
 import 'core/localization.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
+import 'providers/app_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: ZakerlyApp()));
+  final store = await LocalStore.open();
+  runApp(
+    ProviderScope(
+      overrides: [localStoreProvider.overrideWithValue(store)],
+      child: const ZakerlyApp(),
+    ),
+  );
 }
 
 /// Root widget.
-class ZakerlyApp extends StatelessWidget {
+class ZakerlyApp extends ConsumerWidget {
   const ZakerlyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Keep the persistence listeners alive for the whole app session.
+    ref.watch(persistenceProvider);
+
     return MaterialApp.router(
       title: 'ذاكرلي',
       debugShowCheckedModeBanner: false,

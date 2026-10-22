@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../models/focus.dart';
+import '../../models/leaderboard.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 
@@ -25,6 +26,10 @@ class FocusScreen extends ConsumerStatefulWidget {
 
 class _FocusScreenState extends ConsumerState<FocusScreen> {
   Timer? _ticker;
+
+  /// Sessions whose minutes have already been added to the study stats, so a
+  /// finished session is never counted twice.
+  final Set<String> _recorded = <String>{};
 
   @override
   void initState() {
@@ -46,11 +51,48 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
         session.phase = FocusPhase.finished;
         session.completedCycles++;
       });
+      _recordStudy(session, session.workMinutes);
       return;
     }
     setState(() {
       session.elapsed += const Duration(seconds: 1);
     });
+  }
+
+  /// Adds [minutes] to today's study stats and plants points in the garden.
+  void _recordStudy(FocusSession session, int minutes) {
+    if (minutes <= 0 || !_recorded.add(session.id)) return;
+
+    final stats = ref.read(studyStatsProvider).recordMinutes(minutes);
+    ref.read(studyStatsProvider.notifier).state = stats;
+
+    final now = DateTime.now();
+    final day = DateTime(now.year, now.month, now.day);
+    final garden = ref.read(gardenProvider);
+    final plots = [...garden.plots];
+    final index = plots.indexWhere(
+      (p) =>
+          p.day.year == day.year &&
+          p.day.month == day.month &&
+          p.day.day == day.day,
+    );
+    final points = minutes * 2;
+    if (index >= 0) {
+      final plot = plots[index];
+      plots[index] = GardenPlot(
+        day: plot.day,
+        points: plot.points + points,
+        streak: stats.streakDays,
+      );
+    } else {
+      plots.add(
+        GardenPlot(day: day, points: points, streak: stats.streakDays),
+      );
+    }
+    ref.read(gardenProvider.notifier).state = Garden(
+      plots: plots,
+      season: garden.season,
+    );
   }
 
   void _start(FocusPreset preset) {
@@ -133,6 +175,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
+                            // Count the part of the session actually studied.
+                            _recordStudy(session, session.elapsed.inMinutes);
                             ref.read(focusSessionProvider.notifier).state =
                                 null;
                           },

@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/ai_service.dart';
 import '../core/api_client.dart';
 import '../core/asset_service.dart';
+import '../core/local_store.dart';
 import '../core/quiz_generator.dart';
 import '../models/ai.dart';
 import '../models/arena.dart';
@@ -16,6 +18,7 @@ import '../models/notebook.dart';
 import '../models/planner.dart';
 import '../models/recall.dart';
 import '../models/schedule.dart';
+import '../models/study_stats.dart';
 import '../models/wallet.dart';
 import '../models/weekly.dart';
 import '../models/words.dart';
@@ -25,6 +28,30 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 /// The bundled-asset loader.
 final assetServiceProvider = Provider<AssetService>((ref) => AssetService());
+
+/// The on-device store holding the user's study data.
+///
+/// `main` overrides this with an opened [LocalStore]; the default keeps
+/// everything in memory so tests and previews run without a platform channel.
+final localStoreProvider = Provider<LocalStore>((ref) => LocalStore.memory());
+
+/// Reads and decodes a persisted value, falling back when it is missing or
+/// corrupt.
+T _restore<T>(
+  Ref ref,
+  String key,
+  T Function(String raw) decode,
+  T fallback,
+) {
+  final raw = ref.watch(localStoreProvider).getString(key);
+  if (raw == null) return fallback;
+  try {
+    return decode(raw);
+  } catch (e) {
+    debugPrint('local_store: ignoring $key ($e)');
+    return fallback;
+  }
+}
 
 /// The AI service backing the chat and the study tools.
 final aiServiceProvider = Provider<AiService>((ref) {
@@ -84,7 +111,9 @@ final lessonsProvider = FutureProvider.family<List<Lesson>, Book>((
 });
 
 /// The currently selected grade.
-final selectedGradeProvider = StateProvider<String>((ref) => 'sec1');
+final selectedGradeProvider = StateProvider<String>((ref) {
+  return ref.watch(localStoreProvider).getString('selected_grade') ?? 'sec1';
+});
 
 /// The currently selected subject within a grade.
 final selectedSubjectProvider = StateProvider<String?>((ref) => null);
@@ -135,9 +164,14 @@ final quizQuestionsProvider = FutureProvider<List<ExamQuestion>>((ref) async {
 });
 
 /// The user's task list.
-final taskListProvider = StateProvider<TaskList>(
-  (ref) => TaskList(title: 'قائمة المهام'),
-);
+final taskListProvider = StateProvider<TaskList>((ref) {
+  return _restore(
+    ref,
+    'tasks',
+    decodeTaskList,
+    TaskList(title: 'قائمة المهام'),
+  );
+});
 
 /// The focus session in progress.
 final focusSessionProvider = StateProvider<FocusSession?>((ref) => null);
@@ -152,7 +186,9 @@ final appSettingsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
 });
 
 /// The active-recall card queue.
-final reviewQueueProvider = StateProvider<ReviewQueue>((ref) => ReviewQueue());
+final reviewQueueProvider = StateProvider<ReviewQueue>((ref) {
+  return _restore(ref, 'recall', decodeReviewQueue, ReviewQueue());
+});
 
 /// The cards waiting for review right now.
 final dueCardsProvider = Provider<List<RecallCard>>((ref) {
@@ -160,7 +196,9 @@ final dueCardsProvider = Provider<List<RecallCard>>((ref) {
 });
 
 /// The user's daily goals.
-final goalsProvider = StateProvider<List<Goal>>((ref) => const []);
+final goalsProvider = StateProvider<List<Goal>>((ref) {
+  return _restore(ref, 'goals', decodeGoals, const <Goal>[]);
+});
 
 /// The achievements the user has unlocked.
 final achievementsProvider = StateProvider<List<Achievement>>(
@@ -182,14 +220,24 @@ final chatThreadProvider = StateProvider<ChatThread>((ref) {
 });
 
 /// The daily task list.
-final taskScheduleProvider = StateProvider<TaskSchedule>(
-  (ref) => TaskSchedule(title: 'قائمة المهام'),
-);
+final taskScheduleProvider = StateProvider<TaskSchedule>((ref) {
+  return _restore(
+    ref,
+    'schedule',
+    decodeTaskSchedule,
+    TaskSchedule(title: 'قائمة المهام'),
+  );
+});
 
 /// The wallet: monthly allowance, commitments and expenses.
 final walletProvider = StateProvider<Wallet>((ref) {
   final now = DateTime.now();
-  return Wallet(month: '${now.year}-${now.month.toString().padLeft(2, '0')}');
+  return _restore(
+    ref,
+    'wallet',
+    decodeWallet,
+    Wallet(month: '${now.year}-${now.month.toString().padLeft(2, '0')}'),
+  );
 });
 
 /// The weekly leaderboard snapshot.
@@ -202,22 +250,29 @@ final leaderboardProvider = StateProvider<LeaderboardWeek>((ref) {
 });
 
 /// The garden, which grows with each studied day.
-final gardenProvider = StateProvider<Garden>((ref) => const Garden());
+final gardenProvider = StateProvider<Garden>((ref) {
+  return _restore(ref, 'garden', decodeGarden, const Garden());
+});
 
 /// The mistakes notebook.
-final mistakesProvider = StateProvider<MistakeNotebook>(
-  (ref) => const MistakeNotebook(),
-);
+final mistakesProvider = StateProvider<MistakeNotebook>((ref) {
+  return _restore(
+    ref,
+    'mistakes',
+    decodeMistakeNotebook,
+    const MistakeNotebook(),
+  );
+});
 
 /// The per-subject notebooks.
-final notebooksProvider = StateProvider<List<Notebook>>(
-  (ref) => const <Notebook>[],
-);
+final notebooksProvider = StateProvider<List<Notebook>>((ref) {
+  return _restore(ref, 'notebooks', decodeNotebooks, const <Notebook>[]);
+});
 
 /// The user's English vocabulary lists.
-final wordListsProvider = StateProvider<List<WordList>>(
-  (ref) => const <WordList>[],
-);
+final wordListsProvider = StateProvider<List<WordList>>((ref) {
+  return _restore(ref, 'word_lists', decodeWordLists, const <WordList>[]);
+});
 
 /// The challenges the user can play.
 final challengesProvider = StateProvider<List<Challenge>>(
@@ -225,13 +280,18 @@ final challengesProvider = StateProvider<List<Challenge>>(
 );
 
 /// The results of the challenges the user has finished.
-final challengeResultsProvider = StateProvider<List<ChallengeResult>>(
-  (ref) => const <ChallengeResult>[],
-);
+final challengeResultsProvider = StateProvider<List<ChallengeResult>>((ref) {
+  return _restore(
+    ref,
+    'challenge_results',
+    decodeChallengeResults,
+    const <ChallengeResult>[],
+  );
+});
 
 /// The player's stars, coins and level in the study games.
 final gameProfileProvider = StateProvider<GameProfile>((ref) {
-  return const GameProfile();
+  return _restore(ref, 'game_profile', decodeGameProfile, const GameProfile());
 });
 
 /// The question banks the games draw their questions from.
@@ -242,4 +302,42 @@ final questionBanksProvider = StateProvider<List<QuestionBank>>(
 /// The weekly report shown on the weekly screen and the home screen.
 final weeklyReportProvider = StateProvider<WeeklyReport>((ref) {
   return WeeklyReport.forWeek(DateTime.now());
+});
+
+/// Minutes studied per day, which drive the home streak and the garden.
+final studyStatsProvider = StateProvider<StudyStats>((ref) {
+  return _restore(ref, 'study_stats', decodeStudyStats, const StudyStats());
+});
+
+/// Subscribes every persisted provider and writes its value back on change.
+///
+/// The provider carries no value of its own: watching it from the app root is
+/// what keeps the listeners alive for the lifetime of the process.
+final persistenceProvider = Provider<void>((ref) {
+  final store = ref.watch(localStoreProvider);
+  if (!store.isAvailable) return;
+
+  void save<T>(
+    ProviderListenable<T> source,
+    String key,
+    String Function(T value) encode,
+  ) {
+    ref.listen<T>(source, (_, next) {
+      store.setString(key, encode(next));
+    });
+  }
+
+  save(taskListProvider, 'tasks', encodeTaskList);
+  save(taskScheduleProvider, 'schedule', encodeTaskSchedule);
+  save(goalsProvider, 'goals', encodeGoals);
+  save(walletProvider, 'wallet', encodeWallet);
+  save(notebooksProvider, 'notebooks', encodeNotebooks);
+  save(wordListsProvider, 'word_lists', encodeWordLists);
+  save(mistakesProvider, 'mistakes', encodeMistakeNotebook);
+  save(reviewQueueProvider, 'recall', encodeReviewQueue);
+  save(gameProfileProvider, 'game_profile', encodeGameProfile);
+  save(gardenProvider, 'garden', encodeGarden);
+  save(challengeResultsProvider, 'challenge_results', encodeChallengeResults);
+  save(studyStatsProvider, 'study_stats', encodeStudyStats);
+  save(selectedGradeProvider, 'selected_grade', (value) => value);
 });
