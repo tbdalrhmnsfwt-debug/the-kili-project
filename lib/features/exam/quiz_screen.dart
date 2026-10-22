@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
+import '../../models/arena.dart';
 import '../../models/exam.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
@@ -68,6 +69,7 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
   int _index = 0;
   final Map<String, AnswerResult> _results = {};
   bool _revealed = false;
+  bool _saved = false;
 
   List<ExamQuestion> get _questions => widget.questions;
   ExamQuestion get _current => _questions[_index];
@@ -205,6 +207,24 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
 
   void _showResults() {
     final correct = _results.values.where((r) => r.isCorrect).length;
+    if (!_saved) {
+      _saved = true;
+      final result = ChallengeResult(
+        challengeId: 'quiz-${DateTime.now().millisecondsSinceEpoch}',
+        score: correct * 10,
+        total: _questions.length,
+        correct: correct,
+        wrongQuestionIds: [
+          for (final r in _results.values)
+            if (!r.isCorrect) r.questionId,
+        ],
+        finishedAt: DateTime.now(),
+      );
+      ref.read(challengeResultsProvider.notifier).state = [
+        result,
+        ...ref.read(challengeResultsProvider),
+      ];
+    }
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,

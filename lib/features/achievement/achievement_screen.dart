@@ -60,7 +60,14 @@ class AchievementScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unlocked = ref.watch(achievementsProvider);
+    final stats = ref.watch(studyStatsProvider);
+    final unlocked = <String>{
+      for (final achievement in ref.watch(achievementsProvider))
+        achievement.id,
+      if (stats.streakDays >= 7) 'streak7',
+      if (stats.streakDays >= 30) 'streak30',
+      if (stats.totalMinutes >= 500) 'focus',
+    };
     final referral = ref.watch(referralProvider);
 
     return Scaffold(
@@ -79,7 +86,7 @@ class AchievementScreen extends ConsumerWidget {
               name: badge.name,
               description: badge.desc,
               icon: badge.icon,
-              unlocked: unlocked.any((a) => a.id == badge.id),
+              unlocked: unlocked.contains(badge.id),
             ),
         ],
       ),

@@ -310,9 +310,121 @@ final questionBanksProvider = StateProvider<List<QuestionBank>>(
 );
 
 /// The weekly report shown on the weekly screen and the home screen.
-final weeklyReportProvider = StateProvider<WeeklyReport>((ref) {
-  return WeeklyReport.forWeek(DateTime.now());
+///
+/// Everything here is derived from what actually happened: focus minutes
+/// from [studyStatsProvider], task completion from [taskScheduleProvider],
+/// quiz answers from [challengeResultsProvider] and garden points from
+/// [gardenProvider]. The week runs Saturday → Friday, as the screen shows.
+final weeklyReportProvider = Provider<WeeklyReport>((ref) {
+  final stats = ref.watch(studyStatsProvider);
+  final schedule = ref.watch(taskScheduleProvider);
+  final results = ref.watch(challengeResultsProvider);
+  final garden = ref.watch(gardenProvider);
+
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final start = today.subtract(Duration(days: (today.weekday + 1) % 7));
+
+  final days = <WeekDay>[];
+  final subjectMinutes = <String, int>{};
+
+  for (var i = 0; i < 7; i++) {
+    final day = start.add(Duration(days: i));
+
+    var tasksTotal = 0;
+    var tasksDone = 0;
+    final subjectsToday = <String>{};
+    for (final entry in schedule.entries) {
+      final due = entry.dueAt;
+      if (due == null ||
+          due.year != day.year ||
+          due.month != day.month ||
+          due.day != day.day) {
+        continue;
+      }
+      tasksTotal++;
+      if (entry.done) tasksDone++;
+      final subject = _subjectOf(entry.title);
+      if (subject != null) subjectsToday.add(subject);
+    }
+
+    var correct = 0;
+    var wrong = 0;
+    var challengePoints = 0;
+    for (final result in results) {
+      final at = result.finishedAt;
+      if (at == null ||
+          at.year != day.year ||
+          at.month != day.month ||
+          at.day != day.day) {
+        continue;
+      }
+      correct += result.correct;
+      wrong += result.total - result.correct;
+      challengePoints += result.score;
+    }
+
+    var gardenPoints = 0;
+    for (final plot in garden.plots) {
+      if (plot.day.year == day.year &&
+          plot.day.month == day.month &&
+          plot.day.day == day.day) {
+        gardenPoints += plot.points;
+      }
+    }
+
+    final minutes = stats.minutesOn(day);
+    if (minutes > 0) {
+      // Focus sessions are not tied to a subject, so spread the day's time
+      // across the subjects that were scheduled on it.
+      final subjects = subjectsToday.isEmpty
+          ? const ['مراجعة']
+          : subjectsToday.toList();
+      final share = (minutes / subjects.length).round();
+      for (final subject in subjects) {
+        subjectMinutes[subject] = (subjectMinutes[subject] ?? 0) + share;
+      }
+    }
+
+    days.add(
+      WeekDay(
+        date: day,
+        focusMinutes: minutes,
+        points: challengePoints + gardenPoints,
+        tasksDone: tasksDone,
+        tasksTotal: tasksTotal,
+        answersCorrect: correct,
+        answersWrong: wrong,
+      ),
+    );
+  }
+
+  final subjects = subjectMinutes.entries
+      .map(
+        (e) => WeekSubject(
+          subject: e.key,
+          focusMinutes: e.value,
+          points: e.value,
+        ),
+      )
+      .toList()
+    ..sort((a, b) => b.focusMinutes.compareTo(a.focusMinutes));
+
+  return WeeklyReport(
+    weekStart: start,
+    days: days,
+    subjects: subjects,
+    streak: stats.streakDays,
+  );
 });
+
+/// Extracts the subject from a generated task title (`مذاكرة الرياضيات`).
+String? _subjectOf(String title) {
+  const prefix = 'مذاكرة ';
+  if (!title.startsWith(prefix)) return null;
+  final subject = title.substring(prefix.length).trim();
+  return subject.isEmpty ? null : subject;
+}
 
 /// Minutes studied per day, which drive the home streak and the garden.
 final studyStatsProvider = StateProvider<StudyStats>((ref) {

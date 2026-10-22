@@ -123,18 +123,32 @@ class PlannerScreen extends ConsumerWidget {
 ///
 /// The shipped string explains the weighting explicitly:
 /// `الوقت أربع نقاط، أهدافك تلاتة، البنود نقطتين، واليومية نقطة.`
-class _TodayScoreCard extends StatelessWidget {
+class _TodayScoreCard extends ConsumerWidget {
   const _TodayScoreCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+
+    final stats = ref.watch(studyStatsProvider);
+    final goals = ref.watch(goalsProvider);
+    final schedule = ref.watch(taskScheduleProvider);
+
+    final todayTasks = schedule.forDay();
+    final doneTasks = todayTasks.where((t) => t.done).length;
+    final completedGoals = goals.where((g) => g.isComplete).length;
+
     // Time 4, goals 3, tasks 2, daily log 1 — total 10.
-    const time = 4.0;
-    const goals = 2.0;
-    const tasks = 1.0;
-    const log = 1.0;
-    final score = time + goals + tasks + log;
+    final time = (stats.minutesToday / 60).clamp(0.0, 1.0) * 4;
+    final goalsScore = goals.isEmpty
+        ? 0.0
+        : (completedGoals / goals.length) * 3;
+    final tasksScore = todayTasks.isEmpty
+        ? 0.0
+        : (doneTasks / todayTasks.length) * 2;
+    final logged =
+        stats.minutesToday > 0 || doneTasks > 0 || completedGoals > 0;
+    final score = time + goalsScore + tasksScore + (logged ? 1.0 : 0.0);
 
     return Container(
       padding: const EdgeInsets.all(ZakerSpacing.lg),
@@ -170,7 +184,7 @@ class _TodayScoreCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                score.toStringAsFixed(0),
+                score.toStringAsFixed(score == score.roundToDouble() ? 0 : 1),
                 style: theme.textTheme.displayMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
