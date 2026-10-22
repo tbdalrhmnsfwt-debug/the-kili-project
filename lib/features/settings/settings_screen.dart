@@ -1,16 +1,15 @@
 /// Settings and the account section.
 ///
 /// The original app's settings group its entries under headings recovered
-/// from the shipped strings — e.g. "2. أين تحفظ البيانات؟",
-/// "4. الاشتراكات والمدفوعات" — and links out to
-/// `play.google.com/store/account/subscriptions?package=com.zakerly.ai`.
+/// from the shipped strings — e.g. "2. أين تحفظ البيانات؟" and
+/// "4. الاشتراكات والمدفوعات". Account, subscription, and wallet entries
+/// push their own screens.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/notification_service.dart';
 import '../../core/router.dart';
@@ -22,14 +21,11 @@ import '../../widgets/common.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
-  /// Where the user manages their Google Play subscription.
-  static const String subscriptionsUrl =
-      'https://play.google.com/store/account/subscriptions?package=com.zakerly.ai';
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final settings = ref.watch(appSettingsProvider);
+    final liveEnabled = ref.watch(liveEnabledProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('الإعدادات')),
@@ -48,14 +44,14 @@ class SettingsScreen extends ConsumerWidget {
           _Tile(
             icon: Icons.person_outline_rounded,
             title: 'حسابي',
-            subtitle: 'بياناتك ودرجاتك',
-            onTap: () => _showAccount(context, ref),
+            subtitle: 'اسمك وبياناتك والمزامنة',
+            onTap: () => context.push(ZakerRoutes.account),
           ),
           _Tile(
             icon: Icons.workspace_premium_rounded,
             title: 'الاشتراكات والمدفوعات',
             subtitle: 'إدارة الاشتراك والفواتير',
-            onTap: () => _open(subscriptionsUrl),
+            onTap: () => context.push(ZakerRoutes.subscription),
           ),
           _Tile(
             icon: Icons.wallet_rounded,
@@ -76,6 +72,12 @@ class SettingsScreen extends ConsumerWidget {
             title: 'الأصوات',
             subtitle: 'صوت الإنجاز',
             onTap: () => _showSounds(context),
+          ),
+          _Tile(
+            icon: Icons.cloud_sync_outlined,
+            title: 'المزامنة المباشرة',
+            subtitle: liveEnabled ? 'شغالة — متصدرين وتحديات مشتركة' : 'مقفولة',
+            onTap: () => context.push(ZakerRoutes.account),
           ),
           _Tile(
             icon: Icons.language_rounded,
@@ -103,48 +105,6 @@ class SettingsScreen extends ConsumerWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _open(String url) {
-    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-  }
-
-  /// A read-only summary of the data stored on this device.
-  void _showAccount(BuildContext context, WidgetRef ref) {
-    final stats = ref.read(studyStatsProvider);
-    final goals = ref.read(goalsProvider);
-    final notebooks = ref.read(notebooksProvider);
-    final queue = ref.read(reviewQueueProvider);
-
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('حسابي'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _InfoRow(label: 'أيام المذاكرة', value: '${stats.dailyMinutes.length}'),
-            _InfoRow(label: 'إجمالي الدقائق', value: '${stats.totalMinutes}'),
-            _InfoRow(label: 'السلسلة', value: '${stats.streakDays} يوم'),
-            _InfoRow(label: 'الأهداف', value: '${goals.length}'),
-            _InfoRow(label: 'الدفاتر', value: '${notebooks.length}'),
-            _InfoRow(label: 'كروت المراجعة', value: '${queue.total}'),
-            const SizedBox(height: ZakerSpacing.md),
-            Text(
-              'البيانات دي كلها محفوظة على جهازك، ومفيش حساب سحابي مربوط بيها.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('تمام'),
           ),
         ],
       ),

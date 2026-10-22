@@ -1,10 +1,15 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/ai_service.dart';
 import '../core/api_client.dart';
 import '../core/asset_service.dart';
+import '../core/auth_service.dart';
+import '../core/billing_service.dart';
 import '../core/curriculum_search.dart';
+import '../core/live_service.dart';
 import '../core/local_store.dart';
 import '../core/notification_service.dart';
 import '../core/quiz_generator.dart';
@@ -36,6 +41,78 @@ final assetServiceProvider = Provider<AssetService>((ref) => AssetService());
 /// `main` overrides this with an opened [LocalStore]; the default keeps
 /// everything in memory so tests and previews run without a platform channel.
 final localStoreProvider = Provider<LocalStore>((ref) => LocalStore.memory());
+
+/// Accounts and the Firebase token.
+final authServiceProvider = Provider<AuthService>((ref) {
+  return AuthService(api: ref.watch(apiClientProvider));
+});
+
+/// Restores the saved profile, or creates the local guest identity once.
+final authBootstrapProvider = Provider<AuthUser>((ref) {
+  final store = ref.watch(localStoreProvider);
+  final service = ref.watch(authServiceProvider);
+
+  AuthUser? user;
+  final raw = store.getString('auth_user');
+  if (raw != null && raw.isNotEmpty) {
+    try {
+      user = AuthUser.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (e) {
+      debugPrint('auth: ignoring a corrupt profile ($e)');
+    }
+  }
+  if (user == null || user.uid.isEmpty) {
+    user = AuthUser(uid: newGuestUid());
+    store.setString('auth_user', jsonEncode(user.toJson()));
+  }
+  if (user.isAnonymous) {
+    service.startGuest(uid: user.uid, displayName: user.displayName);
+  }
+  return user;
+});
+
+/// The account currently in use (guest until the user signs in).
+final authUserProvider = StateProvider<AuthUser?>((ref) {
+  return ref.watch(authBootstrapProvider);
+});
+
+/// Whether the app may read and write the shared live backend.
+///
+/// Off by default: the replica never contacts the vendor's Realtime Database
+/// until the user explicitly turns the live features on.
+final liveEnabledProvider = StateProvider<bool>((ref) {
+  return _restoreBool(ref, 'live_enabled', false);
+});
+
+/// The Realtime Database URL used for live sync.
+final liveDatabaseUrlProvider = StateProvider<String>((ref) {
+  final stored = ref.watch(localStoreProvider).getString('live_url');
+  return stored == null || stored.isEmpty ? kFirebaseRtdbUrl : stored;
+});
+
+/// The connection settings derived from the account and the settings.
+final liveConfigProvider = Provider<LiveConfig>((ref) {
+  final user = ref.watch(authUserProvider);
+  return LiveConfig(
+    enabled: ref.watch(liveEnabledProvider),
+    databaseUrl: ref.watch(liveDatabaseUrlProvider),
+    idToken: user?.idToken,
+  );
+});
+
+/// REST client for the live leaderboard and challenges.
+final liveServiceProvider = Provider<LiveService>((ref) {
+  return LiveService(ref.watch(apiClientProvider));
+});
+
+/// Google Play billing.
+final billingServiceProvider = Provider<BillingService>((ref) {
+  final service = BillingService(api: ref.watch(apiClientProvider));
+  ref.onDispose(() {
+    service.close();
+  });
+  return service;
+});
 
 /// Reads and decodes a persisted value, falling back when it is missing or
 /// corrupt.
@@ -288,12 +365,56 @@ final walletProvider = StateProvider<Wallet>((ref) {
 });
 
 /// The weekly leaderboard snapshot.
+///
+/// The player's own row is always derived locally from real activity: focus
+/// minutes this week, points and solved challenges, and the study streak.
+/// Server rows are merged by [liveLeaderboardProvider] when live sync is on.
 final leaderboardProvider = StateProvider<LeaderboardWeek>((ref) {
   final now = DateTime.now();
-  return LeaderboardWeek(
-    weekStart: now.subtract(Duration(days: now.weekday % 7)),
-    rows: const <LeaderboardRow>[],
-  );
+  final today = DateTime(now.year, now.month, now.day);
+  final start = today.subtract(Duration(days: (today.weekday + 1) % 7));
+  final stats = ref.watch(studyStatsProvider);
+  final results = ref.watch(challengeResultsProvider);
+  final user = ref.watch(authUserProvider);
+
+  var focusSeconds = 0;
+  for (var i = 0; i < 7; i++) {
+    focusSeconds += stats.minutesOn(start.add(Duration(days: i))) * 60;
+  }
+  final weekResults = results.where((r) {
+    final at = r.finishedAt;
+    return at != null && !at.isBefore(start);
+  }).toList(growable: false);
+  final points = weekResults.fold<int>(0, (sum, r) => sum + r.score);
+
+  final rows = <LeaderboardRow>[];
+  if (user != null) {
+    rows.add(
+      LeaderboardRow(
+        userId: user.uid,
+        displayName: user.displayName,
+        points: points,
+        focusSeconds: focusSeconds,
+        solved: weekResults.length,
+        streak: stats.streakDays,
+        isMe: true,
+      ),
+    );
+  }
+  return LeaderboardWeek(weekStart: start, rows: rows);
+});
+
+/// Rows published by the shared backend, or an empty list when live sync is
+/// off, the account is a guest, or the network is unavailable.
+final liveLeaderboardProvider = FutureProvider<List<LeaderboardRow>>((ref) async {
+  final config = ref.watch(liveConfigProvider);
+  if (!LiveService.canSync(config)) return const <LeaderboardRow>[];
+  final week = ref.watch(leaderboardProvider).weekStart;
+  final uid = ref.watch(authUserProvider)?.uid;
+  final rows = await ref
+      .watch(liveServiceProvider)
+      .fetchLeaderboard(week, config, myUid: uid);
+  return rows ?? const <LeaderboardRow>[];
 });
 
 /// The garden, which grows with each studied day.
@@ -322,9 +443,36 @@ final wordListsProvider = StateProvider<List<WordList>>((ref) {
 });
 
 /// The challenges the user can play.
-final challengesProvider = StateProvider<List<Challenge>>(
-  (ref) => const <Challenge>[],
-);
+///
+/// The daily challenge is always available locally. Live direct challenges
+/// are added by [liveChallengesProvider] when sync is enabled.
+final challengesProvider = StateProvider<List<Challenge>>((ref) {
+  final now = DateTime.now();
+  final date = DateTime(now.year, now.month, now.day);
+  final key = '${now.year}-'
+      '${now.month.toString().padLeft(2, '0')}-'
+      '${now.day.toString().padLeft(2, '0')}';
+  return [
+    Challenge(
+      id: 'daily-$key',
+      title: 'تحدي النهارده',
+      kind: ChallengeKind.daily,
+      questionCount: 10,
+      points: 8,
+      createdAt: date,
+    ),
+  ];
+});
+
+/// Direct challenges shared by other players, when live sync is enabled.
+final liveChallengesProvider = FutureProvider<List<Challenge>>((ref) async {
+  final config = ref.watch(liveConfigProvider);
+  if (!LiveService.canSync(config)) return const <Challenge>[];
+  final challenges = await ref
+      .watch(liveServiceProvider)
+      .fetchChallenges(config);
+  return challenges ?? const <Challenge>[];
+});
 
 /// The results of the challenges the user has finished.
 final challengeResultsProvider = StateProvider<List<ChallengeResult>>((ref) {
@@ -488,6 +636,14 @@ final persistenceProvider = Provider<void>((ref) {
   ref.listen<int>(reminderHourProvider, (_, __) => syncReminder());
   ref.listen<int>(reminderMinuteProvider, (_, __) => syncReminder());
 
+  // The profile survives restarts; the Firebase token intentionally does not.
+  ref.listen<AuthUser?>(authUserProvider, (_, next) {
+    if (next == null || next.uid.isEmpty) return;
+    ref
+        .read(localStoreProvider)
+        .setString('auth_user', jsonEncode(next.toJson()));
+  });
+
   final store = ref.watch(localStoreProvider);
   if (!store.isAvailable) return;
 
@@ -522,6 +678,8 @@ final persistenceProvider = Provider<void>((ref) {
   save(selectedGradeProvider, 'selected_grade', (value) => value);
   save(reminderHourProvider, 'reminder_hour', (value) => '$value');
   save(reminderMinuteProvider, 'reminder_minute', (value) => '$value');
+  save(liveDatabaseUrlProvider, 'live_url', (value) => value);
   saveBool(notificationsEnabledProvider, 'notifications');
   saveBool(soundsEnabledProvider, 'sounds');
+  saveBool(liveEnabledProvider, 'live_enabled');
 });

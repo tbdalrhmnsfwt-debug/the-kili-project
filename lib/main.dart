@@ -36,8 +36,10 @@ class ZakerlyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Keep the persistence listeners alive for the whole app session.
+    // Keep the persistence listeners alive for the whole app session, and
+    // restore the account (or the local guest identity) on first build.
     ref.watch(persistenceProvider);
+    ref.watch(authBootstrapProvider);
 
     return MaterialApp.router(
       title: 'ذاكرلي',

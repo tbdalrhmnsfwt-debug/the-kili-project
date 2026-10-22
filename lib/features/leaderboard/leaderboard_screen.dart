@@ -20,7 +20,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/leaderboard.dart';
 import '../../providers/app_providers.dart';
@@ -34,7 +36,19 @@ class LeaderboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final week = ref.watch(leaderboardProvider);
-    final ranked = week.ranked;
+    final live = ref.watch(liveLeaderboardProvider);
+
+    // Local rows win over their server copies: the local row reflects what
+    // happened on this device right now, the server copy may lag behind.
+    final byUser = <String, LeaderboardRow>{};
+    for (final row in live.valueOrNull ?? const <LeaderboardRow>[]) {
+      byUser[row.userId] = row;
+    }
+    for (final row in week.rows) {
+      byUser[row.userId] = row;
+    }
+    final ranked = byUser.values.toList()
+      ..sort((a, b) => b.sortKey.compareTo(a.sortKey));
     LeaderboardRow? me;
     for (final r in ranked) {
       if (r.isMe) {
@@ -44,7 +58,16 @@ class LeaderboardScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('المتصدرين')),
+      appBar: AppBar(
+        title: const Text('المتصدرين'),
+        actions: [
+          IconButton(
+            tooltip: 'تحديث',
+            onPressed: () => ref.invalidate(liveLeaderboardProvider),
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -74,10 +97,11 @@ class LeaderboardScreen extends ConsumerWidget {
             title: 'تحدي مباشر',
             icon: Icons.bolt_rounded,
           ),
-          const FeatureTile(
+          FeatureTile(
             title: 'تحدي مباشر',
             subtitle: 'تحدي مباشر شغال دلوقتي',
             icon: Icons.bolt_rounded,
+            onTap: () => context.push(ZakerRoutes.challenges),
           ),
         ],
       ),

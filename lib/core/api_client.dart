@@ -78,6 +78,46 @@ class ApiClient {
   String billingReturnUrl(String receipt) =>
       '$kApiBaseUrl/billing/return/$receipt';
 
+  /// Validates a Google Play purchase with the backend.
+  ///
+  /// The endpoint was recovered from `libapp.so`
+  /// (`/billing/play/verify`). Returning `false` on a transport error keeps
+  /// the caller honest: a purchase is only marked verified when the server
+  /// confirmed it.
+  Future<bool> verifyPlayPurchase({
+    required String purchaseToken,
+    required String productId,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/billing/play/verify',
+        data: {
+          'purchaseToken': purchaseToken,
+          'productId': productId,
+          'platform': 'android',
+        },
+      );
+      final data = res.data;
+      return data == null || data['ok'] != false;
+    } on DioException catch (e) {
+      _logger.w('purchase verification failed: ${e.type} ${e.message}');
+      return false;
+    }
+  }
+
+  /// Fetches the account's billing record (active plan, renewal date).
+  Future<Map<String, dynamic>?> fetchBillingAccount() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/billing/play/account',
+      );
+      return res.data;
+    } on DioException catch (e) {
+      _logger.w('billing account lookup failed: ${e.type} ${e.message}');
+      return null;
+    }
+  }
+
   /// Proxies an image through the backend (used for avatar/cover images).
   String imageProxyUrl(String remoteUrl, {int width = 1080}) =>
       '$kApiBaseUrl/image/proxy?url=${Uri.encodeQueryComponent(remoteUrl)}&w=$width';

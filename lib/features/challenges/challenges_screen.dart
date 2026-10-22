@@ -5,9 +5,13 @@
 /// the shipped app.
 library;
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/live_service.dart';
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
 import '../../models/arena.dart';
@@ -20,7 +24,15 @@ class ChallengesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final challenges = ref.watch(challengesProvider);
+    final local = ref.watch(challengesProvider);
+    final shared =
+        ref.watch(liveChallengesProvider).valueOrNull ?? const <Challenge>[];
+    final localIds = local.map((c) => c.id).toSet();
+    final challenges = <Challenge>[
+      ...local,
+      for (final c in shared)
+        if (!localIds.contains(c.id)) c,
+    ];
     final results = ref.watch(challengeResultsProvider);
     final live = challenges.where((c) => !c.over).toList();
     final past = challenges.where((c) => c.over).toList();
@@ -62,6 +74,12 @@ class ChallengesScreen extends ConsumerWidget {
           ),
           Text(ZakerStrings.s_ffc10), // العب مع صحابك لحظيا…
           const SizedBox(height: ZakerSpacing.md),
+          FilledButton.icon(
+            onPressed: () => _createDirect(context, ref),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('اعمل تحدي مباشر'),
+          ),
+          const SizedBox(height: ZakerSpacing.md),
           if (live.isEmpty)
             const EmptyState(
               icon: Icons.bolt_outlined,
@@ -86,6 +104,91 @@ class ChallengesScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Opens a direct challenge: a six-character room code the user can send
+  /// to a friend. When live sync is on the challenge is published; otherwise
+  /// it stays on this device.
+  Future<void> _createDirect(BuildContext context, WidgetRef ref) async {
+    final user = ref.read(authUserProvider);
+    final now = DateTime.now();
+    final challenge = Challenge(
+      id: 'direct-${now.millisecondsSinceEpoch}',
+      title: 'تحدي مباشر',
+      kind: ChallengeKind.direct,
+      code: _roomCode(),
+      questionCount: 10,
+      timeLimitSeconds: 60,
+      points: 10,
+      hostName: user?.displayName ?? 'لاعب',
+      createdAt: now,
+    );
+    ref.read(challengesProvider.notifier).state = [
+      challenge,
+      ...ref.read(challengesProvider),
+    ];
+
+    final config = ref.read(liveConfigProvider);
+    final shared = LiveService.canSync(config)
+        ? await ref
+              .read(liveServiceProvider)
+              .publishChallenge(challenge, config)
+        : false;
+    if (!context.mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تحدي مباشر جديد'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('ابعت الكود ده لصاحبك عشان ينضم للتحدي:'),
+            const SizedBox(height: ZakerSpacing.md),
+            SelectableText(
+              challenge.code!,
+              textDirection: TextDirection.ltr,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 4,
+              ),
+            ),
+            const SizedBox(height: ZakerSpacing.md),
+            Text(
+              shared
+                  ? 'التحدي اتنشر على السيرفر — أي حد بيدخل بالكود هيلاقيه.'
+                  : 'المزامنة المباشرة مقفولة، فالتحدي محفوظ على جهازك بس.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: challenge.code!));
+              Navigator.of(context).pop();
+            },
+            icon: const Icon(Icons.copy_rounded),
+            label: const Text('انسخ الكود'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('تمام'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A short, unambiguous room code (no 0/O or 1/I).
+  static String _roomCode() {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final random = Random.secure();
+    return List.generate(
+      6,
+      (_) => alphabet[random.nextInt(alphabet.length)],
+    ).join();
   }
 }
 
@@ -231,50 +334,129 @@ class _ChallengeTile extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: ZakerSpacing.sm),
-      child: Container(
-        padding: const EdgeInsets.all(ZakerSpacing.md),
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: challenge.over ? null : () => _play(context, ref),
           borderRadius: ZakerRadius.card,
-          border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.bolt_rounded, color: theme.colorScheme.primary),
-            const SizedBox(width: ZakerSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    challenge.title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    statusLabel,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+          child: Container(
+            padding: const EdgeInsets.all(ZakerSpacing.md),
+            decoration: BoxDecoration(
+              color: theme.cardTheme.color,
+              borderRadius: ZakerRadius.card,
+              border: Border.all(
+                color: theme.dividerTheme.color ?? Colors.black12,
               ),
             ),
-            if (challenge.code != null)
-              StatChip(
-                value: challenge.code!,
-                label: ZakerStrings.s_5413e, // غرفة التحدي
-                icon: Icons.qr_code_rounded,
-              )
-            else
-              StatChip(
-                value: '${challenge.points}',
-                label: 'نقطة',
-                icon: Icons.stars_outlined,
-              ),
-          ],
+            child: Row(
+              children: [
+                Icon(Icons.bolt_rounded, color: theme.colorScheme.primary),
+                const SizedBox(width: ZakerSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        challenge.title,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        statusLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (challenge.code != null)
+                  StatChip(
+                    value: challenge.code!,
+                    label: ZakerStrings.s_5413e, // غرفة التحدي
+                    icon: Icons.qr_code_rounded,
+                  )
+                else
+                  StatChip(
+                    value: '${challenge.points}',
+                    label: 'نقطة',
+                    icon: Icons.stars_outlined,
+                  ),
+              ],
+            ),
+          ),
         ),
+      ),
+    );
+  }
+
+  /// Marks the challenge as finished, records the result, and shares both
+  /// with the backend when live sync is enabled.
+  Future<void> _play(BuildContext context, WidgetRef ref) async {
+    final user = ref.read(authUserProvider);
+    final now = DateTime.now();
+    final name = user?.displayName ?? 'لاعب';
+    final finished = Challenge(
+      id: challenge.id,
+      title: challenge.title,
+      kind: challenge.kind,
+      status: ChallengeStatus.finished,
+      code: challenge.code,
+      questionCount: challenge.questionCount,
+      timeLimitSeconds: challenge.timeLimitSeconds,
+      points: challenge.points,
+      hostName: challenge.hostName,
+      joinedBy: name,
+      createdAt: challenge.createdAt,
+      finishedAt: now,
+    );
+
+    final current = ref.read(challengesProvider);
+    final replaced = current.any((c) => c.id == challenge.id);
+    ref.read(challengesProvider.notifier).state = [
+      if (!replaced) finished,
+      for (final c in current)
+        if (c.id == challenge.id) finished else c,
+    ];
+
+    final result = ChallengeResult(
+      challengeId: challenge.id,
+      score: challenge.points,
+      total: challenge.questionCount,
+      correct: challenge.questionCount,
+      finishedAt: now,
+    );
+    ref.read(challengeResultsProvider.notifier).state = [
+      result,
+      ...ref.read(challengeResultsProvider),
+    ];
+
+    final config = ref.read(liveConfigProvider);
+    if (LiveService.canSync(config)) {
+      final service = ref.read(liveServiceProvider);
+      await service.joinChallenge(
+        challenge.id,
+        name: name,
+        status: ChallengeStatus.finished,
+        config: config,
+      );
+      if (user != null) {
+        await service.publishResult(result, user.uid, config);
+        final week = ref.read(leaderboardProvider);
+        for (final row in week.rows) {
+          if (row.isMe) {
+            await service.publishRow(week.weekStart, row, config);
+            break;
+          }
+        }
+      }
+    }
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('خلصت ${challenge.title} — ${challenge.points} نقطة 🎉'),
       ),
     );
   }
