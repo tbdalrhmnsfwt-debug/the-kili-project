@@ -1,0 +1,198 @@
+/// Loading and caching of the bundled study content.
+///
+/// Layout shipped inside the APK:
+///   assets/manhaji/<grade>/index.json          — grade -> book index
+///   assets/manhaji/<grade>/<book>.json.gz      — packed book payload
+///   assets/courses/<slug>/course.json          — free-form course
+///   assets/data/adhkar.json                    — adhkar (remembrance) list
+///   assets/dictionary/words.json               — Arabic -> English dictionary
+///   assets/quran/mutashabihat.json.gz          — mutashabihat dataset
+///
+/// The `.json.gz` book payloads are *not* gzip: they use the app's own
+/// container, which starts with the ASCII magic `ZKB1`. The payload inside is
+/// zlib-deflate compressed. See [Zkb1Codec].
+library;
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+
+import '../models/dictionary.dart';
+import '../models/manhaji.dart';
+
+/// Decoder for the `ZKB1` container used for packed book payloads.
+///
+/// Layout (little endian):
+///   offset 0 : 4 bytes  magic `ZKB1`
+///   offset 4 : 4 bytes  uncompressed size (u32)
+///   offset 8 : 4 bytes  compressed size   (u32)
+///   offset 12: n bytes  zlib stream
+///
+/// The trailing two fields are advisory; the decoder locates the zlib
+/// stream by scanning for a valid zlib header when the fixed offsets do not
+/// decode, so the format stays forward compatible.
+class Zkb1Codec {
+  static const List<int> magic = [0x5A, 0x4B, 0x42, 0x31]; // "ZKB1"
+
+  /// Decompresses a `ZKB1` buffer into its raw UTF-8 JSON payload.
+  static Uint8List decode(Uint8List input) {
+    if (input.length < 4) {
+      throw const FormatException('ZKB1: buffer too short');
+    }
+    for (var i = 0; i < magic.length; i++) {
+      if (input[i] != magic[i]) {
+        throw const FormatException('ZKB1: bad magic');
+      }
+    }
+    final out = _inflate(input, 12);
+    return out;
+  }
+
+  /// Tries zlib decompression at [start], then scans forward for a valid
+  /// zlib stream.
+  static Uint8List _inflate(Uint8List input, int start) {
+    final errors = <Object>[];
+    for (var off = start; off < input.length && off < start + 64; off++) {
+      try {
+        return _rawInflate(input, off);
+      } catch (e) {
+        errors.add(e);
+      }
+    }
+    throw FormatException('ZKB1: could not inflate payload', errors.toString());
+  }
+
+  static Uint8List _rawInflate(Uint8List input, int offset) {
+    // Zlib header: CMF/FLG. CM must be 8 (deflate) and (CMF<<8|FLG) % 31 == 0.
+    if (offset + 2 > input.length) {
+      throw const FormatException('truncated');
+    }
+    final cmf = input[offset];
+    final flg = input[offset + 1];
+    if ((cmf & 0x0F) != 8) {
+      throw const FormatException('not deflate');
+    }
+    if (((cmf << 8) | flg) % 31 != 0) {
+      throw const FormatException('bad zlib checksum');
+    }
+    // The remaining bytes are a raw deflate stream.
+    final decoder = ZLibCodec(raw: true).decoder;
+    return Uint8List.fromList(decoder.convert(input.sublist(offset + 2)));
+  }
+}
+
+/// Loads and caches the bundled content assets.
+class AssetService {
+  AssetService({AssetBundle? bundle}) : _bundle = bundle ?? rootBundle;
+
+  final AssetBundle _bundle;
+
+  final Map<String, Grade> _gradeCache = {};
+  final Map<String, dynamic> _bookCache = {};
+
+  /// The grade ids the app ships content for, in the order shown in the UI.
+  static const List<String> gradeOrder = [
+    'prep1',
+    'prep2',
+    'prep3',
+    'prim1',
+    'prim2',
+    'prim3',
+    'prim4',
+    'prim5',
+    'prim6',
+    'sec1',
+    'sec2',
+    'sec3',
+  ];
+
+  /// Returns the grade index for [gradeId], parsed from
+  /// `assets/manhaji/<gradeId>/index.json`.
+  Future<Grade> loadGrade(String gradeId) async {
+    final cached = _gradeCache[gradeId];
+    if (cached != null) return cached;
+
+    final raw = await _bundle.loadString('assets/manhaji/$gradeId/index.json');
+    final json = jsonDecode(raw) as Map<String, dynamic>;
+    final grade = Grade.fromJson(json);
+    _gradeCache[gradeId] = grade;
+    return grade;
+  }
+
+  /// Loads every grade index, skipping any that fail to parse.
+  Future<List<Grade>> loadAllGrades() async {
+    final out = <Grade>[];
+    for (final id in gradeOrder) {
+      try {
+        out.add(await loadGrade(id));
+      } catch (e) {
+        debugPrint('manhaji: skipping grade $id ($e)');
+      }
+    }
+    return out;
+  }
+
+  /// Loads and decodes a packed book payload, returning its content map.
+  Future<Map<String, dynamic>> loadBook(Book book) async {
+    final cached = _bookCache[book.cacheKey];
+    if (cached != null) return cached;
+
+    final bytes = await _bundle.load(
+      'assets/manhaji/${book.grade}/${book.file}',
+    );
+    final decoded = Zkb1Codec.decode(bytes.buffer.asUint8List());
+    final json = jsonDecode(utf8.decode(decoded)) as Map<String, dynamic>;
+    _bookCache[book.cacheKey] = json;
+    return json;
+  }
+
+  /// Extracts the lesson list from a decoded book payload.
+  List<Lesson> parseLessons(Map<String, dynamic> bookJson) {
+    final figures =
+        (bookJson['l'] as Map<String, dynamic>?) ?? const <String, List<Figure>>{};
+    final keys = figures.keys.toList()..sort((a, b) {
+        final na = int.tryParse(a);
+        final nb = int.tryParse(b);
+        if (na == null && nb == null) return a.compareTo(b);
+        if (na == null) return 1;
+        if (nb == null) return -1;
+        return na.compareTo(nb);
+      });
+    return keys
+        .map((k) => Lesson(number: int.tryParse(k) ?? 0, figures: figures[k]!))
+        .where((l) => l.figures.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  /// Loads a free-form course definition.
+  Future<Map<String, dynamic>> loadCourse(String slug) async {
+    final raw = await _bundle.loadString('assets/courses/$slug/course.json');
+    return jsonDecode(raw) as Map<String, dynamic>;
+  }
+
+  /// Loads the adhkar (remembrance) list.
+  Future<List<Map<String, dynamic>>> loadAdhkar() async {
+    final raw = await _bundle.loadString('assets/data/adhkar.json');
+    return (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+  }
+
+  /// Loads the Arabic -> English dictionary.
+  Future<DictionaryEntry> loadDictionary() async {
+    final raw = await _bundle.loadString('assets/dictionary/words.json');
+    return DictionaryEntry.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+  }
+
+  /// Loads the mutashabihat dataset (gzipped JSON).
+  Future<MutashabihatData> loadMutashabihat() async {
+    final bytes = await _bundle.load('assets/quran/mutashabihat.json.gz');
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/mutashabihat.json');
+    if (!file.existsSync()) {
+      await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
+    }
+    return MutashabihatData.parse(file);
+  }
+}

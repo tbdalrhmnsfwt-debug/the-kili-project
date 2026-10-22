@@ -1,0 +1,226 @@
+/// The focus timer.
+///
+/// The original app runs a foreground service (`com.zaker.zaker_ai.AiJobService`)
+/// and shows a system overlay (`focus_lock_overlay`) so the timer stays
+/// visible over other apps.
+library;
+
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/theme.dart';
+import '../../models/focus.dart';
+import '../../providers/app_providers.dart';
+import '../../widgets/common.dart';
+
+/// The focus screen.
+class FocusScreen extends ConsumerStatefulWidget {
+  const FocusScreen({super.key});
+
+  @override
+  ConsumerState<FocusScreen> createState() => _FocusScreenState();
+}
+
+class _FocusScreenState extends ConsumerState<FocusScreen> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  void _tick() {
+    final session = ref.read(focusSessionProvider);
+    if (session == null || session.phase != FocusPhase.running) return;
+    if (session.elapsed >= session.totalDuration) {
+      setState(() {
+        session.phase = FocusPhase.finished;
+        session.completedCycles++;
+      });
+      return;
+    }
+    setState(() {
+      session.elapsed += const Duration(seconds: 1);
+    });
+  }
+
+  void _start(FocusPreset preset) {
+    final minutes = preset == FocusPreset.custom ? 30 : preset.minutes;
+    ref.read(focusSessionProvider.notifier).state = FocusSession(
+      id: 'focus-${DateTime.now().millisecondsSinceEpoch}',
+      preset: preset,
+      workMinutes: minutes,
+      phase: FocusPhase.running,
+      startedAt: DateTime.now(),
+    );
+  }
+
+  void _toggle() {
+    final session = ref.read(focusSessionProvider);
+    if (session == null) return;
+    setState(() {
+      session.phase = session.phase == FocusPhase.running
+          ? FocusPhase.paused
+          : FocusPhase.running;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final session = ref.watch(focusSessionProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('تركيز')),
+      body: session == null
+          ? _PresetPicker(onPick: _start)
+          : Padding(
+              padding: const EdgeInsets.all(ZakerSpacing.xl),
+              child: Column(
+                children: [
+                  const Spacer(),
+                  Text(
+                    _format(session.remaining),
+                    style: theme.textTheme.displayLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(height: ZakerSpacing.sm),
+                  Text(
+                    session.phase == FocusPhase.running
+                        ? 'التركيز شغال'
+                        : session.phase == FocusPhase.paused
+                        ? 'متوقف'
+                        : 'خلصت',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: ZakerSpacing.xl),
+                  ProgressBar(value: session.progress, height: 10),
+                  const SizedBox(height: ZakerSpacing.xl),
+                  Wrap(
+                    spacing: ZakerSpacing.sm,
+                    runSpacing: ZakerSpacing.sm,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      StatChip(
+                        value: '${session.completedCycles}',
+                        label: 'دورة',
+                        icon: Icons.loop_rounded,
+                      ),
+                      StatChip(
+                        value: '${session.workMinutes}',
+                        label: 'دقيقة',
+                        icon: Icons.schedule_rounded,
+                        color: ZakerColors.accent,
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            ref.read(focusSessionProvider.notifier).state =
+                                null;
+                          },
+                          child: const Text('إنهاء'),
+                        ),
+                      ),
+                      const SizedBox(width: ZakerSpacing.md),
+                      Expanded(
+                        flex: 2,
+                        child: FilledButton.icon(
+                          onPressed: session.phase == FocusPhase.finished
+                              ? null
+                              : _toggle,
+                          icon: Icon(
+                            session.phase == FocusPhase.running
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                          ),
+                          label: Text(
+                            session.phase == FocusPhase.running
+                                ? 'إيقاف'
+                                : 'كمّل',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  static String _format(Duration d) {
+    final m = d.inMinutes.toString().padLeft(2, '0');
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+}
+
+/// The preset picker shown before a session starts.
+class _PresetPicker extends StatelessWidget {
+  const _PresetPicker({required this.onPick});
+
+  final ValueChanged<FocusPreset> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(ZakerSpacing.lg),
+      children: [
+        const SectionHeader(
+          title: 'اختار مدة الجلسة',
+          icon: Icons.timer_rounded,
+        ),
+        for (final preset in FocusPreset.values)
+          Padding(
+            padding: const EdgeInsets.only(bottom: ZakerSpacing.md),
+            child: ListTile(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(ZakerRadius.md),
+              ),
+              tileColor: Theme.of(context).cardTheme.color,
+              leading: CircleAvatar(
+                backgroundColor: Theme.of(context).colorScheme.primary
+                    .withValues(alpha: 0.12),
+                child: Text(
+                  preset == FocusPreset.custom ? '∞' : '${preset.minutes}',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              title: Text(switch (preset) {
+                FocusPreset.short => 'جلسة قصيرة',
+                FocusPreset.medium => 'جلسة متوسطة',
+                FocusPreset.long => 'جلسة طويلة',
+                FocusPreset.custom => 'مدة مخصصة',
+              }, style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: preset == FocusPreset.custom
+                  ? const Text('اكتب المدة بنفسك')
+                  : Text('${preset.minutes} دقيقة'),
+              trailing: const Icon(Icons.chevron_left_rounded),
+              onTap: () => onPick(preset),
+            ),
+          ),
+      ],
+    );
+  }
+}

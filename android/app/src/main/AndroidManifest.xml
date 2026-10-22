@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android manifest for the Zakerly replica.
+
+  Every permission, component and meta-data below was recovered from the
+  installed `com.zakerly.ai` APK (versionCode 86, versionName 1.1.0,
+  minSdk 32, targetSdk 36).  The differences from the original are noted
+  inline.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:package="com.zakerly.ai">
+
+    <!-- Core. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- Camera + microphone: lecture capture, whiteboard photos, TTS/ASR. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="Manifest.permission.CAPTURE_AUDIO_OUTPUT" />
+
+    <!--
+      The focus timer draws a system overlay so the countdown stays visible
+      over other apps (flutter_overlay_window, subtype focus_lock_overlay).
+    -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Foreground services for AI jobs and lecture recording. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Legacy storage, only up to API 28. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!-- Google Play billing for the term / annual plans. -->
+    <uses-permission android:name="com.android.vending.BILLING" />
+    <uses-permission android:name="com.android.vending.CHECK_LICENSE" />
+
+    <!-- Firebase Cloud Messaging. -->
+    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+
+    <!-- Biometrics for the app lock (`zaker.security.appLock`). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+
+    <application
+        android:name="${applicationName}"
+        android:label="ذاكرلي"
+        android:icon="@mipmap/ic_launcher"
+        android:extractNativeLibs="true"
+        android:largeHeap="true"
+        android:networkSecurityConfig="@xml/network_security_config">
+
+        <activity
+            android:name="com.zaker.zaker_ai.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Deep links into the site and the referral invite. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="students.moalemai.com" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          The original APK's application class is `com.pairip.application.Application`
+          (the PairIP licence checker).  The replica omits it: the licence
+          protection is not reproduced.
+        -->
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+
+        <!-- Push notification channel. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="zaker_push" />
+
+        <!--
+          The original APK ships the AdMob application id below.  The replica
+          does not initialise ads, so the id is intentionally left out.
+          com.google.android.gms.ads.APPLICATION_ID
+            = ca-app-pub-8940035075312987~4643090574
+        -->
+
+        <!-- Foreground service that runs the long AI jobs. -->
+        <service
+            android:name="com.zaker.zaker_ai.AiJobService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync|specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Long-running AI generation (summaries, mind maps, question banks) that the user starts explicitly and must survive app backgrounding." />
+        </service>
+
+        <!-- Foreground service that records a lecture. -->
+        <service
+            android:name="com.zaker.zaker_ai.LectureRecordService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <!-- The focus-timer system overlay. -->
+        <service
+            android:name="flutter.overlay.window.flutter_overlay_window.OverlayService"
+            android:exported="false" />
+
+        <!-- Home-screen widgets (Glance). -->
+        <receiver
+            android:name="com.zaker.zaker_ai.widgets.ZToolsWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/z_tools_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="com.zaker.zaker_ai.widgets.ZQuickWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/z_quick_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="com.zaker.zaker_ai.widgets.ZTasksWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/z_tasks_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="com.zaker.zaker_ai.widgets.ZImportantWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/z_important_widget_info" />
+        </receiver>
+
+        <!-- Sharing files out of the app. -->
+        <provider
+            android:name="dev.fluttercommunity.plus.share.ShareFileProvider"
+            android:authorities="${applicationId}.flutter.share_provider"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+        <!--
+          The original APK also declares:
+            androidx.glance.appwidget.GlanceRemoteViewsService
+            com.google.mlkit.vision.documentscanner.* (document scanning)
+            net.nfet.flutter.printing.PrintFileProvider
+            com.crazecoder.openfile.FileProvider
+            io.flutter.plugins.imagepicker.ImagePickerFileProvider
+          Those come in as transitive dependencies of the Flutter plugins.
+        -->
+    </application>
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.INSERT" />
+            <data android:mimeType="vnd.android.cursor.dir/event" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="sms" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:path="tel:" />
+        </intent>
+        <package android:name="com.android.vending" />
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="com.android.vending.billing.InAppBillingService.BIND" />
+        </intent>
+        <intent>
+            <action android:name="com.google.android.apps.play.billingtestcompanion.BillingOverrideService.BIND" />
+        </intent>
+    </queries>
+</manifest>

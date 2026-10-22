@@ -1,0 +1,13 @@
+.dart_tool/
+build/
+*.iml
+.gradle/
+.idea/
+android/local.properties
+android/.gradle/
+
+# Recovered APK content assets are large; sync them with tool/sync_assets.sh
+assets/manhaji/
+assets/courses/
+assets/tessdata/
+assets/tessdata_config.json
