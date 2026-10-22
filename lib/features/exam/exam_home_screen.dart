@@ -10,6 +10,7 @@ import '../../core/theme.dart';
 import '../../models/exam.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The exams tab.
 class ExamHomeScreen extends ConsumerWidget {
@@ -21,7 +22,7 @@ class ExamHomeScreen extends ConsumerWidget {
     final session = ref.watch(examSessionProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('الاختبارات')),
+      appBar: AppBar(title: const TrText('الاختبارات')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -63,7 +64,7 @@ class ExamHomeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: ZakerSpacing.xl),
           Center(
-            child: Text(
+            child: TrText(
               'النتيجة محسوبة أوتوماتيك — مش بتكتبها بإيدك',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -106,7 +107,7 @@ class _ActiveSessionCard extends StatelessWidget {
               ),
               const SizedBox(width: ZakerSpacing.sm),
               Expanded(
-                child: Text(
+                child: TrText(
                   session.title,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -118,7 +119,7 @@ class _ActiveSessionCard extends StatelessWidget {
           const SizedBox(height: ZakerSpacing.md),
           ProgressBar(value: session.progress),
           const SizedBox(height: ZakerSpacing.sm),
-          Text(
+          TrText(
             '${session.answeredCount} من ${session.total}',
             style: theme.textTheme.bodySmall,
           ),
@@ -176,14 +177,14 @@ class _ModeCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TrText(
                       title,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    TrText(
                       subtitle,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,

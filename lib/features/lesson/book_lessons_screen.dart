@@ -10,6 +10,7 @@ import '../../models/manhaji.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import 'lesson_reader_screen.dart';
+import '../../widgets/tr_text.dart';
 
 /// Lists the lessons of a book.
 class BookLessonsScreen extends ConsumerWidget {
@@ -27,7 +28,7 @@ class BookLessonsScreen extends ConsumerWidget {
     final gradeAsync = ref.watch(gradeProvider(gradeId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('الدروس')),
+      appBar: AppBar(title: const TrText('الدروس')),
       body: gradeAsync.when(
         loading: () => const LoadingBox(),
         error: (e, _) => EmptyState(
@@ -123,7 +124,7 @@ class _LessonsList extends ConsumerWidget {
                         backgroundColor: theme.colorScheme.primary.withValues(
                           alpha: 0.12,
                         ),
-                        child: Text(
+                        child: TrText(
                           '${lesson.number}',
                           style: TextStyle(
                             color: theme.colorScheme.primary,
@@ -134,7 +135,7 @@ class _LessonsList extends ConsumerWidget {
                       ),
                       const SizedBox(width: ZakerSpacing.md),
                       Expanded(
-                        child: Text(
+                        child: TrText(
                           lesson.title.isEmpty
                               ? 'الدرس ${lesson.number}'
                               : lesson.title,

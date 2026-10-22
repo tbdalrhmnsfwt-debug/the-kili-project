@@ -15,6 +15,7 @@ import '../../core/billing_service.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// Where the user manages their Google Play subscription.
 const String kPlaySubscriptionsUrl =
@@ -40,7 +41,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   Widget build(BuildContext context) {
     final billing = ref.watch(billingServiceProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('الاشتراكات والمدفوعات')),
+      appBar: AppBar(title: const TrText('الاشتراكات والمدفوعات')),
       body: ListenableBuilder(
         listenable: billing,
         builder: (context, _) {
@@ -72,7 +73,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                           ? null
                           : billing.restore,
                       icon: const Icon(Icons.restore_rounded),
-                      label: const Text('استرجاع الشراء'),
+                      label: const TrText('استرجاع الشراء'),
                     ),
                   ),
                   const SizedBox(width: ZakerSpacing.md),
@@ -80,13 +81,13 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     child: OutlinedButton.icon(
                       onPressed: _manage,
                       icon: const Icon(Icons.open_in_new_rounded),
-                      label: const Text('إدارة في Play'),
+                      label: const TrText('إدارة في Play'),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: ZakerSpacing.xl),
-              Text(
+              TrText(
                 billing.state == SubscriptionState.notAvailable
                     ? 'خدمة الدفع من Google Play مش متاحة على الجهاز ده. '
                           'تقدر تدير اشتراكك من متجر Play.'
@@ -98,7 +99,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               ),
               if (billing.lastError != null) ...[
                 const SizedBox(height: ZakerSpacing.md),
-                Text(
+                TrText(
                   'آخر خطأ: ${billing.lastError}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.error,
@@ -116,7 +117,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final started = await billing.buy(product);
     if (!started && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('مش قادر أبدأ عملية الشراء.')),
+        const SnackBar(content: TrText('مش قادر أبدأ عملية الشراء.')),
       );
     }
   }
@@ -181,14 +182,14 @@ class _StatusCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TrText(
                   label,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                Text(
+                TrText(
                   detail,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: Colors.white.withValues(alpha: 0.9),
@@ -235,14 +236,14 @@ class _PlanCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
+                child: TrText(
                   plan.title,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
-              Text(
+              TrText(
                 price ?? plan.period,
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: theme.colorScheme.primary,
@@ -252,7 +253,7 @@ class _PlanCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             plan.description,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -263,7 +264,7 @@ class _PlanCard extends StatelessWidget {
             width: double.infinity,
             child: FilledButton(
               onPressed: inactive ? null : onBuy,
-              child: Text(
+              child: TrText(
                 inactive ? 'غير متاح على الجهاز' : 'اشترك — ${plan.period}',
               ),
             ),

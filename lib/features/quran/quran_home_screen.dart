@@ -16,6 +16,7 @@ import '../../core/theme.dart';
 import 'adhkar_screen.dart';
 import 'mutashabihat_screen.dart';
 import 'tasbih_screen.dart';
+import '../../widgets/tr_text.dart';
 
 /// The Quran tab.
 class QuranHomeScreen extends ConsumerWidget {
@@ -26,7 +27,7 @@ class QuranHomeScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('القرآن الكريم')),
+      appBar: AppBar(title: const TrText('القرآن الكريم')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -136,7 +137,7 @@ class _Hero extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TrText(
                       title,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
@@ -144,7 +145,7 @@ class _Hero extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    TrText(
                       subtitle,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/ai_service.dart';
@@ -41,6 +42,14 @@ final assetServiceProvider = Provider<AssetService>((ref) => AssetService());
 /// `main` overrides this with an opened [LocalStore]; the default keeps
 /// everything in memory so tests and previews run without a platform channel.
 final localStoreProvider = Provider<LocalStore>((ref) => LocalStore.memory());
+
+/// The interface language. Arabic is the source language and the default;
+/// English is rendered from `assets/i18n/en.json` plus the replica's extra
+/// translations.
+final localeProvider = StateProvider<Locale>((ref) {
+  final stored = ref.watch(localStoreProvider).getString('locale');
+  return Locale(stored == 'en' ? 'en' : 'ar');
+});
 
 /// Accounts and the Firebase token.
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -679,6 +688,7 @@ final persistenceProvider = Provider<void>((ref) {
   save(reminderHourProvider, 'reminder_hour', (value) => '$value');
   save(reminderMinuteProvider, 'reminder_minute', (value) => '$value');
   save(liveDatabaseUrlProvider, 'live_url', (value) => value);
+  save(localeProvider, 'locale', (value) => value.languageCode);
   saveBool(notificationsEnabledProvider, 'notifications');
   saveBool(soundsEnabledProvider, 'sounds');
   saveBool(liveEnabledProvider, 'live_enabled');

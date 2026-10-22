@@ -22,6 +22,7 @@ import '../../core/theme.dart';
 import '../../models/tasbih.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The tasbih counter.
 class TasbihScreen extends ConsumerStatefulWidget {
@@ -63,7 +64,7 @@ class _TasbihScreenState extends ConsumerState<TasbihScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(ZakerStrings.s_265c6), // المسبحة
+        title: const TrText(ZakerStrings.s_265c6), // المسبحة
         actions: [
           IconButton(
             tooltip: ZakerStrings.s_fe493, // التسبيح
@@ -126,7 +127,7 @@ class _PhraseStrip extends StatelessWidget {
           final item = state.items[index];
           final isSelected = index == state.index;
           return ChoiceChip(
-            label: Text(
+            label: TrText(
               item.content,
               style: const TextStyle(fontFamily: 'Amiri', fontSize: 15),
             ),
@@ -178,7 +179,7 @@ class _CounterDial extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            TrText(
               '${item.count}',
               style: const TextStyle(
                 color: Colors.white,
@@ -187,7 +188,7 @@ class _CounterDial extends StatelessWidget {
                 height: 1.1,
               ),
             ),
-            Text(
+            TrText(
               '/ ${item.target}',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.85),
@@ -200,7 +201,7 @@ class _CounterDial extends StatelessWidget {
               padding: const EdgeInsets.symmetric(
                 horizontal: ZakerSpacing.lg,
               ),
-              child: Text(
+              child: TrText(
                 item.content,
                 textAlign: TextAlign.center,
                 maxLines: 2,
@@ -241,14 +242,14 @@ class _VoicePanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             ZakerStrings.s_a3267, // سبح بإيدك أو بصوتك — وإحنا نعد
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             listening
                 ? ZakerStrings.s_0aced // سامعك… سبح وإحنا نعد
                 : ZakerStrings.s_374b7, // دوس «ابدأ السمع» وسبح طبيعي
@@ -262,7 +263,7 @@ class _VoicePanel extends StatelessWidget {
             icon: Icon(
               listening ? Icons.stop_rounded : Icons.mic_rounded,
             ),
-            label: Text(
+            label: TrText(
               listening
                   ? ZakerStrings.s_6c784 // سبح بصوتك
                   : ZakerStrings.s_67cdf, // ابدأ السمع
@@ -294,7 +295,7 @@ class _TodayCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             ZakerStrings.s_d5c6c, // تسبيح النهارده
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,

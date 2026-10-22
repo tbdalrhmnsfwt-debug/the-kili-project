@@ -23,6 +23,7 @@ import '../../core/theme.dart';
 import '../../models/weekly.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The weekday names, in the order the app shows them.
 const List<String> _arabicWeekdays = [
@@ -48,7 +49,7 @@ class WeeklyScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(ZakerStrings.s_02316), // تقدمي الأسبوعي
+        title: const TrText(ZakerStrings.s_02316), // تقدمي الأسبوعي
         actions: [
           IconButton(
             tooltip: 'شارك تقريرك',
@@ -101,7 +102,7 @@ class WeeklyScreen extends ConsumerWidget {
       await Clipboard.setData(ClipboardData(text: text));
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اتنسخ ملخص أسبوعك — الصقه في أي مكان.')),
+        const SnackBar(content: TrText('اتنسخ ملخص أسبوعك — الصقه في أي مكان.')),
       );
     }
   }
@@ -130,7 +131,7 @@ class _WeekBanner extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             ZakerStrings.s_a3f5a, // ملخص أسبوعك…
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
@@ -157,7 +158,7 @@ class _WeekBanner extends StatelessWidget {
           ),
           const SizedBox(height: ZakerSpacing.md),
           if (report.isPerfectWeek)
-            Text(
+            TrText(
               ZakerStrings.s_6adc7, // سلسلتك نار! 🔥
               style: theme.textTheme.titleSmall?.copyWith(
                 color: Colors.white,
@@ -221,7 +222,7 @@ class _NumbersGrid extends StatelessWidget {
           ],
         ),
         const SizedBox(height: ZakerSpacing.md),
-        Text(
+        TrText(
           ZakerStrings.s_abcda, // وقت المذاكرة مش بتكتبه…
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -305,7 +306,7 @@ class _DayBar extends StatelessWidget {
 
     return Column(
       children: [
-        Text(
+        TrText(
           '$minutes',
           style: theme.textTheme.bodySmall?.copyWith(
             fontWeight: FontWeight.w700,
@@ -329,7 +330,7 @@ class _DayBar extends StatelessWidget {
           ),
         ),
         const SizedBox(height: ZakerSpacing.xs),
-        Text(
+        TrText(
           name,
           style: theme.textTheme.bodySmall?.copyWith(
             color: isToday
@@ -380,14 +381,14 @@ class _SubjectBreakdown extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
+                      child: TrText(
                         s.subject,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    Text(
+                    TrText(
                       '${s.focusMinutes} ${ZakerStrings.s_128c6}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -428,14 +429,14 @@ class _NextWeekCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             ZakerStrings.s_b2921, // تقريري الأسبوعي — خطة الأسبوع الجاي
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             ZakerStrings.s_2c465, // خطة المذاكرة الأسبوعية
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -444,7 +445,7 @@ class _NextWeekCard extends ConsumerWidget {
           const SizedBox(height: ZakerSpacing.md),
           FilledButton(
             onPressed: () => _planNextWeek(context, ref),
-            child: const Text(ZakerStrings.s_2c4ed), // اعمل خطة الأسبوع الجاي
+            child: const TrText(ZakerStrings.s_2c4ed), // اعمل خطة الأسبوع الجاي
           ),
         ],
       ),
@@ -491,6 +492,6 @@ class _NextWeekCard extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(SnackBar(content: TrText(message)));
   }
 }

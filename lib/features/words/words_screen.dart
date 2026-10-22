@@ -30,6 +30,7 @@ import '../../core/theme.dart';
 import '../../models/words.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The vocabulary screen.
 class WordsScreen extends ConsumerWidget {
@@ -43,7 +44,7 @@ class WordsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('كلماتي'),
+        title: const TrText('كلماتي'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
@@ -94,7 +95,7 @@ class WordsScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('ابدأ بقايمة كلمات'),
+        title: const TrText('ابدأ بقايمة كلمات'),
         content: TextField(
           controller: title,
           autofocus: true,
@@ -103,7 +104,7 @@ class WordsScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء'),
+            child: const TrText('إلغاء'),
           ),
           FilledButton(
             onPressed: () {
@@ -121,7 +122,7 @@ class WordsScreen extends ConsumerWidget {
               }
               Navigator.of(context).pop();
             },
-            child: const Text('اعمل'),
+            child: const TrText('اعمل'),
           ),
         ],
       ),
@@ -133,7 +134,7 @@ class WordsScreen extends ConsumerWidget {
     if (due.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('مافيش كلمات مستحقة في القايمة دي دلوقتي — ارجع بكرة'),
+          content: TrText('مافيش كلمات مستحقة في القايمة دي دلوقتي — ارجع بكرة'),
         ),
       );
       return;
@@ -167,7 +168,7 @@ class _OverviewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             'قاموس الكلمات',
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
@@ -175,7 +176,7 @@ class _OverviewCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             'قسم حفظ كلمات الإنجليزي — بيدربك عليها، مش بس بيخزنها.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
@@ -236,14 +237,14 @@ class _WordListTile extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
+                    child: TrText(
                       list.title,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                  Text(
+                  TrText(
                     '${list.entries.length} كلمة',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -295,7 +296,7 @@ class WordListScreen extends ConsumerWidget {
 
     if (list == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('قايمة')),
+        appBar: AppBar(title: const TrText('قايمة')),
         body: const EmptyState(
           icon: Icons.search_off_rounded,
           title: 'مالقيناش حاجة بالكلام ده',
@@ -307,7 +308,7 @@ class WordListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(current.title),
+        title: TrText(current.title),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
@@ -337,7 +338,7 @@ class WordListScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('إضافة كلمات'),
+        title: const TrText('إضافة كلمات'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -349,7 +350,7 @@ class WordListScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء'),
+            child: const TrText('إلغاء'),
           ),
           FilledButton(
             onPressed: () {
@@ -371,7 +372,7 @@ class WordListScreen extends ConsumerWidget {
               }
               Navigator.of(context).pop();
             },
-            child: const Text('ضيف'),
+            child: const TrText('ضيف'),
           ),
         ],
       ),
@@ -452,13 +453,13 @@ class _WordTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TrText(
                   entry.english,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                Text(
+                TrText(
                   entry.arabic,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -510,7 +511,7 @@ class _WordReviewScreenState extends ConsumerState<WordReviewScreen> {
 
     if (due.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('المراجعة')),
+        appBar: AppBar(title: const TrText('المراجعة')),
         body: const EmptyState(
           icon: Icons.task_alt_rounded,
           title: 'مافيش كلمات جاهزة للمذاكرة دلوقتي',
@@ -524,12 +525,12 @@ class _WordReviewScreenState extends ConsumerState<WordReviewScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${(_index % due.length) + 1} / ${due.length}'),
+        title: TrText('${(_index % due.length) + 1} / ${due.length}'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
-          Text(
+          TrText(
             _askingEnglish
                 ? 'إيه معنى الكلمة دي'
                 : 'الكلمة بالإنجليزي',
@@ -538,7 +539,7 @@ class _WordReviewScreenState extends ConsumerState<WordReviewScreen> {
             ),
           ),
           const SizedBox(height: ZakerSpacing.sm),
-          Text(
+          TrText(
             prompt,
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineSmall?.copyWith(
@@ -564,7 +565,7 @@ class _WordReviewScreenState extends ConsumerState<WordReviewScreen> {
               ),
               child: Column(
                 children: [
-                  Text(
+                  TrText(
                     expected,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleLarge?.copyWith(
@@ -573,7 +574,7 @@ class _WordReviewScreenState extends ConsumerState<WordReviewScreen> {
                     ),
                   ),
                   const SizedBox(height: ZakerSpacing.xs),
-                  Text(
+                  TrText(
                     'خلاص — دوس صح لو ده المعنى الصح.',
                     style: theme.textTheme.bodySmall,
                   ),
@@ -587,7 +588,7 @@ class _WordReviewScreenState extends ConsumerState<WordReviewScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () => _record(false),
                     icon: const Icon(Icons.close_rounded),
-                    label: const Text('غلط'),
+                    label: const TrText('غلط'),
                   ),
                 ),
                 const SizedBox(width: ZakerSpacing.md),
@@ -595,7 +596,7 @@ class _WordReviewScreenState extends ConsumerState<WordReviewScreen> {
                   child: FilledButton.icon(
                     onPressed: () => _record(true),
                     icon: const Icon(Icons.check_rounded),
-                    label: const Text('صح'),
+                    label: const TrText('صح'),
                   ),
                 ),
               ],
@@ -603,11 +604,11 @@ class _WordReviewScreenState extends ConsumerState<WordReviewScreen> {
           ],
           const SizedBox(height: ZakerSpacing.lg),
           if (!_revealed)
-            FilledButton(onPressed: _reveal, child: const Text('وريني')),
+            FilledButton(onPressed: _reveal, child: const TrText('وريني')),
           const SizedBox(height: ZakerSpacing.md),
           TextButton(
             onPressed: () => setState(() => _askingEnglish = !_askingEnglish),
-            child: Text(
+            child: TrText(
               _askingEnglish ? 'اسألني عكس' : 'اسألني تاني',
             ),
           ),

@@ -26,6 +26,7 @@ import 'package:printing/printing.dart';
 
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// A captured page waiting to be recognised.
 class ScannedPage {
@@ -78,12 +79,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera_rounded),
-              title: const Text('صوّر الصفحة'),
+              title: const TrText('صوّر الصفحة'),
               onTap: () => Navigator.of(context).pop(ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_rounded),
-              title: const Text('اختار من المعرض'),
+              title: const TrText('اختار من المعرض'),
               onTap: () => Navigator.of(context).pop(ImageSource.gallery),
             ),
             const SizedBox(height: ZakerSpacing.sm),
@@ -181,7 +182,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(SnackBar(content: TrText(message)));
   }
 
   /// Shows the recognised text so it can be read or copied.
@@ -204,7 +205,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              TrText(
                 'نص الصفحة ${page.id}',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
@@ -227,7 +228,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                       _snack('اتنسخ النص.');
                     },
                     icon: const Icon(Icons.copy_rounded),
-                    label: const Text('انسخ النص'),
+                    label: const TrText('انسخ النص'),
                   ),
                 ),
               ],
@@ -242,12 +243,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('المسح الضوئي'),
+        title: const TrText('المسح الضوئي'),
         actions: [
           if (_pages.isNotEmpty)
             TextButton(
               onPressed: () => setState(_pages.clear),
-              child: const Text('مسح الكل'),
+              child: const TrText('مسح الكل'),
             ),
         ],
       ),
@@ -260,7 +261,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               action: FilledButton.icon(
                 onPressed: _working ? null : _capture,
                 icon: const Icon(Icons.photo_camera_rounded),
-                label: const Text('اختر صورة أو صوّر'),
+                label: const TrText('اختر صورة أو صوّر'),
               ),
             )
           : ListView(
@@ -282,7 +283,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 OutlinedButton.icon(
                   onPressed: _working ? null : _capture,
                   icon: const Icon(Icons.add_a_photo_outlined),
-                  label: const Text('صفحة تانية'),
+                  label: const TrText('صفحة تانية'),
                 ),
               ],
             ),
@@ -294,7 +295,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 child: FilledButton.icon(
                   onPressed: _working ? null : _exportPdf,
                   icon: const Icon(Icons.picture_as_pdf_rounded),
-                  label: Text('حوّل لـ PDF (${_pages.length})'),
+                  label: TrText('حوّل لـ PDF (${_pages.length})'),
                 ),
               ),
             ),
@@ -355,13 +356,13 @@ class _PageTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  TrText(
                     'صفحة ${page.id}',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Text(
+                  TrText(
                     page.recognized ? 'اتقرا' : 'مستني القراءة',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: page.recognized
@@ -370,7 +371,7 @@ class _PageTile extends StatelessWidget {
                     ),
                   ),
                   if (page.text.isNotEmpty)
-                    Text(
+                    TrText(
                       page.text,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,

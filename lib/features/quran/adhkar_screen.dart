@@ -31,6 +31,7 @@ import '../../core/theme.dart';
 import '../../models/tasbih.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The adhkar screen.
 class AdhkarScreen extends ConsumerStatefulWidget {
@@ -75,7 +76,7 @@ class _AdhkarScreenState extends ConsumerState<AdhkarScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(ZakerStrings.s_f9f8b), // الأذكار
+        title: const TrText(ZakerStrings.s_f9f8b), // الأذكار
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(52),
           child: Padding(
@@ -173,7 +174,7 @@ class _AdhkarCard extends StatelessWidget {
                   color: ZakerColors.accent.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(ZakerRadius.pill),
                 ),
-                child: Text(
+                child: TrText(
                   '${entry['order'] ?? index + 1}',
                   style: const TextStyle(
                     color: ZakerColors.accent,
@@ -184,14 +185,14 @@ class _AdhkarCard extends StatelessWidget {
               ),
               const SizedBox(width: ZakerSpacing.sm),
               Expanded(
-                child: Text(
+                child: TrText(
                   entry['count_description'] as String? ?? '',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
-              Text(
+              TrText(
                 '× $count',
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: theme.colorScheme.primary,
@@ -201,7 +202,7 @@ class _AdhkarCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: ZakerSpacing.md),
-          Text(
+          TrText(
             entry['content'] as String? ?? '',
             textAlign: TextAlign.center,
             style: const TextStyle(
@@ -212,7 +213,7 @@ class _AdhkarCard extends StatelessWidget {
           ),
           if ((entry['fadl'] as String?)?.isNotEmpty ?? false) ...[
             const SizedBox(height: ZakerSpacing.md),
-            Text(
+            TrText(
               entry['fadl'] as String,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -225,14 +226,14 @@ class _AdhkarCard extends StatelessWidget {
             ExpansionTile(
               tilePadding: EdgeInsets.zero,
               childrenPadding: EdgeInsets.zero,
-              title: Text(
+              title: TrText(
                 ZakerStrings.s_58cd4, // المصدر
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: theme.colorScheme.primary,
                 ),
               ),
               children: [
-                Text(
+                TrText(
                   entry['source'] as String,
                   style: theme.textTheme.bodySmall?.copyWith(height: 1.8),
                 ),

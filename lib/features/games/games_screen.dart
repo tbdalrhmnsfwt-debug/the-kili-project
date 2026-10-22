@@ -18,6 +18,7 @@ import '../../models/exam.dart';
 import '../../models/games.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The games map: pick a game, play it, collect stars and coins.
 class GamesScreen extends ConsumerWidget {
@@ -29,7 +30,7 @@ class GamesScreen extends ConsumerWidget {
     final banks = ref.watch(questionBanksProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(ZakerStrings.s_97497)), // ألعاب المذاكرة
+      appBar: AppBar(title: const TrText(ZakerStrings.s_97497)), // ألعاب المذاكرة
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -39,7 +40,7 @@ class GamesScreen extends ConsumerWidget {
             title: ZakerStrings.s_e07ea, // ألعاب وتحديات
             icon: Icons.map_rounded,
           ),
-          Text(
+          TrText(
             ZakerStrings.s_9fc53, // خريطة مغامرة فيها عشر ألعاب…
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -80,7 +81,7 @@ class _ProfileCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             ZakerStrings.s_3627c, // كل لعبة بتديك نجوم وعملات…
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
@@ -108,7 +109,7 @@ class _ProfileCard extends StatelessWidget {
           const SizedBox(height: ZakerSpacing.md),
           Row(
             children: [
-              Text(
+              TrText(
                 '${ZakerStrings.s_83825} ${profile.level}', // المستوى
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: Colors.white,
@@ -178,14 +179,14 @@ class _GameStopTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TrText(
                       stop.title,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    TrText(
                       stop.subtitle,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -241,7 +242,7 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
 
     if (session == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(widget.title)),
+        appBar: AppBar(title: TrText(widget.title)),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(ZakerSpacing.xl),
@@ -254,14 +255,14 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
                   color: theme.colorScheme.primary,
                 ),
                 const SizedBox(height: ZakerSpacing.md),
-                Text(
+                TrText(
                   widget.title,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: ZakerSpacing.sm),
-                Text(
+                TrText(
                   ZakerStrings.s_928ae, // مذاكرة على شكل لعبة…
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -271,7 +272,7 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
                 const SizedBox(height: ZakerSpacing.xl),
                 FilledButton(
                   onPressed: _start,
-                  child: const Text(ZakerStrings.s_617aa), // العب دلوقتي
+                  child: const TrText(ZakerStrings.s_617aa), // العب دلوقتي
                 ),
               ],
             ),
@@ -284,7 +285,7 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: TrText(widget.title),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(6),
           child: ProgressBar(value: session.progress, height: 6),
@@ -297,7 +298,7 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
               children: [
                 _HudBar(session: session),
                 const SizedBox(height: ZakerSpacing.lg),
-                Text(
+                TrText(
                   question.prompt,
                   style: theme.textTheme.titleMedium?.copyWith(
                     height: 1.7,
@@ -318,7 +319,7 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
                 if (_revealed)
                   FilledButton(
                     onPressed: _next,
-                    child: Text(
+                    child: TrText(
                       session.index >= session.questions.length
                           ? ZakerStrings.s_617aa
                           : ZakerStrings.s_0a2f4_x1, // العب
@@ -416,7 +417,7 @@ class _HudBar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TrText(
                   '${ZakerStrings.s_0_a2129} ${session.monsterEnergy}',
                   // طاقة الوحش {0}
                   style: Theme.of(context).textTheme.bodySmall,
@@ -493,7 +494,7 @@ class _OptionTile extends StatelessWidget {
                   color: border.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Text(
+                child: TrText(
                   String.fromCharCode(0x0623 + index),
                   style: TextStyle(
                     color: border,
@@ -503,7 +504,7 @@ class _OptionTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: ZakerSpacing.md),
-              Expanded(child: Text(label, style: theme.textTheme.bodyLarge)),
+              Expanded(child: TrText(label, style: theme.textTheme.bodyLarge)),
               if (icon != null) Icon(icon, color: border, size: 20),
             ],
           ),
@@ -535,7 +536,7 @@ class _Results extends StatelessWidget {
             color: ZakerColors.accent,
           ),
           const SizedBox(height: ZakerSpacing.md),
-          Text(
+          TrText(
             won
                 ? ZakerStrings.s_2e0d9 // هزمت الوحش! 🏆
                 : ZakerStrings.s_6a3a6, // كسبت السباق! 🏁
@@ -564,7 +565,7 @@ class _Results extends StatelessWidget {
           const SizedBox(height: ZakerSpacing.xl),
           FilledButton(
             onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text(ZakerStrings.s_65e22), // أعِد الجولة من الأول
+            child: const TrText(ZakerStrings.s_65e22), // أعِد الجولة من الأول
           ),
         ],
       ),

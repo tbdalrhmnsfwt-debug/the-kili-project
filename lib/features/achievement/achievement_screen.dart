@@ -18,6 +18,7 @@ import '../../core/theme.dart';
 import '../../models/planner.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The achievements screen.
 class AchievementScreen extends ConsumerWidget {
@@ -71,7 +72,7 @@ class AchievementScreen extends ConsumerWidget {
     final referral = ref.watch(referralProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('إنجازاتي')),
+      appBar: AppBar(title: const TrText('إنجازاتي')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -138,14 +139,14 @@ class _BadgeTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  TrText(
                     name,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
+                  TrText(
                     description,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -191,7 +192,7 @@ class _ReferralCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             'عندك كود دعوة؟',
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
@@ -199,7 +200,7 @@ class _ReferralCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             'شارك كودك مع أصحابك — كل تسجيل جديد بيقرّبك خطوة من الشارة الزرقاء.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
@@ -217,7 +218,7 @@ class _ReferralCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(ZakerRadius.md),
             ),
             child: Center(
-              child: Text(
+              child: TrText(
                 referral.code,
                 style: const TextStyle(
                   color: Colors.white,
@@ -236,7 +237,7 @@ class _ReferralCard extends StatelessWidget {
             background: Colors.white24,
           ),
           const SizedBox(height: ZakerSpacing.sm),
-          Text(
+          TrText(
             '${referral.friendCount} من ${Referral.verifiedBadgeThreshold} أصدقاء',
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
@@ -254,7 +255,7 @@ class _ReferralCard extends StatelessWidget {
               '${referral.code}',
             ),
             icon: const Icon(Icons.share_rounded),
-            label: const Text('مشاركة الدعوة'),
+            label: const TrText('مشاركة الدعوة'),
           ),
         ],
       ),

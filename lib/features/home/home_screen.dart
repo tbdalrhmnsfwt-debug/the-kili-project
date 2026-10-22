@@ -16,6 +16,7 @@ import '../../models/manhaji.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../focus/focus_screen.dart';
+import '../../widgets/tr_text.dart';
 
 /// The home screen.
 class HomeScreen extends ConsumerWidget {
@@ -39,13 +40,13 @@ class HomeScreen extends ConsumerWidget {
           slivers: [
             SliverAppBar(
               floating: true,
-              title: const Text('ذاكرلي'),
+              title: const TrText('ذاكرلي'),
               actions: [
                 IconButton(
                   tooltip: 'المنبهات',
                   icon: Badge(
                     isLabelVisible: notificationsOn && pending.isNotEmpty,
-                    label: Text('${pending.length}'),
+                    label: TrText('${pending.length}'),
                     child: const Icon(Icons.notifications_none_rounded),
                   ),
                   onPressed: () => showModalBottomSheet<void>(
@@ -325,7 +326,7 @@ class _GreetingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             'مساء الخير 👋',
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
@@ -333,7 +334,7 @@ class _GreetingCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             minutesToday == 0
                 ? 'ابدأ أول جلسة النهارده وخلي سلسلتك تكبر.'
                 : 'كمّلت $minutesToday دقيقة مذاكرة النهارده — كمّل!',
@@ -373,7 +374,7 @@ class _GreetingCard extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: Colors.white),
           const SizedBox(width: ZakerSpacing.xs),
-          Text(
+          TrText(
             text,
             style: const TextStyle(
               color: Colors.white,
@@ -413,14 +414,14 @@ class _NotificationsSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TrText(
               'المنبهات',
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: ZakerSpacing.xs),
-            Text(
+            TrText(
               enabled
                   ? 'دي المهام اللي مستنياك النهارده.'
                   : 'التنبيهات متوقفة — تقدر تفتحها من هنا.',
@@ -430,7 +431,7 @@ class _NotificationsSheet extends ConsumerWidget {
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('تذكير المذاكرة'),
+              title: const TrText('تذكير المذاكرة'),
               value: enabled,
               onChanged: (value) =>
                   ref.read(notificationsEnabledProvider.notifier).state = value,
@@ -438,7 +439,7 @@ class _NotificationsSheet extends ConsumerWidget {
             if (tasks.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: ZakerSpacing.md),
-                child: Text('مفيش مهام مجدولة النهارده — يومك فاضي.'),
+                child: TrText('مفيش مهام مجدولة النهارده — يومك فاضي.'),
               )
             else
               for (final task in tasks.take(5))
@@ -452,10 +453,10 @@ class _NotificationsSheet extends ConsumerWidget {
                         ? ZakerColors.accent
                         : theme.colorScheme.primary,
                   ),
-                  title: Text(task.title),
+                  title: TrText(task.title),
                   subtitle: task.dueAt == null
                       ? null
-                      : Text(
+                      : TrText(
                           '${task.dueAt!.hour.toString().padLeft(2, '0')}:'
                           '${task.dueAt!.minute.toString().padLeft(2, '0')}',
                         ),
@@ -470,7 +471,7 @@ class _NotificationsSheet extends ConsumerWidget {
                   router.push(ZakerRoutes.planner);
                 },
                 icon: const Icon(Icons.flag_rounded),
-                label: const Text('افتح أهداف اليوم'),
+                label: const TrText('افتح أهداف اليوم'),
               ),
             ),
           ],
@@ -500,7 +501,7 @@ class _RecentBooks extends StatelessWidget {
         message: 'افتح أي مادة وابدأ المذاكرة.',
         action: FilledButton(
           onPressed: () => context.push(ZakerRoutes.courses),
-          child: const Text('تصفح المواد'),
+          child: const TrText('تصفح المواد'),
         ),
       );
     }
@@ -529,7 +530,7 @@ class _RecentBooks extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  TrText(
                     book.subject,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -537,7 +538,7 @@ class _RecentBooks extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Text(
+                  TrText(
                     '${book.lessons} درس',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,

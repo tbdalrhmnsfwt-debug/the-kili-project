@@ -19,6 +19,7 @@ import '../../core/theme.dart';
 import '../../models/mistakes.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// How the user is doing in one chapter.
 class WeakSpot {
@@ -54,7 +55,7 @@ class WeaknessScreen extends ConsumerWidget {
     final spots = _spots(notebook.entries);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('نقاط ضعفي')),
+      appBar: AppBar(title: const TrText('نقاط ضعفي')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -123,7 +124,7 @@ class _HeaderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             'الفصل محتاج تثبيت: ${weak.length} من ${spots.length}. '
             'هنراجع النقاط الضعيفة بس.',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -181,14 +182,14 @@ class _WeakSpotTile extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
+                  child: TrText(
                     'نقاط ضعفي في ${spot.chapter}',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                Text(
+                TrText(
                   'ضعيف في',
                   style: theme.textTheme.bodySmall?.copyWith(color: color),
                 ),
@@ -197,7 +198,7 @@ class _WeakSpotTile extends StatelessWidget {
             const SizedBox(height: ZakerSpacing.sm),
             ProgressBar(value: spot.rate, height: 8, color: color),
             const SizedBox(height: ZakerSpacing.xs),
-            Text(
+            TrText(
               '${spot.wrong} غلطة من ${spot.total}',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,

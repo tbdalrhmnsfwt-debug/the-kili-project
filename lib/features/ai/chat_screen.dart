@@ -16,6 +16,7 @@ import '../../core/theme.dart';
 import '../../models/ai.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The chat screen.
 class ChatScreen extends ConsumerStatefulWidget {
@@ -142,7 +143,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('محادثة مع «فهيم»'),
+        title: const TrText('محادثة مع «فهيم»'),
         actions: [
           IconButton(
             tooltip: 'محادثة جديدة',
@@ -186,7 +187,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           if (theme.textTheme.bodySmall != null)
             Padding(
               padding: const EdgeInsets.only(bottom: ZakerSpacing.xs),
-              child: Text(
+              child: TrText(
                 'الرد بيتكتب قدامك — الردود من المناهج بتاعتك.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -230,7 +231,7 @@ class _ChatIntro extends StatelessWidget {
           color: theme.colorScheme.primary,
         ),
         const SizedBox(height: ZakerSpacing.lg),
-        Text(
+        TrText(
           subject == null ? 'اسأل أي حاجة' : 'اسأل عن $subject',
           textAlign: TextAlign.center,
           style: theme.textTheme.titleMedium?.copyWith(
@@ -238,7 +239,7 @@ class _ChatIntro extends StatelessWidget {
           ),
         ),
         const SizedBox(height: ZakerSpacing.sm),
-        Text(
+        TrText(
           'اسأل أي حاجة في مناهجك وهو يشرحلك، والرد بيتكتب قدامك.',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
@@ -264,7 +265,7 @@ class _ChatIntro extends StatelessWidget {
                 minimumSize: const Size.fromHeight(46),
               ),
               onPressed: () => onSuggestion(s),
-              child: Text(s),
+              child: TrText(s),
             ),
           ),
       ],
@@ -311,7 +312,7 @@ class _Bubble extends StatelessWidget {
               ? null
               : Border.all(color: theme.dividerTheme.color ?? Colors.black12),
         ),
-        child: Text(
+        child: TrText(
           message.text,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: isUser ? Colors.white : theme.colorScheme.onSurface,
@@ -352,7 +353,7 @@ class _TypingBubble extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             SizedBox(width: ZakerSpacing.sm),
-            Text('فهيم بيكتب…'),
+            TrText('فهيم بيكتب…'),
           ],
         ),
       ),

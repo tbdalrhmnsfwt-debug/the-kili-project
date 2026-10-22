@@ -28,6 +28,7 @@ import '../../models/leaderboard.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../garden/garden_screen.dart';
+import '../../widgets/tr_text.dart';
 
 /// The leaderboard screen.
 class LeaderboardScreen extends ConsumerWidget {
@@ -59,7 +60,7 @@ class LeaderboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('المتصدرين'),
+        title: const TrText('المتصدرين'),
         actions: [
           IconButton(
             tooltip: 'تحديث',
@@ -136,7 +137,7 @@ class _MyStatsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             '$challenges تحدي، $points نقطة، أطول سلسلة $streak',
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
@@ -144,7 +145,7 @@ class _MyStatsCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             'شاراتك ونقاطك وسلسلة أيام مذاكرتك.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
@@ -207,13 +208,13 @@ class _LeaderboardRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  TrText(
                     row.displayName,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Text(
+                  TrText(
                     '${row.points} نقطة · ${row.solved} تحدي',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -255,7 +256,7 @@ class _RankBadge extends StatelessWidget {
       height: 32,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      child: Text(
+      child: TrText(
         '$rank',
         style: const TextStyle(
           color: Colors.white,
@@ -288,7 +289,7 @@ class _GardenSummary extends ConsumerWidget {
           Icon(Icons.park_rounded, color: theme.colorScheme.primary),
           const SizedBox(width: ZakerSpacing.md),
           Expanded(
-            child: Text(
+            child: TrText(
               'حديقتك كملت ${garden.longestStreak} يوم — '
               '${garden.totalPoints} نقطة، وأطول سلسلة ${garden.longestStreak} يوم.',
               style: theme.textTheme.bodyMedium,

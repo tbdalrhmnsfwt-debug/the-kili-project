@@ -17,6 +17,7 @@ import '../../core/theme.dart';
 import '../../models/arena.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The challenges screen.
 class ChallengesScreen extends ConsumerWidget {
@@ -38,7 +39,7 @@ class ChallengesScreen extends ConsumerWidget {
     final past = challenges.where((c) => c.over).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('تحديات')),
+      appBar: AppBar(title: const TrText('تحديات')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -72,12 +73,12 @@ class ChallengesScreen extends ConsumerWidget {
             title: ZakerStrings.s_1da21, // تحدي مع صحابك
             icon: Icons.groups_rounded,
           ),
-          Text(ZakerStrings.s_ffc10), // العب مع صحابك لحظيا…
+          TrText(ZakerStrings.s_ffc10), // العب مع صحابك لحظيا…
           const SizedBox(height: ZakerSpacing.md),
           FilledButton.icon(
             onPressed: () => _createDirect(context, ref),
             icon: const Icon(Icons.add_rounded),
-            label: const Text('اعمل تحدي مباشر'),
+            label: const TrText('اعمل تحدي مباشر'),
           ),
           const SizedBox(height: ZakerSpacing.md),
           if (live.isEmpty)
@@ -139,12 +140,12 @@ class ChallengesScreen extends ConsumerWidget {
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تحدي مباشر جديد'),
+        title: const TrText('تحدي مباشر جديد'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('ابعت الكود ده لصاحبك عشان ينضم للتحدي:'),
+            const TrText('ابعت الكود ده لصاحبك عشان ينضم للتحدي:'),
             const SizedBox(height: ZakerSpacing.md),
             SelectableText(
               challenge.code!,
@@ -155,7 +156,7 @@ class ChallengesScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: ZakerSpacing.md),
-            Text(
+            TrText(
               shared
                   ? 'التحدي اتنشر على السيرفر — أي حد بيدخل بالكود هيلاقيه.'
                   : 'المزامنة المباشرة مقفولة، فالتحدي محفوظ على جهازك بس.',
@@ -170,11 +171,11 @@ class ChallengesScreen extends ConsumerWidget {
               Navigator.of(context).pop();
             },
             icon: const Icon(Icons.copy_rounded),
-            label: const Text('انسخ الكود'),
+            label: const TrText('انسخ الكود'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('تمام'),
+            child: const TrText('تمام'),
           ),
         ],
       ),
@@ -221,7 +222,7 @@ class _DailyChallengeCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             ZakerStrings.s_d0b54, // تحدي النهارده
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
@@ -229,7 +230,7 @@ class _DailyChallengeCard extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             daily == null
                 ? ZakerStrings.s_4f071 // بنجهزلك تحدي النهارده...
                 : ZakerStrings.s_00591, // تحدي النهارده جاهز! ⚡
@@ -264,7 +265,7 @@ class _DailyChallengeCard extends ConsumerWidget {
               ),
               onPressed: () => _play(context, ref, daily!),
               icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(ZakerStrings.s_d19ff), // تحدي النهارده مستنيك
+              label: TrText(ZakerStrings.s_d19ff), // تحدي النهارده مستنيك
             ),
           ],
         ],
@@ -310,7 +311,7 @@ class _DailyChallengeCard extends ConsumerWidget {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(ZakerStrings.s_8_c721a), // خلصت تحدي النهارده — 8 نقط في رصيدك 🎉
+        content: TrText(ZakerStrings.s_8_c721a), // خلصت تحدي النهارده — 8 نقط في رصيدك 🎉
       ),
     );
   }
@@ -356,13 +357,13 @@ class _ChallengeTile extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TrText(
                         challenge.title,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      Text(
+                      TrText(
                         statusLabel,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
@@ -456,7 +457,7 @@ class _ChallengeTile extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('خلصت ${challenge.title} — ${challenge.points} نقطة 🎉'),
+        content: TrText('خلصت ${challenge.title} — ${challenge.points} نقطة 🎉'),
       ),
     );
   }

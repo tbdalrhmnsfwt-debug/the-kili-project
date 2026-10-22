@@ -20,6 +20,7 @@ import '../../core/theme.dart';
 import '../../models/schedule.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The tasks screen.
 class TasksScreen extends ConsumerWidget {
@@ -32,7 +33,7 @@ class TasksScreen extends ConsumerWidget {
     final important = today.where((e) => e.important && !e.done).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('المهام')),
+      appBar: AppBar(title: const TrText('المهام')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -60,7 +61,7 @@ class TasksScreen extends ConsumerWidget {
               message: 'مفيش مهام من عندك النهارده — دوس «مهمة» وضيف اللي في دماغك.',
               action: FilledButton(
                 onPressed: () => _add(context, ref),
-                child: const Text('ضيف مهمة…'),
+                child: const TrText('ضيف مهمة…'),
               ),
             )
           else
@@ -76,7 +77,7 @@ class TasksScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('مهمة جديدة'),
+        title: const TrText('مهمة جديدة'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -85,7 +86,7 @@ class TasksScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء'),
+            child: const TrText('إلغاء'),
           ),
           FilledButton(
             onPressed: () {
@@ -106,7 +107,7 @@ class TasksScreen extends ConsumerWidget {
               }
               Navigator.of(context).pop();
             },
-            child: const Text('ضيف'),
+            child: const TrText('ضيف'),
           ),
         ],
       ),
@@ -156,7 +157,7 @@ class _ProgressCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             'مهام اليوم: ${schedule.doneCount} من ${schedule.total} خلصت.',
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
@@ -221,7 +222,7 @@ class _TaskTile extends StatelessWidget {
               ),
               const SizedBox(width: ZakerSpacing.md),
               Expanded(
-                child: Text(
+                child: TrText(
                   entry.title,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,

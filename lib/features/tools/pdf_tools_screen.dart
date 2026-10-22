@@ -32,6 +32,7 @@ import '../../models/manhaji.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import 'scan_screen.dart';
+import '../../widgets/tr_text.dart';
 
 /// The operations offered by the tools grid.
 enum _PdfTool { images, solved, questions, formatted, print, compress }
@@ -55,7 +56,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
     final sheets = ref.watch(aiOutputsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('أدوات الـPDF')),
+      appBar: AppBar(title: const TrText('أدوات الـPDF')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -378,7 +379,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
                   ZakerSpacing.lg,
                   ZakerSpacing.sm,
                 ),
-                child: Text(
+                child: TrText(
                   'اختار الكتاب',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -392,8 +393,8 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
                     for (final book in grade.books)
                       ListTile(
                         leading: const Icon(Icons.menu_book_outlined),
-                        title: Text(book.title),
-                        subtitle: Text(
+                        title: TrText(book.title),
+                        subtitle: TrText(
                           [book.subject, book.variant]
                               .where((s) => s.isNotEmpty)
                               .join(' • '),
@@ -476,7 +477,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(SnackBar(content: TrText(message)));
   }
 
   void _showSheetDetail(AiOutput sheet) {
@@ -492,7 +493,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
+                    child: TrText(
                       sheet.title,
                       style: Theme.of(context).textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.w700),
@@ -513,7 +514,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
               ),
               const Divider(),
               const SizedBox(height: ZakerSpacing.sm),
-              Text(
+              TrText(
                 sheet.preview.isEmpty ? 'مفيش تفاصيل' : sheet.preview,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -522,7 +523,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
               const SizedBox(height: ZakerSpacing.lg),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('تم'),
+                child: const TrText('تم'),
               ),
             ],
           ),
@@ -593,14 +594,14 @@ class _AddSheetSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            TrText(
               'أضف صوراً وملفات PDF بالترتيب المطلوب',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: ZakerSpacing.sm),
-            Text(
+            TrText(
               'اختار صور أو ملفات، رتّبها، وبعدها تقدر تعمل PDF منهم.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -636,7 +637,7 @@ class _AddSheetSheet extends StatelessWidget {
             const SizedBox(height: ZakerSpacing.xl),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('تم'),
+              child: const TrText('تم'),
             ),
           ],
         ),
@@ -663,7 +664,7 @@ class _SourceButton extends StatelessWidget {
     return OutlinedButton.icon(
       onPressed: onTap,
       icon: Icon(icon, size: 18),
-      label: Text(label),
+      label: TrText(label),
       style: OutlinedButton.styleFrom(
         foregroundColor: theme.colorScheme.primary,
         padding: const EdgeInsets.symmetric(
@@ -710,7 +711,7 @@ class _SheetTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TrText(
                       sheet.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -718,7 +719,7 @@ class _SheetTile extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    Text(
+                    TrText(
                       sheet.preview,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

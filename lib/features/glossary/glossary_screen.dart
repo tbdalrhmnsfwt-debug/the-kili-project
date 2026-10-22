@@ -9,6 +9,7 @@ import '../../core/theme.dart';
 import '../../models/dictionary.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The glossary screen.
 class GlossaryScreen extends ConsumerStatefulWidget {
@@ -74,7 +75,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('فهرس المصطلحات')),
+      appBar: AppBar(title: const TrText('فهرس المصطلحات')),
       body: Column(
         children: [
           Padding(
@@ -128,7 +129,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          TrText(
                             entry.arabic,
                             style: const TextStyle(
                               fontFamily: 'Amiri',
@@ -137,7 +138,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          Text(
+                          TrText(
                             entry.english,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.primary,

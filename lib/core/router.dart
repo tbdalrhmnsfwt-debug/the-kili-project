@@ -40,6 +40,7 @@ import '../features/weekly/weekly_screen.dart';
 import '../features/whiteboard/whiteboard_screen.dart';
 import '../features/words/words_screen.dart';
 import '../models/manhaji.dart';
+import '../widgets/tr_text.dart';
 
 /// The app's route paths.
 class ZakerRoutes {
@@ -232,5 +233,5 @@ final GoRouter appRouter = GoRouter(
     ),
   ],
   errorBuilder: (context, state) =>
-      Scaffold(body: Center(child: Text('مفيش الصفحة دي: ${state.uri}'))),
+      Scaffold(body: Center(child: TrText('مفيش الصفحة دي: ${state.uri}'))),
 );

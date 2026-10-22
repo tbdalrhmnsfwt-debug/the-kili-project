@@ -17,6 +17,7 @@ import '../../core/theme.dart';
 import '../../models/exam.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The nine question types the app can generate.
 enum BankQuestionType {
@@ -57,7 +58,7 @@ class QuestionBankScreen extends ConsumerWidget {
     final banks = ref.watch(questionBanksProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(ZakerStrings.s_9cfe0)), // بنك الأسئلة
+      appBar: AppBar(title: const TrText(ZakerStrings.s_9cfe0)), // بنك الأسئلة
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -65,7 +66,7 @@ class QuestionBankScreen extends ConsumerWidget {
             title: ZakerStrings.s_9cfe0,
             icon: Icons.quiz_rounded,
           ),
-          Text(
+          TrText(
             ZakerStrings.s_b96f7, // اختر مصدرك، وهنطلعلك بنك أسئلة…
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -111,7 +112,7 @@ class _TypePicker extends StatelessWidget {
         for (final type in BankQuestionType.values)
           Chip(
             avatar: Icon(_iconFor(type), size: 16),
-            label: Text(_labelFor(type)),
+            label: TrText(_labelFor(type)),
             labelStyle: theme.textTheme.bodySmall,
           ),
       ],
@@ -179,14 +180,14 @@ class _BankTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TrText(
                   bank.title,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
+                TrText(
                   '${bank.length} ${ZakerStrings.s_0120a}', // أسئلة التحدي
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,

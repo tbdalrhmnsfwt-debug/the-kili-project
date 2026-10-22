@@ -9,6 +9,7 @@ import '../../models/manhaji.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../lesson/book_lessons_screen.dart';
+import '../../widgets/tr_text.dart';
 
 /// Grade labels, in the order the app shows them.
 const Map<String, String> kGradeLabels = {
@@ -46,7 +47,7 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
   Future<void> _search(BuildContext context, List<Grade>? grades) async {
     if (grades == null || grades.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لسه بنحمّل الكتب — جرّب تاني بعد لحظة.')),
+        const SnackBar(content: TrText('لسه بنحمّل الكتب — جرّب تاني بعد لحظة.')),
       );
       return;
     }
@@ -69,7 +70,7 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('المواد'),
+        title: const TrText('المواد'),
         actions: [
           IconButton(
             tooltip: 'ابحث في كل الكتب',
@@ -181,7 +182,7 @@ class _GradeSelector extends StatelessWidget {
           final entry = kGradeLabels.entries.elementAt(index);
           final isSelected = entry.key == selected;
           return ChoiceChip(
-            label: Text(entry.value),
+            label: TrText(entry.value),
             selected: isSelected,
             onSelected: (_) => onChanged(entry.key),
           );
@@ -235,7 +236,7 @@ class BookTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TrText(
                       book.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -244,7 +245,7 @@ class BookTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    TrText(
                       '${book.subject} • ${book.pages} صفحة',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -341,7 +342,7 @@ class _BookSearchDelegate extends SearchDelegate<Book?> {
                 right: ZakerSpacing.xs,
                 bottom: 2,
               ),
-              child: Text(
+              child: TrText(
                 match.grade,
                 style: const TextStyle(
                   fontSize: 11,

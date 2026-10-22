@@ -19,6 +19,7 @@ import '../../models/planner.dart';
 import '../../models/schedule.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The planner screen.
 class PlannerScreen extends ConsumerWidget {
@@ -29,7 +30,7 @@ class PlannerScreen extends ConsumerWidget {
     final goals = ref.watch(goalsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('أهداف اليوم')),
+      appBar: AppBar(title: const TrText('أهداف اليوم')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -66,7 +67,7 @@ class PlannerScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('هدف جديد'),
+        title: const TrText('هدف جديد'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -75,7 +76,7 @@ class PlannerScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء'),
+            child: const TrText('إلغاء'),
           ),
           FilledButton(
             onPressed: () {
@@ -93,7 +94,7 @@ class PlannerScreen extends ConsumerWidget {
               }
               Navigator.of(context).pop();
             },
-            child: const Text('ضيف'),
+            child: const TrText('ضيف'),
           ),
         ],
       ),
@@ -163,7 +164,7 @@ class _TodayScoreCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             'إنجاز اليوم',
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
@@ -171,7 +172,7 @@ class _TodayScoreCard extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             'من عشرة محسوبة — الوقت أربع نقاط، أهدافك تلاتة، البنود نقطتين، '
             'واليومية نقطة.',
             style: theme.textTheme.bodySmall?.copyWith(
@@ -183,7 +184,7 @@ class _TodayScoreCard extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
+              TrText(
                 score.toStringAsFixed(score == score.roundToDouble() ? 0 : 1),
                 style: theme.textTheme.displayMedium?.copyWith(
                   color: Colors.white,
@@ -192,7 +193,7 @@ class _TodayScoreCard extends ConsumerWidget {
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
+                child: TrText(
                   ' / 10',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: Colors.white.withValues(alpha: 0.8),
@@ -255,7 +256,7 @@ class _GoalTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TrText(
                       goal.title,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
@@ -265,7 +266,7 @@ class _GoalTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    TrText(
                       '${goal.completedMinutes} من ${goal.minutes} دقيقة',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -301,14 +302,14 @@ class _ScheduleCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             'ابدأ جدولك',
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             'اختر مصدرك، حدد وقتك المتاح، وهجهزلك خطة مراجعة مقسمة دقيقة بدقيقة.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -321,7 +322,7 @@ class _ScheduleCard extends ConsumerWidget {
               Expanded(
                 child: FilledButton(
                   onPressed: () => _generate(context, ref),
-                  child: const Text('أنشئ جدول مذاكرة'),
+                  child: const TrText('أنشئ جدول مذاكرة'),
                 ),
               ),
             ],
@@ -329,7 +330,7 @@ class _ScheduleCard extends ConsumerWidget {
           const SizedBox(height: ZakerSpacing.sm),
           TextButton(
             onPressed: () => _addManual(context, ref),
-            child: const Text('اكتبها بنفسي'),
+            child: const TrText('اكتبها بنفسي'),
           ),
           if (entries.isNotEmpty) ...[
             const Divider(height: ZakerSpacing.xl),
@@ -339,7 +340,7 @@ class _ScheduleCard extends ConsumerWidget {
                 value: entry.done,
                 onChanged: (value) => _toggle(ref, entry, value ?? false),
                 controlAffinity: ListTileControlAffinity.leading,
-                title: Text(
+                title: TrText(
                   entry.title,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
@@ -348,7 +349,7 @@ class _ScheduleCard extends ConsumerWidget {
                         : null,
                   ),
                 ),
-                subtitle: Text(_subtitle(entry)),
+                subtitle: TrText(_subtitle(entry)),
                 secondary: entry.important
                     ? const Icon(
                         Icons.priority_high_rounded,
@@ -388,12 +389,12 @@ class _ScheduleCard extends ConsumerWidget {
     final minutes = await showDialog<int>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('مدة المذاكرة اليومية'),
+        title: const TrText('مدة المذاكرة اليومية'),
         children: [
           for (final option in const [30, 45, 60])
             SimpleDialogOption(
               onPressed: () => Navigator.of(context).pop(option),
-              child: Text('$option دقيقة'),
+              child: TrText('$option دقيقة'),
             ),
         ],
       ),
@@ -442,7 +443,7 @@ class _ScheduleCard extends ConsumerWidget {
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('مهمة جديدة'),
+        title: const TrText('مهمة جديدة'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -451,12 +452,12 @@ class _ScheduleCard extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء'),
+            child: const TrText('إلغاء'),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('ضيف'),
+            child: const TrText('ضيف'),
           ),
         ],
       ),
@@ -511,6 +512,6 @@ class _ScheduleCard extends ConsumerWidget {
   void _toast(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(SnackBar(content: TrText(message)));
   }
 }

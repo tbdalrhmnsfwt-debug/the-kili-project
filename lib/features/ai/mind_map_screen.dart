@@ -16,6 +16,7 @@ import '../../core/theme.dart';
 import '../../models/ai.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The mind-map screen.
 class MindMapScreen extends ConsumerStatefulWidget {
@@ -66,7 +67,7 @@ class _MindMapScreenState extends ConsumerState<MindMapScreen> {
       ...outputs,
     ];
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تمام! الخريطة اتحفظت في مكتبتك ✅')),
+      const SnackBar(content: TrText('تمام! الخريطة اتحفظت في مكتبتك ✅')),
     );
   }
 
@@ -74,7 +75,7 @@ class _MindMapScreenState extends ConsumerState<MindMapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الخريطة الذهنية'),
+        title: const TrText('الخريطة الذهنية'),
         actions: [
           if (_map != null)
             IconButton(
@@ -116,7 +117,7 @@ class _Builder extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(ZakerSpacing.lg),
       children: [
-        Text(
+        TrText(
           'اختار شكل من ${MapStyle.values.length}: '
           '${MapStyle.values.take(4).map((s) => s.label).join('، ')} وغيرهم.',
           style: theme.textTheme.bodyMedium?.copyWith(
@@ -155,7 +156,7 @@ class _Builder extends StatelessWidget {
                     width: selected ? 1.6 : 1,
                   ),
                 ),
-                child: Text(
+                child: TrText(
                   s.label,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -177,7 +178,7 @@ class _Builder extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.account_tree_rounded),
-          label: Text(working ? 'بنرسم الخريطة…' : 'اعمل خريطة ذهنية'),
+          label: TrText(working ? 'بنرسم الخريطة…' : 'اعمل خريطة ذهنية'),
         ),
       ],
     );
@@ -200,14 +201,14 @@ class _MapView extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(
+              child: TrText(
                 map.title,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            TextButton(onPressed: onRebuild, child: const Text('تغيير')),
+            TextButton(onPressed: onRebuild, child: const TrText('تغيير')),
           ],
         ),
         const SizedBox(height: ZakerSpacing.sm),
@@ -269,7 +270,7 @@ class _Node extends StatelessWidget {
                       color: theme.dividerTheme.color ?? Colors.black12,
                     ),
             ),
-            child: Text(
+            child: TrText(
               node.label,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: isRoot ? Colors.white : theme.colorScheme.onSurface,
@@ -280,7 +281,7 @@ class _Node extends StatelessWidget {
           if (node.note.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: ZakerSpacing.xs),
-              child: Text(
+              child: TrText(
                 node.note,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,

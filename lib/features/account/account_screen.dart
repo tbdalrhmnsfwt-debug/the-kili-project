@@ -13,6 +13,7 @@ import '../../core/auth_service.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The account screen.
 class AccountScreen extends ConsumerStatefulWidget {
@@ -44,7 +45,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final guest = user == null || user.isAnonymous;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('حسابي')),
+      appBar: AppBar(title: const TrText('حسابي')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -86,20 +87,20 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   Expanded(
                     child: FilledButton(
                       onPressed: _busy ? null : () => _submit(create: false),
-                      child: Text(_busy ? '…' : 'دخول'),
+                      child: TrText(_busy ? '…' : 'دخول'),
                     ),
                   ),
                   const SizedBox(width: ZakerSpacing.md),
                   Expanded(
                     child: OutlinedButton(
                       onPressed: _busy ? null : () => _submit(create: true),
-                      child: const Text('حساب جديد'),
+                      child: const TrText('حساب جديد'),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: ZakerSpacing.sm),
-              Text(
+              TrText(
                 'بتوافق على إن الإيميل بيتحفظ على جهازك عشان تسجّل دخول تاني.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
@@ -118,7 +119,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _busy ? null : _rename,
                     icon: const Icon(Icons.edit_outlined),
-                    label: const Text('تغيير الاسم'),
+                    label: const TrText('تغيير الاسم'),
                   ),
                 ),
                 const SizedBox(width: ZakerSpacing.md),
@@ -126,7 +127,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   child: TextButton.icon(
                     onPressed: _busy ? null : _signOut,
                     icon: const Icon(Icons.logout_rounded),
-                    label: const Text('تسجيل خروج'),
+                    label: const TrText('تسجيل خروج'),
                   ),
                 ),
               ],
@@ -139,8 +140,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('المتصدرين والتحديات المشتركة'),
-            subtitle: Text(
+            title: const TrText('المتصدرين والتحديات المشتركة'),
+            subtitle: TrText(
               liveEnabled
                   ? 'التطبيق بيقرا ويكتب المتصدرين والتحديات على السيرفر.'
                   : 'مقفولة — النقاط والمتصدرين بيتحسبوا على جهازك بس.',
@@ -212,7 +213,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تغيير الاسم'),
+        title: const TrText('تغيير الاسم'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -221,11 +222,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء'),
+            child: const TrText('إلغاء'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('حفظ'),
+            child: const TrText('حفظ'),
           ),
         ],
       ),
@@ -259,7 +260,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   void _snack(String message) {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ).showSnackBar(SnackBar(content: TrText(message)));
   }
 
   /// The Firebase Web API key, when the remote settings document provides one.
@@ -303,7 +304,7 @@ class _ProfileCard extends StatelessWidget {
           CircleAvatar(
             radius: 28,
             backgroundColor: Colors.white.withValues(alpha: 0.2),
-            child: Text(
+            child: TrText(
               name.characters.first,
               style: const TextStyle(
                 color: Colors.white,
@@ -317,14 +318,14 @@ class _ProfileCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TrText(
                   name,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                Text(
+                TrText(
                   (user?.isAnonymous ?? true) ? 'حساب ضيف' : 'حساب مسجّل',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: Colors.white.withValues(alpha: 0.9),
@@ -353,7 +354,7 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
+            child: TrText(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -361,7 +362,7 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
           Flexible(
-            child: Text(
+            child: TrText(
               value,
               textAlign: TextAlign.end,
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -388,7 +389,7 @@ class _Hint extends StatelessWidget {
         color: theme.colorScheme.primary.withValues(alpha: 0.08),
         borderRadius: ZakerRadius.card,
       ),
-      child: Text(text, style: theme.textTheme.bodySmall),
+      child: TrText(text, style: theme.textTheme.bodySmall),
     );
   }
 }

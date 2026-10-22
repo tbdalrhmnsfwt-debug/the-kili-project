@@ -26,6 +26,7 @@ import '../../models/notebook.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import 'notebook_editor_screen.dart';
+import '../../widgets/tr_text.dart';
 
 /// The notebooks screen.
 class NotebooksScreen extends ConsumerWidget {
@@ -37,7 +38,7 @@ class NotebooksScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ملاحظاتي'),
+        title: const TrText('ملاحظاتي'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
@@ -57,7 +58,7 @@ class NotebooksScreen extends ConsumerWidget {
                   'دفتر ملاحظاتك جوه التطبيق — تكتب فيه وتنظم وترجعله وقت المراجعة.',
             )
           else ...[
-            const Text(
+            const TrText(
               'رياضيات، عربي، علوم… كل مادة نوتة مستقلة',
             ),
             const SizedBox(height: ZakerSpacing.lg),
@@ -89,7 +90,7 @@ class NotebooksScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('نوتة مادة جديدة'),
+        title: const TrText('نوتة مادة جديدة'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -98,7 +99,7 @@ class NotebooksScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء'),
+            child: const TrText('إلغاء'),
           ),
           FilledButton(
             onPressed: () {
@@ -116,7 +117,7 @@ class NotebooksScreen extends ConsumerWidget {
               }
               Navigator.of(context).pop();
             },
-            child: const Text('اعمل'),
+            child: const TrText('اعمل'),
           ),
         ],
       ),
@@ -140,7 +141,7 @@ class NotebooksScreen extends ConsumerWidget {
             ])
               ListTile(
                 leading: Icon(tool.$2),
-                title: Text(tool.$1),
+                title: TrText(tool.$1),
                 onTap: () => Navigator.of(context).pop(),
               ),
           ],
@@ -183,14 +184,14 @@ class _NotebookTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TrText(
                       notebook.subject,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: ZakerSpacing.xs),
-                    Text(
+                    TrText(
                       '${notebook.wordCount} كلمة · ${notebook.pages.length} صفحة',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,

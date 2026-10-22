@@ -15,6 +15,7 @@ import '../../models/focus.dart';
 import '../../models/leaderboard.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The focus screen.
 class FocusScreen extends ConsumerStatefulWidget {
@@ -122,7 +123,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     final session = ref.watch(focusSessionProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('تركيز')),
+      appBar: AppBar(title: const TrText('تركيز')),
       body: session == null
           ? _PresetPicker(onPick: _start)
           : Padding(
@@ -130,7 +131,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
               child: Column(
                 children: [
                   const Spacer(),
-                  Text(
+                  TrText(
                     _format(session.remaining),
                     style: theme.textTheme.displayLarge?.copyWith(
                       fontWeight: FontWeight.w800,
@@ -138,7 +139,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                     ),
                   ),
                   const SizedBox(height: ZakerSpacing.sm),
-                  Text(
+                  TrText(
                     session.phase == FocusPhase.running
                         ? 'التركيز شغال'
                         : session.phase == FocusPhase.paused
@@ -180,7 +181,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                             ref.read(focusSessionProvider.notifier).state =
                                 null;
                           },
-                          child: const Text('إنهاء'),
+                          child: const TrText('إنهاء'),
                         ),
                       ),
                       const SizedBox(width: ZakerSpacing.md),
@@ -195,7 +196,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                 ? Icons.pause_rounded
                                 : Icons.play_arrow_rounded,
                           ),
-                          label: Text(
+                          label: TrText(
                             session.phase == FocusPhase.running
                                 ? 'إيقاف'
                                 : 'كمّل',
@@ -243,7 +244,7 @@ class _PresetPicker extends StatelessWidget {
               leading: CircleAvatar(
                 backgroundColor: Theme.of(context).colorScheme.primary
                     .withValues(alpha: 0.12),
-                child: Text(
+                child: TrText(
                   preset == FocusPreset.custom ? '∞' : '${preset.minutes}',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
@@ -251,15 +252,15 @@ class _PresetPicker extends StatelessWidget {
                   ),
                 ),
               ),
-              title: Text(switch (preset) {
+              title: TrText(switch (preset) {
                 FocusPreset.short => 'جلسة قصيرة',
                 FocusPreset.medium => 'جلسة متوسطة',
                 FocusPreset.long => 'جلسة طويلة',
                 FocusPreset.custom => 'مدة مخصصة',
               }, style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: preset == FocusPreset.custom
-                  ? const Text('اكتب المدة بنفسك')
-                  : Text('${preset.minutes} دقيقة'),
+                  ? const TrText('اكتب المدة بنفسك')
+                  : TrText('${preset.minutes} دقيقة'),
               trailing: const Icon(Icons.chevron_left_rounded),
               onTap: () => onPick(preset),
             ),

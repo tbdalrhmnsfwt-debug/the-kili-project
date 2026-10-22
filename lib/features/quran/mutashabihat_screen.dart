@@ -22,6 +22,7 @@ import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// Browses the mutashabihat dataset.
 class MutashabihatScreen extends ConsumerWidget {
@@ -32,7 +33,7 @@ class MutashabihatScreen extends ConsumerWidget {
     final service = ref.watch(assetServiceProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(ZakerStrings.s_1692c)), // متشابهات السورة
+      appBar: AppBar(title: const TrText(ZakerStrings.s_1692c)), // متشابهات السورة
       body: FutureBuilder(
         future: service.loadMutashabihat(),
         builder: (context, snapshot) {
@@ -86,21 +87,21 @@ class MutashabihatScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: ZakerSpacing.lg),
-              Text(
+              TrText(
                 ZakerStrings.s_30071, // جداول الفروق بين المتشابهات
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: ZakerSpacing.xs),
-              Text(
+              TrText(
                 'المصدر: ${data.sourceFiles.join('، ')}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: ZakerSpacing.xs),
-              Text(
+              TrText(
                 'تاريخ البناء: ${data.builtAt}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,

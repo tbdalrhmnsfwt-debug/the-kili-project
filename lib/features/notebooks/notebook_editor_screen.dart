@@ -19,6 +19,7 @@ import '../../core/theme.dart';
 import '../../models/notebook.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The notebook editor screen.
 class NotebookEditorScreen extends ConsumerStatefulWidget {
@@ -51,7 +52,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
     if (notebook == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('نوتة')),
+        appBar: AppBar(title: const TrText('نوتة')),
         body: const EmptyState(
           icon: Icons.search_off_rounded,
           title: 'مش لاقي الإجابة في ملاحظاتك.',
@@ -69,7 +70,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(notebook.subject),
+        title: TrText(notebook.subject),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline_rounded),
@@ -110,7 +111,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           FilledButton.icon(
             onPressed: () => _save(context, ref, notebook),
             icon: const Icon(Icons.save_rounded),
-            label: const Text('احفظ كصفحة في النوتة'),
+            label: const TrText('احفظ كصفحة في النوتة'),
           ),
         ],
       ),
@@ -160,7 +161,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     ];
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('اتحفظ كصفحة في نوتتك ✅')),
+      const SnackBar(content: TrText('اتحفظ كصفحة في نوتتك ✅')),
     );
   }
 
@@ -169,12 +170,12 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('حذف النوتة؟'),
-        content: Text('هتتشال «${notebook.subject}» وكل صفحاتها.'),
+        title: const TrText('حذف النوتة؟'),
+        content: TrText('هتتشال «${notebook.subject}» وكل صفحاتها.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء'),
+            child: const TrText('إلغاء'),
           ),
           FilledButton(
             onPressed: () {
@@ -185,10 +186,10 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
               ];
               Navigator.of(context).pop();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('النوتة اتحذفت')),
+                const SnackBar(content: TrText('النوتة اتحذفت')),
               );
             },
-            child: const Text('احذف'),
+            child: const TrText('احذف'),
           ),
         ],
       ),
@@ -219,7 +220,7 @@ class _QualityCard extends StatelessWidget {
             children: [
               Icon(Icons.insights_rounded, color: theme.colorScheme.primary),
               const SizedBox(width: ZakerSpacing.sm),
-              Text(
+              TrText(
                 '📊 جودة نوتتك',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
@@ -230,7 +231,7 @@ class _QualityCard extends StatelessWidget {
           const SizedBox(height: ZakerSpacing.md),
           ProgressBar(value: quality / 100, height: 8),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             'جودة النوتة: $quality%',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,

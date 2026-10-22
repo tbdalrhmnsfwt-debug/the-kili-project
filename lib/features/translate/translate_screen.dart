@@ -12,6 +12,7 @@ import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The translation screen.
 class TranslateScreen extends ConsumerStatefulWidget {
@@ -60,7 +61,7 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل الترجمة: $e')),
+        SnackBar(content: TrText('فشل الترجمة: $e')),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -72,7 +73,7 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('ترجمة')),
+      appBar: AppBar(title: const TrText('ترجمة')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -102,7 +103,7 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
                     () => _dir = _Direction.engToArabic,
                   ),
                   icon: const Icon(Icons.arrow_left_rounded),
-                  label: Text(ZakerStrings.s_7f7fb), // ترجم من
+                  label: TrText(ZakerStrings.s_7f7fb), // ترجم من
                 ),
               ),
               const SizedBox(width: ZakerSpacing.md),
@@ -112,7 +113,7 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
                     () => _dir = _Direction.arabicToEnglish,
                   ),
                   icon: const Icon(Icons.arrow_right_rounded),
-                  label: Text(ZakerStrings.s_34502), // ترجم إلى
+                  label: TrText(ZakerStrings.s_34502), // ترجم إلى
                 ),
               ),
             ],
@@ -128,7 +129,7 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
               ),
             ),
             child: _target.text.isEmpty && !_busy
-                ? Text(
+                ? TrText(
                     ZakerStrings.s_b9628, // جاري الترجمة بالذكاء الاصطناعي…
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -154,7 +155,7 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
                 Expanded(
                   child: FilledButton(
                     onPressed: () => _run(ref),
-                    child: Text(ZakerStrings.s_d71e5), // وريني الترجمة
+                    child: TrText(ZakerStrings.s_d71e5), // وريني الترجمة
                   ),
                 ),
                 const SizedBox(width: ZakerSpacing.md),
@@ -165,11 +166,11 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
                       Clipboard.setData(ClipboardData(text: _target.text));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(ZakerStrings.s_a7863), // اتنسخت الترجمة ✅
+                          content: TrText(ZakerStrings.s_a7863), // اتنسخت الترجمة ✅
                         ),
                       );
                     },
-                    child: Text(ZakerStrings.s_1a4ff), // خبي الترجمة
+                    child: TrText(ZakerStrings.s_1a4ff), // خبي الترجمة
                   ),
                 ),
               ],

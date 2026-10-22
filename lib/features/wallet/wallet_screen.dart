@@ -23,6 +23,7 @@ import '../../core/theme.dart';
 import '../../models/wallet.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The wallet screen.
 class WalletScreen extends ConsumerWidget {
@@ -33,7 +34,7 @@ class WalletScreen extends ConsumerWidget {
     final wallet = ref.watch(walletProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('ميزانيتي')),
+      appBar: AppBar(title: const TrText('ميزانيتي')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -81,7 +82,7 @@ class WalletScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('إضافة مصروف'),
+        title: const TrText('إضافة مصروف'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -101,7 +102,7 @@ class WalletScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء'),
+            child: const TrText('إلغاء'),
           ),
           FilledButton(
             onPressed: () {
@@ -126,7 +127,7 @@ class WalletScreen extends ConsumerWidget {
               }
               Navigator.of(context).pop();
             },
-            child: const Text('ضيف'),
+            child: const TrText('ضيف'),
           ),
         ],
       ),
@@ -139,7 +140,7 @@ class WalletScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('التزام جديد'),
+        title: const TrText('التزام جديد'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -159,7 +160,7 @@ class WalletScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء'),
+            child: const TrText('إلغاء'),
           ),
           FilledButton(
             onPressed: () {
@@ -180,7 +181,7 @@ class WalletScreen extends ConsumerWidget {
               }
               Navigator.of(context).pop();
             },
-            child: const Text('ضيف'),
+            child: const TrText('ضيف'),
           ),
         ],
       ),
@@ -212,7 +213,7 @@ class _BalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             'رصيدك من مصروفك: ${wallet.remaining}',
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
@@ -220,7 +221,7 @@ class _BalanceCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             'إجمالي مصروفاتك: ${wallet.spent}',
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
@@ -235,7 +236,7 @@ class _BalanceCard extends StatelessWidget {
           ),
           if (over) ...[
             const SizedBox(height: ZakerSpacing.sm),
-            Text(
+            TrText(
               '🔴 عديت الميزانية',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: Colors.white,
@@ -276,14 +277,14 @@ class _CommitmentTile extends StatelessWidget {
             ),
             const SizedBox(width: ZakerSpacing.md),
             Expanded(
-              child: Text(
+              child: TrText(
                 commitment.label,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            Text('${commitment.amount}', style: theme.textTheme.titleSmall),
+            TrText('${commitment.amount}', style: theme.textTheme.titleSmall),
           ],
         ),
       ),
@@ -321,13 +322,13 @@ class _ExpenseTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  TrText(
                     expense.category,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Text(
+                  TrText(
                     '${expense.date.year}/${expense.date.month}/${expense.date.day}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -336,7 +337,7 @@ class _ExpenseTile extends StatelessWidget {
                 ],
               ),
             ),
-            Text('${expense.amount}', style: theme.textTheme.titleSmall),
+            TrText('${expense.amount}', style: theme.textTheme.titleSmall),
           ],
         ),
       ),

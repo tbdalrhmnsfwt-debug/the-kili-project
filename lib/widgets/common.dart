@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
+import 'tr_text.dart';
 
 /// A titled section with an optional trailing action.
 class SectionHeader extends StatelessWidget {
@@ -32,7 +33,7 @@ class SectionHeader extends StatelessWidget {
             const SizedBox(width: ZakerSpacing.sm),
           ],
           Expanded(
-            child: Text(
+            child: TrText(
               title,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
@@ -40,7 +41,7 @@ class SectionHeader extends StatelessWidget {
             ),
           ),
           if (actionLabel != null && onAction != null)
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+            TextButton(onPressed: onAction, child: TrText(actionLabel!)),
         ],
       ),
     );
@@ -96,7 +97,7 @@ class FeatureTile extends StatelessWidget {
                 child: Icon(icon, color: accent, size: 22),
               ),
               const SizedBox(height: ZakerSpacing.sm),
-              Text(
+              TrText(
                 title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -106,7 +107,7 @@ class FeatureTile extends StatelessWidget {
               ),
               if (subtitle != null) ...[
                 const SizedBox(height: 2),
-                Text(
+                TrText(
                   subtitle!,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -158,7 +159,7 @@ class StatChip extends StatelessWidget {
             Icon(icon, size: 16, color: accent),
             const SizedBox(width: ZakerSpacing.xs),
           ],
-          Text(
+          TrText(
             value,
             style: theme.textTheme.titleSmall?.copyWith(
               color: accent,
@@ -166,7 +167,7 @@ class StatChip extends StatelessWidget {
             ),
           ),
           const SizedBox(width: ZakerSpacing.xs),
-          Text(
+          TrText(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -241,7 +242,7 @@ class EmptyState extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: ZakerSpacing.md),
-            Text(
+            TrText(
               title,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium?.copyWith(
@@ -250,7 +251,7 @@ class EmptyState extends StatelessWidget {
             ),
             if (message != null) ...[
               const SizedBox(height: ZakerSpacing.sm),
-              Text(
+              TrText(
                 message!,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -286,7 +287,7 @@ class LoadingBox extends StatelessWidget {
             const CircularProgressIndicator(strokeWidth: 2.5),
             if (label != null) ...[
               const SizedBox(height: ZakerSpacing.md),
-              Text(label!, style: Theme.of(context).textTheme.bodySmall),
+              TrText(label!, style: Theme.of(context).textTheme.bodySmall),
             ],
           ],
         ),
@@ -321,7 +322,7 @@ class ChipStrip extends StatelessWidget {
           final item = items[index];
           final isSelected = item == selected;
           return ChoiceChip(
-            label: Text(item),
+            label: TrText(item),
             selected: isSelected,
             onSelected: (_) => onSelected(item),
           );

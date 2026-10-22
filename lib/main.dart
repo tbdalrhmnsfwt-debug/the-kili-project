@@ -42,13 +42,16 @@ class ZakerlyApp extends ConsumerWidget {
     ref.watch(authBootstrapProvider);
 
     return MaterialApp.router(
-      title: 'ذاكرلي',
+      onGenerateTitle: (context) =>
+          Localizations.of<AppLocalizations>(context, AppLocalizations)
+              ?.t('ذاكرلي') ??
+          'ذاكرلي',
       debugShowCheckedModeBanner: false,
       theme: ZakerTheme.light(),
       darkTheme: ZakerTheme.dark(),
       themeMode: ThemeMode.system,
       routerConfig: appRouter,
-      locale: const Locale('ar'),
+      locale: ref.watch(localeProvider),
       supportedLocales: const [Locale('ar'), Locale('en')],
       localizationsDelegates: const [
         AppLocalizationsDelegate(),

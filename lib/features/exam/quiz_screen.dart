@@ -14,6 +14,7 @@ import '../../models/arena.dart';
 import '../../models/exam.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// A question's four answer kinds, as listed in the app's UI strings:
 /// "اختيار من متعدد، صح وخطأ، أكمل، وع…".
@@ -28,11 +29,11 @@ class QuizScreen extends ConsumerWidget {
     final questions = ref.watch(quizQuestionsProvider);
     return questions.when(
       loading: () => Scaffold(
-        appBar: AppBar(title: const Text('الاختبار')),
+        appBar: AppBar(title: const TrText('الاختبار')),
         body: const LoadingBox(label: 'بنجهز الأسئلة…'),
       ),
       error: (e, _) => Scaffold(
-        appBar: AppBar(title: const Text('الاختبار')),
+        appBar: AppBar(title: const TrText('الاختبار')),
         body: EmptyState(
           icon: Icons.quiz_outlined,
           title: 'مش قادرين نجهز الأسئلة',
@@ -42,7 +43,7 @@ class QuizScreen extends ConsumerWidget {
       data: (list) {
         if (list.isEmpty) {
           return Scaffold(
-            appBar: AppBar(title: const Text('الاختبار')),
+            appBar: AppBar(title: const TrText('الاختبار')),
             body: const EmptyState(
               icon: Icons.quiz_outlined,
               title: 'مفيش أسئلة متاحة',
@@ -81,7 +82,7 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('سؤال ${_index + 1} من ${_questions.length}'),
+        title: TrText('سؤال ${_index + 1} من ${_questions.length}'),
         actions: [
           IconButton(
             icon: const Icon(Icons.close_rounded),
@@ -99,7 +100,7 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
-          Text(
+          TrText(
             question.prompt,
             style: theme.textTheme.titleMedium?.copyWith(
               height: 1.7,
@@ -134,7 +135,7 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
                       _index--;
                       _revealed = false;
                     }),
-                    child: const Text('السابق'),
+                    child: const TrText('السابق'),
                   ),
                 ),
               if (_index > 0) const SizedBox(width: ZakerSpacing.md),
@@ -142,7 +143,7 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
                 flex: 2,
                 child: FilledButton(
                   onPressed: _revealed ? _next : null,
-                  child: Text(
+                  child: TrText(
                     _revealed
                         ? (_index == _questions.length - 1
                               ? 'شوف النتيجة'
@@ -240,14 +241,14 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
               color: ZakerColors.accent,
             ),
             const SizedBox(height: ZakerSpacing.md),
-            Text(
+            TrText(
               'النتيجة',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: ZakerSpacing.sm),
-            Text(
+            TrText(
               '$correct من ${_questions.length}',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 color: Theme.of(context).colorScheme.primary,
@@ -260,7 +261,7 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
                 Navigator.of(context).pop();
                 Navigator.of(context).maybePop();
               },
-              child: const Text('خلاص'),
+              child: const TrText('خلاص'),
             ),
           ],
         ),
@@ -332,7 +333,7 @@ class _OptionTile extends StatelessWidget {
                   color: border.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Text(
+                child: TrText(
                   String.fromCharCode(0x0623 + index),
                   style: TextStyle(
                     color: border,
@@ -342,7 +343,7 @@ class _OptionTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: ZakerSpacing.md),
-              Expanded(child: Text(label, style: theme.textTheme.bodyLarge)),
+              Expanded(child: TrText(label, style: theme.textTheme.bodyLarge)),
               if (icon != null) Icon(icon, color: border, size: 20),
             ],
           ),
@@ -380,7 +381,7 @@ class _FeedbackCard extends StatelessWidget {
           ),
           const SizedBox(width: ZakerSpacing.sm),
           Expanded(
-            child: Text(r?.feedback ?? '', style: theme.textTheme.bodyMedium),
+            child: TrText(r?.feedback ?? '', style: theme.textTheme.bodyMedium),
           ),
         ],
       ),

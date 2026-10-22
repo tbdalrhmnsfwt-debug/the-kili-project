@@ -16,6 +16,7 @@ import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../ai/chat_screen.dart';
 import '../exam/quiz_screen.dart';
+import '../../widgets/tr_text.dart';
 
 /// Displays a single lesson.
 class LessonReaderScreen extends ConsumerWidget {
@@ -39,7 +40,7 @@ class LessonReaderScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_title),
+        title: TrText(_title),
         actions: [
           IconButton(
             tooltip: 'اسأل معلم AI',
@@ -66,7 +67,7 @@ class LessonReaderScreen extends ConsumerWidget {
           ZakerSpacing.xxl,
         ),
         children: [
-          Text(
+          TrText(
             '${book.title} — الدرس ${lesson.number}',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -102,7 +103,7 @@ class LessonReaderScreen extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('بنجهز الأسئلة…')));
+      ..showSnackBar(const SnackBar(content: TrText('بنجهز الأسئلة…')));
     try {
       final service = ref.read(assetServiceProvider);
       final json = await service.loadBook(book);
@@ -113,7 +114,7 @@ class LessonReaderScreen extends ConsumerWidget {
 
       if (questions.isEmpty) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('الكتاب ده مفيهوش نص كفاية لأسئلة.')),
+          const SnackBar(content: TrText('الكتاب ده مفيهوش نص كفاية لأسئلة.')),
         );
         return;
       }
@@ -136,7 +137,7 @@ class LessonReaderScreen extends ConsumerWidget {
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('مقدرناش نجهز الأسئلة: $e')));
+        ..showSnackBar(SnackBar(content: TrText('مقدرناش نجهز الأسئلة: $e')));
     }
   }
 
@@ -166,7 +167,7 @@ class LessonReaderScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              TrText(
                 'ملخص $_title',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
@@ -174,7 +175,7 @@ class LessonReaderScreen extends ConsumerWidget {
               ),
               const SizedBox(height: ZakerSpacing.md),
               if (points.isEmpty)
-                const Text('الدرس ده مفيهوش نص نلخصه.')
+                const TrText('الدرس ده مفيهوش نص نلخصه.')
               else
                 Flexible(
                   child: SingleChildScrollView(
@@ -196,7 +197,7 @@ class LessonReaderScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(width: ZakerSpacing.sm),
                                 Expanded(
-                                  child: Text(
+                                  child: TrText(
                                     point,
                                     style: const TextStyle(height: 1.7),
                                   ),
@@ -219,7 +220,7 @@ class LessonReaderScreen extends ConsumerWidget {
                       if (context.mounted) Navigator.of(context).pop();
                     },
                     icon: const Icon(Icons.copy_rounded),
-                    label: const Text('انسخ الملخص'),
+                    label: const TrText('انسخ الملخص'),
                   ),
                 ),
               ],
@@ -285,7 +286,7 @@ class _FigureView extends StatelessWidget {
               children: [
                 for (final label in figure.labels)
                   Chip(
-                    label: Text(label),
+                    label: TrText(label),
                     visualDensity: VisualDensity.compact,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -304,7 +305,7 @@ class _FigureView extends StatelessWidget {
           ],
           if (figure.page != null) ...[
             const SizedBox(height: ZakerSpacing.xs),
-            Text(
+            TrText(
               'صفحة ${figure.page}',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,

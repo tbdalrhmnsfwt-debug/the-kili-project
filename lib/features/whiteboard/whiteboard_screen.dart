@@ -17,6 +17,7 @@ import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The whiteboard feature screen.
 class WhiteboardScreen extends ConsumerStatefulWidget {
@@ -42,7 +43,7 @@ class _WhiteboardScreenState extends ConsumerState<WhiteboardScreen> {
     final title = widget.lessonTitle ?? ZakerStrings.s_95410; // الدرس على السبورة
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: TrText(title)),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -52,7 +53,7 @@ class _WhiteboardScreenState extends ConsumerState<WhiteboardScreen> {
             title: ZakerStrings.s_95410,
             icon: Icons.draw_rounded,
           ),
-          Text(
+          TrText(
             ZakerStrings.s_f398d, // الدرس بيتشرح على سبورة بيضا…
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -71,7 +72,7 @@ class _WhiteboardScreenState extends ConsumerState<WhiteboardScreen> {
           FilledButton.icon(
             onPressed: _progress > 0 && _progress < 1 ? null : _render,
             icon: const Icon(Icons.play_arrow_rounded),
-            label: Text(
+            label: TrText(
               _progress > 0 && _progress < 1
                   ? ZakerStrings.s_39d66 // بنجهز السبورة…
                   : ZakerStrings.s_ddb1c, // اشرح الدرس على السبورة
@@ -83,7 +84,7 @@ class _WhiteboardScreenState extends ConsumerState<WhiteboardScreen> {
           ],
           if (_error != null) ...[
             const SizedBox(height: ZakerSpacing.md),
-            Text(
+            TrText(
               _error!,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: ZakerColors.danger,
@@ -166,7 +167,7 @@ class _HeroCard extends StatelessWidget {
             color: Colors.white.withValues(alpha: 0.9),
           ),
           const SizedBox(height: ZakerSpacing.md),
-          Text(
+          TrText(
             ZakerStrings.s_d3b63, // الدرس مرسوم على السبورة
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
@@ -174,7 +175,7 @@ class _HeroCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             ZakerStrings.s_0e1b4, // درسك يتشرح على السبورة
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.white.withValues(alpha: 0.85),
@@ -214,7 +215,7 @@ class _VoiceGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        TrText(
           ZakerStrings.s_1291c, // اختار مدرسك (فهيم أو نور أو كريم أو سلمى)
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -229,7 +230,7 @@ class _VoiceGrid extends StatelessWidget {
             for (final voice in const ['فهيم', 'نور', 'كريم', 'سلمى'])
               Chip(
                 avatar: const Icon(Icons.record_voice_over_rounded, size: 16),
-                label: Text(voice),
+                label: TrText(voice),
               ),
           ],
         ),
@@ -261,7 +262,7 @@ class _PaywallNote extends StatelessWidget {
           ),
           const SizedBox(width: ZakerSpacing.sm),
           Expanded(
-            child: Text(
+            child: TrText(
               ZakerStrings.s_3bfdd, // الشرح على السبورة للباقة المدفوعة
               style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
             ),

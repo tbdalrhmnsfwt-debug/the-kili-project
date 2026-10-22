@@ -16,6 +16,7 @@ import '../../core/theme.dart';
 import '../../models/leaderboard.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The garden screen.
 class GardenScreen extends ConsumerWidget {
@@ -27,7 +28,7 @@ class GardenScreen extends ConsumerWidget {
     final plots = [...garden.plots]..sort((a, b) => a.day.compareTo(b.day));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('الحديقة')),
+      appBar: AppBar(title: const TrText('الحديقة')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -70,7 +71,7 @@ class _GardenHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             'حديقتك كملت ${garden.longestStreak} يوم — '
             '${garden.totalPoints} نقطة، وأطول سلسلة ${garden.longestStreak} يوم.',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -79,7 +80,7 @@ class _GardenHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             'كل جلسة بتخلصها بتكسبك نقاط وبتزود سلسلة أيامك.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
@@ -135,13 +136,13 @@ class _PlotTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  TrText(
                     '${plot.day.year}/${plot.day.month}/${plot.day.day}',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Text(
+                  TrText(
                     'سلسلة ${plot.streak} يوم',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,

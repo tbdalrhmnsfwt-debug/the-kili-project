@@ -22,6 +22,7 @@ import '../../core/theme.dart';
 import '../../models/mistakes.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The mistakes notebook screen.
 class MistakesScreen extends ConsumerWidget {
@@ -35,7 +36,7 @@ class MistakesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('دفتر أخطائي'),
+        title: const TrText('دفتر أخطائي'),
         actions: [
           if (due.isNotEmpty)
             IconButton(
@@ -55,7 +56,7 @@ class MistakesScreen extends ConsumerWidget {
               title: '«متأكد وغلط» أخطر خانة',
               icon: Icons.warning_amber_rounded,
             ),
-            const Text(
+            const TrText(
               '«متأكد وغلط» أخطر خانة — بترجعلك أول حاجة تاني يوم.',
             ),
             const SizedBox(height: ZakerSpacing.md),
@@ -94,7 +95,7 @@ class MistakesScreen extends ConsumerWidget {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
+        content: TrText(
           updated.mastered
               ? 'اتقنته — جاوبته صح ٣ مرات وخرج من الدفتر 🏆'
               : 'كويس. بص على السؤال اللي غلطت فيه تاني وانت هتثبته.',
@@ -123,14 +124,14 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             'بـ${notebook.open} غلطة',
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: ZakerSpacing.xs),
-          Text(
+          TrText(
             'راجع غلطاتك قبل ما تراجع المنهج — هي دي الدرجات الضايعة.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -207,7 +208,7 @@ class _MistakeTile extends StatelessWidget {
                 ),
                 const SizedBox(width: ZakerSpacing.sm),
                 Expanded(
-                  child: Text(
+                  child: TrText(
                     entry.prompt,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
@@ -246,7 +247,7 @@ class _MistakeTile extends StatelessWidget {
             ),
             if (entry.correctAnswer.isNotEmpty) ...[
               const SizedBox(height: ZakerSpacing.sm),
-              Text(
+              TrText(
                 'غلط — الصح: ${entry.correctAnswer}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: ZakerColors.success,
@@ -256,7 +257,7 @@ class _MistakeTile extends StatelessWidget {
             ],
             if (!entry.mastered) ...[
               const SizedBox(height: ZakerSpacing.xs),
-              Text(
+              TrText(
                 due
                     ? 'موعد المراجعة جه — راجعها دلوقتي.'
                     : 'ترجعلك ${_dueLabel(entry.dueAt)}',

@@ -15,6 +15,7 @@ import '../../core/theme.dart';
 import '../../models/recall.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The active-recall screen.
 class ActiveRecallScreen extends ConsumerStatefulWidget {
@@ -36,7 +37,7 @@ class _ActiveRecallScreenState extends ConsumerState<ActiveRecallScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('استرجاع نشط'),
+        title: const TrText('استرجاع نشط'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(left: ZakerSpacing.lg),
@@ -73,7 +74,7 @@ class _ActiveRecallScreenState extends ConsumerState<ActiveRecallScreen> {
                     child: FilledButton.icon(
                       onPressed: () => setState(() => _revealed = true),
                       icon: const Icon(Icons.visibility_rounded),
-                      label: const Text('اكشف الإجابة'),
+                      label: const TrText('اكشف الإجابة'),
                     ),
                   ),
                 const SizedBox(height: ZakerSpacing.md),
@@ -126,7 +127,7 @@ class _Header extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TrText(
             due == 0 ? 'مفيش مراجعة دلوقتي' : '$due كارت · مستنيين مراجعة',
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
@@ -190,12 +191,12 @@ class _Card extends StatelessWidget {
           children: [
             Center(
               child: Chip(
-                label: Text(card.kind.arabicLabel),
+                label: TrText(card.kind.arabicLabel),
                 visualDensity: VisualDensity.compact,
               ),
             ),
             const SizedBox(height: ZakerSpacing.lg),
-            Text(
+            TrText(
               card.front.text,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleLarge?.copyWith(
@@ -206,7 +207,7 @@ class _Card extends StatelessWidget {
             ),
             if (card.front.hint.isNotEmpty) ...[
               const SizedBox(height: ZakerSpacing.sm),
-              Text(
+              TrText(
                 card.front.hint,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -218,7 +219,7 @@ class _Card extends StatelessWidget {
               const SizedBox(height: ZakerSpacing.xl),
               const Divider(),
               const SizedBox(height: ZakerSpacing.lg),
-              Text(
+              TrText(
                 card.back?.text ?? '',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -229,7 +230,7 @@ class _Card extends StatelessWidget {
               ),
               if ((card.back?.hint ?? '').isNotEmpty) ...[
                 const SizedBox(height: ZakerSpacing.sm),
-                Text(
+                TrText(
                   card.back!.hint,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -239,7 +240,7 @@ class _Card extends StatelessWidget {
               ],
             ] else ...[
               const SizedBox(height: ZakerSpacing.xl),
-              Text(
+              TrText(
                 'دوس على الكارت عشان تشوف الإجابة',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -271,7 +272,7 @@ class _GradingBar extends StatelessWidget {
           if (lastCorrect != null)
             Padding(
               padding: const EdgeInsets.only(bottom: ZakerSpacing.sm),
-              child: Text(
+              child: TrText(
                 lastCorrect! ? 'مظبوط 👌' : 'الإجابة الصح فوق',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: lastCorrect!
@@ -287,7 +288,7 @@ class _GradingBar extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => onGrade(false),
                   icon: const Icon(Icons.close_rounded),
-                  label: const Text('غلط'),
+                  label: const TrText('غلط'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: ZakerColors.danger,
                   ),
@@ -298,7 +299,7 @@ class _GradingBar extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: () => onGrade(true),
                   icon: const Icon(Icons.check_rounded),
-                  label: const Text('صح'),
+                  label: const TrText('صح'),
                   style: FilledButton.styleFrom(
                     backgroundColor: ZakerColors.success,
                   ),
@@ -340,7 +341,7 @@ class _NoCards extends ConsumerWidget {
             ],
           );
         },
-        child: Text('راجع الـ ${queue.total} كارت'),
+        child: TrText('راجع الـ ${queue.total} كارت'),
       ),
     );
   }

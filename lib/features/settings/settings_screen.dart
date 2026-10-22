@@ -16,6 +16,7 @@ import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/tr_text.dart';
 
 /// The settings screen.
 class SettingsScreen extends ConsumerWidget {
@@ -26,9 +27,10 @@ class SettingsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final settings = ref.watch(appSettingsProvider);
     final liveEnabled = ref.watch(liveEnabledProvider);
+    final locale = ref.watch(localeProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('الإعدادات')),
+      appBar: AppBar(title: const TrText('الإعدادات')),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -82,8 +84,8 @@ class SettingsScreen extends ConsumerWidget {
           _Tile(
             icon: Icons.language_rounded,
             title: 'اللغة',
-            subtitle: 'العربية',
-            onTap: () => _showLanguage(context),
+            subtitle: locale.languageCode == 'en' ? 'English' : 'العربية',
+            onTap: () => _showLanguage(context, ref),
           ),
           _Tile(
             icon: Icons.shield_outlined,
@@ -99,7 +101,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: ZakerSpacing.xl),
           Center(
-            child: Text(
+            child: TrText(
               'ذاكرلي — النسخة 1.1.0 (86)',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -129,14 +131,14 @@ class SettingsScreen extends ConsumerWidget {
         builder: (context, ref, _) {
           final enabled = ref.watch(soundsEnabledProvider);
           return AlertDialog(
-            title: const Text('الأصوات'),
+            title: const TrText('الأصوات'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('صوت الإنجاز'),
-                  subtitle: const Text('نقرة قصيرة لما تجاوب أو تفتح هدف'),
+                  title: const TrText('صوت الإنجاز'),
+                  subtitle: const TrText('نقرة قصيرة لما تجاوب أو تفتح هدف'),
                   value: enabled,
                   onChanged: (value) {
                     ref.read(soundsEnabledProvider.notifier).state = value;
@@ -145,7 +147,7 @@ class SettingsScreen extends ConsumerWidget {
                     }
                   },
                 ),
-                Text(
+                TrText(
                   'الصوت بيشتغل على إجابات الاختبارات والأهداف.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
@@ -154,7 +156,7 @@ class SettingsScreen extends ConsumerWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('تمام'),
+                child: const TrText('تمام'),
               ),
             ],
           );
@@ -164,30 +166,53 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   /// The language dialog. Only Arabic ships a complete interface.
-  void _showLanguage(BuildContext context) {
+  void _showLanguage(BuildContext context, WidgetRef ref) {
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('اللغة'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.check_circle_rounded),
-              title: const Text('العربية'),
-              subtitle: const Text('اللغة الحالية'),
-              onTap: () => Navigator.of(context).pop(),
+      builder: (dialogContext) => Consumer(
+        builder: (context, ref, _) {
+          final current = ref.watch(localeProvider).languageCode;
+          return AlertDialog(
+            title: const TrText('اللغة'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    current == 'ar'
+                        ? Icons.check_circle_rounded
+                        : Icons.language_rounded,
+                  ),
+                  title: const TrText('العربية'),
+                  subtitle: current == 'ar'
+                      ? const TrText('اللغة الحالية')
+                      : null,
+                  onTap: () {
+                    ref.read(localeProvider.notifier).state = const Locale('ar');
+                    Navigator.of(dialogContext).pop();
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    current == 'en'
+                        ? Icons.check_circle_rounded
+                        : Icons.language_rounded,
+                  ),
+                  title: const Text('English'),
+                  subtitle: current == 'en'
+                      ? const TrText('اللغة الحالية')
+                      : null,
+                  onTap: () {
+                    ref.read(localeProvider.notifier).state = const Locale('en');
+                    Navigator.of(dialogContext).pop();
+                  },
+                ),
+              ],
             ),
-            const ListTile(
-              contentPadding: EdgeInsets.zero,
-              enabled: false,
-              leading: Icon(Icons.language_rounded),
-              title: Text('English'),
-              subtitle: Text('هتتضاف في تحديث جاي'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -199,17 +224,17 @@ class SettingsScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('الخصوصية'),
+        title: const TrText('الخصوصية'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TrText(
               'أين تحفظ البيانات؟',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: ZakerSpacing.sm),
-            const Text(
+            const TrText(
               'أهدافك ومهامك ودفاترك وكلماتك وسجل مذاكرتك بتتحفظ محليًا على '
               'جهازك. مفيش رفع تلقائي لحساب على السحابة.',
             ),
@@ -217,7 +242,7 @@ class SettingsScreen extends ConsumerWidget {
             _InfoRow(label: 'دقائق مسجلة', value: '${stats.totalMinutes}'),
             _InfoRow(label: 'دفاتر', value: '${notebooks.length}'),
             const SizedBox(height: ZakerSpacing.md),
-            Text(
+            TrText(
               'أسئلة معلم AI بتبعت للسيرفر وقت ما تستخدم المحادثة بس.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
@@ -226,7 +251,7 @@ class SettingsScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('تمام'),
+            child: const TrText('تمام'),
           ),
         ],
       ),
@@ -241,7 +266,7 @@ class SettingsScreen extends ConsumerWidget {
       applicationLegalese: 'نسخة عربية للطلاب — مناهج، اختبارات، تركيز، ومعلم AI.',
       children: const [
         SizedBox(height: ZakerSpacing.md),
-        Text(
+        TrText(
           'المناهج والصور محفوظة داخل التطبيق، فالقراءة شغالة من غير إنترنت.',
         ),
       ],
@@ -263,14 +288,14 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
+            child: TrText(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
+          TrText(value, style: const TextStyle(fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -302,7 +327,7 @@ class _RemindersSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TrText(
               'المنبهات',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
@@ -310,8 +335,8 @@ class _RemindersSheet extends ConsumerWidget {
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('تذكير المذاكرة'),
-              subtitle: const Text(
+              title: const TrText('تذكير المذاكرة'),
+              subtitle: const TrText(
                 'منبه يومي من النظام — بيظهر حتى لو التطبيق مقفول',
               ),
               value: enabled,
@@ -325,7 +350,7 @@ class _RemindersSheet extends ConsumerWidget {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(
+                      content: TrText(
                         ok
                             ? 'اتظبط منبه يومي الساعة $timeLabel 📚'
                             : 'مش قادر أجدول المنبه — راجع إذن الإشعارات.',
@@ -346,8 +371,8 @@ class _RemindersSheet extends ConsumerWidget {
                     ? Theme.of(context).colorScheme.primary
                     : Theme.of(context).disabledColor,
               ),
-              title: const Text('وقت التذكير'),
-              subtitle: Text(timeLabel),
+              title: const TrText('وقت التذكير'),
+              subtitle: TrText(timeLabel),
               trailing: const Icon(Icons.edit_outlined),
               onTap: enabled
                   ? () async {
@@ -370,7 +395,7 @@ class _RemindersSheet extends ConsumerWidget {
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
+                          content: TrText(
                             ok
                                 ? 'المنبه اليومي اتظبط على '
                                       '${picked.hour.toString().padLeft(2, '0')}:'
@@ -385,7 +410,7 @@ class _RemindersSheet extends ConsumerWidget {
             if (tasks.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: ZakerSpacing.md),
-                child: Text('مفيش مهام مجدولة النهارده.'),
+                child: TrText('مفيش مهام مجدولة النهارده.'),
               )
             else
               for (final task in tasks.take(4))
@@ -399,7 +424,7 @@ class _RemindersSheet extends ConsumerWidget {
                         ? ZakerColors.success
                         : Theme.of(context).colorScheme.primary,
                   ),
-                  title: Text(
+                  title: TrText(
                     task.title,
                     style: TextStyle(
                       decoration: task.done ? TextDecoration.lineThrough : null,
@@ -407,7 +432,7 @@ class _RemindersSheet extends ConsumerWidget {
                   ),
                   subtitle: task.dueAt == null
                       ? null
-                      : Text(
+                      : TrText(
                           '${task.dueAt!.hour.toString().padLeft(2, '0')}:'
                           '${task.dueAt!.minute.toString().padLeft(2, '0')}',
                         ),
@@ -422,7 +447,7 @@ class _RemindersSheet extends ConsumerWidget {
                   router.push(ZakerRoutes.planner);
                 },
                 icon: const Icon(Icons.flag_rounded),
-                label: const Text('افتح أهداف اليوم'),
+                label: const TrText('افتح أهداف اليوم'),
               ),
             ),
           ],
@@ -455,10 +480,10 @@ class _Tile extends StatelessWidget {
         backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.10),
         child: Icon(icon, color: theme.colorScheme.primary, size: 20),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: TrText(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: subtitle == null
           ? null
-          : Text(
+          : TrText(
               subtitle!,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -497,7 +522,7 @@ class _RemoteSettingsCard extends StatelessWidget {
                 color: theme.colorScheme.primary,
               ),
               const SizedBox(width: ZakerSpacing.sm),
-              Text(
+              TrText(
                 'إعدادات من السيرفر',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
@@ -509,7 +534,7 @@ class _RemoteSettingsCard extends StatelessWidget {
           for (final e in data.entries)
             Padding(
               padding: const EdgeInsets.only(bottom: ZakerSpacing.xs),
-              child: Text(
+              child: TrText(
                 '${e.key}: ${e.value}',
                 style: theme.textTheme.bodySmall,
               ),
