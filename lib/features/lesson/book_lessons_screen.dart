@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/asset_service.dart';
 import '../../core/theme.dart';
 import '../../models/manhaji.dart';
 import '../../providers/app_providers.dart';
@@ -72,8 +73,13 @@ class _LessonsList extends ConsumerWidget {
       loading: () => const LoadingBox(),
       error: (e, _) => EmptyState(
         icon: Icons.lock_outline_rounded,
-        title: 'الكتاب مش متاح',
-        message: 'الملف مش متاح على الجهاز.\n$e',
+        title: e is BookContentUnavailable
+            ? 'الكتاب مش متاح للقراءة'
+            : 'مش قادرين نفتح الكتاب',
+        message: e is BookContentUnavailable
+            ? 'نسخة الكتاب دي محتواها مشفّر ومش بيتقرأ على الجهاز. '
+                  'جرّب كتاب تاني من نفس الصف.'
+            : 'الملف مش متاح على الجهاز.\n$e',
       ),
       data: (lessons) {
         if (lessons.isEmpty) {

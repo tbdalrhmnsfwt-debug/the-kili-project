@@ -66,7 +66,7 @@ class LessonReaderScreen extends StatelessWidget {
           ),
           const SizedBox(height: ZakerSpacing.lg),
           for (final figure in lesson.figures) ...[
-            _FigureView(figure: figure, gradeId: gradeId),
+            _FigureView(figure: figure, gradeId: gradeId, bookId: book.id),
             const SizedBox(height: ZakerSpacing.md),
           ],
           if (lesson.figures.isEmpty)
@@ -85,10 +85,15 @@ class LessonReaderScreen extends StatelessWidget {
 /// Renders one figure: the page image, its anachdit labels and its
 /// narrative.
 class _FigureView extends StatelessWidget {
-  const _FigureView({required this.figure, required this.gradeId});
+  const _FigureView({
+    required this.figure,
+    required this.gradeId,
+    required this.bookId,
+  });
 
   final Figure figure;
   final String gradeId;
+  final String bookId;
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +112,8 @@ class _FigureView extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(ZakerRadius.sm),
             child: Image.asset(
-              'assets/manhaji/$gradeId/figs/${figure.assetPath}',
+              // Figure files are prefixed with their book id in the APK.
+              'assets/manhaji/$gradeId/figs/${bookId}_${figure.assetPath}',
               fit: BoxFit.contain,
               errorBuilder: (context, _, __) => Container(
                 height: 160,

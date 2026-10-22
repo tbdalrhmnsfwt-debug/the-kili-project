@@ -84,6 +84,25 @@ class Zkb1Codec {
   }
 }
 
+/// Thrown when a book's lesson payload cannot be decoded on this device.
+///
+/// Most books ship their payload inside the still-unresolved `ZKB1`
+/// container. Books that also ship `figs/<book id>.json` in plaintext are
+/// readable; the rest fail with this error instead of surfacing a raw format
+/// exception.
+class BookContentUnavailable implements Exception {
+  const BookContentUnavailable(this.book, [this.detail]);
+
+  final Book book;
+
+  /// Optional technical detail from the decoder.
+  final String? detail;
+
+  @override
+  String toString() =>
+      detail ?? 'محتوى «${book.title}» مشفّر ومش متاح على الجهاز.';
+}
+
 /// Loads and caches the bundled content assets.
 class AssetService {
   AssetService({AssetBundle? bundle}) : _bundle = bundle ?? rootBundle;
@@ -135,18 +154,52 @@ class AssetService {
     return out;
   }
 
-  /// Loads and decodes a packed book payload, returning its content map.
+  /// Loads and decodes a book payload, returning its content map.
+  ///
+  /// The app ships two representations: a packed `ZKB1` payload for every
+  /// book, and — for 74 of them — a plaintext `figs/<book id>.json` holding
+  /// the same `{fp, l: {...}}` document. The plaintext copy is preferred
+  /// because the `ZKB1` container has not been decoded yet.
   Future<Map<String, dynamic>> loadBook(Book book) async {
     final cached = _bookCache[book.cacheKey];
     if (cached != null) return cached;
 
-    final bytes = await _bundle.load(
-      'assets/manhaji/${book.grade}/${book.file}',
-    );
-    final decoded = Zkb1Codec.decode(bytes.buffer.asUint8List());
-    final json = jsonDecode(utf8.decode(decoded)) as Map<String, dynamic>;
-    _bookCache[book.cacheKey] = json;
-    return json;
+    final plaintext = await _tryLoadPlaintext(book);
+    if (plaintext != null) {
+      _bookCache[book.cacheKey] = plaintext;
+      return plaintext;
+    }
+
+    try {
+      final bytes = await _bundle.load(
+        'assets/manhaji/${book.grade}/${book.file}',
+      );
+      final decoded = Zkb1Codec.decode(bytes.buffer.asUint8List());
+      final json = jsonDecode(utf8.decode(decoded)) as Map<String, dynamic>;
+      _bookCache[book.cacheKey] = json;
+      return json;
+    } on BookContentUnavailable {
+      rethrow;
+    } on FormatException catch (e) {
+      throw BookContentUnavailable(book, e.message);
+    } catch (e) {
+      throw BookContentUnavailable(book, e.toString());
+    }
+  }
+
+  /// Loads `figs/<book id>.json` when the book ships its lesson metadata in
+  /// plaintext. Returns `null` when the asset does not exist or is invalid.
+  Future<Map<String, dynamic>?> _tryLoadPlaintext(Book book) async {
+    if (book.id.isEmpty) return null;
+    try {
+      final raw = await _bundle.loadString(
+        'assets/manhaji/${book.grade}/figs/${book.id}.json',
+      );
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Extracts the lesson list from a decoded book payload.
@@ -161,8 +214,16 @@ class AssetService {
         if (nb == null) return -1;
         return na.compareTo(nb);
       });
+    // The payload keys are zero-based lesson indexes; the UI shows the
+    // one-based lesson number printed in the book.
     return keys
-        .map((k) => Lesson(number: int.tryParse(k) ?? 0, figures: figures[k]!))
+        .map((k) {
+          final index = int.tryParse(k);
+          return Lesson(
+            number: index == null ? 0 : index + 1,
+            figures: figures[k]!,
+          );
+        })
         .where((l) => l.figures.isNotEmpty)
         .toList(growable: false);
   }

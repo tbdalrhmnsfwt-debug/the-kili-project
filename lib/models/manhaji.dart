@@ -232,8 +232,9 @@ class Figure {
     this.labels = const [],
   });
 
-  /// Asset file name under `assets/manhaji/<grade>/figs/`, e.g.
-  /// `mn_prim1_2f1ac2d801_p007_1.webp`.
+  /// Figure file name *without* the book-id prefix, as stored in the payload,
+  /// e.g. `p007_1.webp`. The shipped file is
+  /// `assets/manhaji/<grade>/figs/<book id>_<assetPath>`.
   final String assetPath;
 
   /// Inline narrative text shown beneath the figure.
