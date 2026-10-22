@@ -100,6 +100,44 @@ jobs:
           PY
           grep -n "isCoreLibraryDesugaringEnabled\|coreLibraryDesugaring" android/app/build.gradle.kts
 
+      # flutter_tesseract_ocr 0.4.31 (the latest release) still declares
+      # `jcenter()`, which Gradle 9 removed, and pins AGP 7.1.2 in its own
+      # buildscript, which is too old for Gradle 9. Point it at Maven Central
+      # and at the same AGP version this project uses. The package has no
+      # newer release to upgrade to.
+      - name: Patch flutter_tesseract_ocr for Gradle 9
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          settings = Path('android/settings.gradle.kts').read_text()
+          match = re.search(r'com\.android\.application"\)\s+version\s+"([^"]+)"', settings)
+          if not match:
+              raise SystemExit('could not read the AGP version from settings.gradle.kts')
+          agp = match.group(1)
+
+          cache = Path(os.environ.get('PUB_CACHE', Path.home() / '.pub-cache'))
+          plugins = sorted(cache.glob('hosted/pub.dev/flutter_tesseract_ocr-*'))
+          if not plugins:
+              raise SystemExit('flutter_tesseract_ocr is not in the pub cache')
+
+          gradle = plugins[-1] / 'android/build.gradle'
+          text = gradle.read_text()
+          text = text.replace('jcenter()', 'mavenCentral()')
+          text = re.sub(
+              r'com\.android\.tools\.build:gradle:[\d.]+',
+              f'com.android.tools.build:gradle:{agp}',
+              text,
+          )
+          gradle.write_text(text)
+          print(f'patched {gradle} (AGP {agp})')
+          PY
+          find "${PUB_CACHE:-$HOME/.pub-cache}/hosted/pub.dev" -maxdepth 1 \
+            -name 'flutter_tesseract_ocr-*' -type d \
+            -exec grep -n "mavenCentral\|com.android.tools.build:gradle" {}/android/build.gradle \;
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
