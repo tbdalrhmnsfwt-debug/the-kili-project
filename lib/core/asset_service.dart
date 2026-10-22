@@ -199,6 +199,12 @@ class AssetService {
 
   /// Loads `figs/<book id>.json` when the book ships its lesson metadata in
   /// plaintext. Returns `null` when the asset does not exist or is invalid.
+  ///
+  /// Public so the offline assistant can search the readable books without
+  /// going through the throwing [loadBook] path.
+  Future<Map<String, dynamic>?> loadPlaintext(Book book) =>
+      _tryLoadPlaintext(book);
+
   Future<Map<String, dynamic>?> _tryLoadPlaintext(Book book) async {
     if (book.id.isEmpty) return null;
     try {

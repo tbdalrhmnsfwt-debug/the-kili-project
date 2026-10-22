@@ -40,6 +40,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _restoreThread();
     final initial = widget.initialQuestion?.trim();
     if (initial != null && initial.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,6 +49,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _send();
       });
     }
+  }
+
+  /// Restores the last conversation, so leaving the screen does not lose it.
+  void _restoreThread() {
+    final raw = ref.read(localStoreProvider).getString('chat_thread');
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final thread = decodeChatThread(raw);
+      _messages.addAll(thread.messages);
+    } catch (e) {
+      debugPrint('chat: ignoring an unreadable saved thread ($e)');
+    }
+  }
+
+  /// Writes the current transcript to the local store.
+  void _persistThread() {
+    final thread = ChatThread(
+      id: 'chat-${DateTime.now().millisecondsSinceEpoch}',
+      title: _messages.isEmpty ? 'محادثة جديدة' : _messages.first.text,
+      subject: widget.subject,
+      messages: List<ChatMessage>.of(_messages),
+    );
+    ref
+        .read(localStoreProvider)
+        .setString('chat_thread', encodeChatThread(thread));
   }
 
   @override
@@ -68,6 +94,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _controller.clear();
       _sending = true;
     });
+    _persistThread();
     _scrollToEnd();
 
     final reply = await _ask(text);
@@ -78,6 +105,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
       _sending = false;
     });
+    _persistThread();
     _scrollToEnd();
   }
 
@@ -119,7 +147,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           IconButton(
             tooltip: 'محادثة جديدة',
             icon: const Icon(Icons.add_comment_outlined),
-            onPressed: () => setState(_messages.clear),
+            onPressed: () => setState(() {
+              _messages.clear();
+              _persistThread();
+            }),
           ),
         ],
       ),
@@ -243,7 +274,7 @@ class _ChatIntro extends StatelessWidget {
   static String _backendLabel(AiBackend backend) => switch (backend) {
     AiBackend.onDevice => 'على الجهاز',
     AiBackend.cloud => 'السحابة',
-    AiBackend.canned => 'جاهز',
+    AiBackend.canned => 'من كتبك',
   };
 }
 

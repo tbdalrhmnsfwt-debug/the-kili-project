@@ -18,12 +18,19 @@ import 'package:flutter/foundation.dart';
 
 import '../models/ai.dart';
 import 'api_client.dart';
+import 'curriculum_search.dart';
 
 /// The AI service.
 class AiService {
-  AiService({ApiClient? api}) : _api = api ?? ApiClient();
+  AiService({ApiClient? api, CurriculumSearch? knowledge})
+    : _api = api ?? ApiClient(),
+      _knowledge = knowledge;
 
   final ApiClient _api;
+
+  /// Offline retrieval over the bundled textbooks, used when the remote model
+  /// cannot answer.
+  final CurriculumSearch? _knowledge;
 
   /// The chat history for the current session.
   final List<ChatMessage> history = [];
@@ -34,10 +41,13 @@ class AiService {
   /// Whether an on-device model has been installed.
   bool onDeviceModelReady = false;
 
+  /// Whether the last remote request was answered by the backend.
+  bool _remoteAnswered = false;
+
   /// The backend that will serve the next request.
   AiBackend get backend {
     if (onDeviceModelReady) return AiBackend.onDevice;
-    if (_api.raw.options.baseUrl.isNotEmpty) return AiBackend.cloud;
+    if (_remoteAnswered) return AiBackend.cloud;
     return AiBackend.canned;
   }
 
@@ -69,10 +79,18 @@ class AiService {
         },
       );
       final answer = res.data?['answer'] as String?;
-      if (answer != null && answer.trim().isNotEmpty) return answer;
+      if (answer != null && answer.trim().isNotEmpty) {
+        _remoteAnswered = true;
+        return answer;
+      }
     } catch (_) {
-      // fall through to the canned reply
+      // fall through to the offline sources
     }
+
+    // The cloud model is unreachable: answer from the textbooks on the device
+    // when they contain something relevant, before giving up.
+    final local = await _knowledge?.answer(question, subject: subject);
+    if (local != null && local.trim().isNotEmpty) return local;
     return _cannedAnswer(question);
   }
 

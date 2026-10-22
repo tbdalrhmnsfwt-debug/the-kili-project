@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/ai_service.dart';
 import '../core/api_client.dart';
 import '../core/asset_service.dart';
+import '../core/curriculum_search.dart';
 import '../core/local_store.dart';
 import '../core/notification_service.dart';
 import '../core/quiz_generator.dart';
@@ -69,9 +70,17 @@ bool _restoreBool(Ref ref, String key, bool fallback) {
   return raw == '1' || raw.toLowerCase() == 'true';
 }
 
+/// Offline search over the readable bundled textbooks.
+final curriculumSearchProvider = Provider<CurriculumSearch>((ref) {
+  return CurriculumSearch(ref.watch(assetServiceProvider));
+});
+
 /// The AI service backing the chat and the study tools.
 final aiServiceProvider = Provider<AiService>((ref) {
-  return AiService(api: ref.watch(apiClientProvider));
+  return AiService(
+    api: ref.watch(apiClientProvider),
+    knowledge: ref.watch(curriculumSearchProvider),
+  );
 });
 
 /// Which backend the AI service will use.
