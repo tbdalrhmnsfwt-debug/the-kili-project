@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/local_store.dart';
 import 'core/localization.dart';
+import 'core/notification_service.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
 import 'providers/app_providers.dart';
@@ -18,6 +19,9 @@ import 'providers/app_providers.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = await LocalStore.open();
+  // Register the notification channel early so an already-scheduled reminder
+  // can be shown right after a reboot, before the first frame.
+  await NotificationService.instance.init();
   runApp(
     ProviderScope(
       overrides: [localStoreProvider.overrideWithValue(store)],

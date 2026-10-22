@@ -124,6 +124,7 @@ dependencies:
   jni_flutter: ^1.0.4
   crypto: ^3.0.5
   uuid: ^4.5.1
+  timezone: ^0.9.4
   logger: ^2.4.0
   logging: ^1.2.0
   rxdart: ^0.28.0

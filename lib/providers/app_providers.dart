@@ -5,6 +5,7 @@ import '../core/ai_service.dart';
 import '../core/api_client.dart';
 import '../core/asset_service.dart';
 import '../core/local_store.dart';
+import '../core/notification_service.dart';
 import '../core/quiz_generator.dart';
 import '../models/ai.dart';
 import '../models/arena.dart';
@@ -51,6 +52,21 @@ T _restore<T>(
     debugPrint('local_store: ignoring $key ($e)');
     return fallback;
   }
+}
+
+/// Reads a persisted boolean, accepting both real booleans and the `1`/`0`
+/// strings written by earlier versions of the app.
+bool _restoreBool(Ref ref, String key, bool fallback) {
+  final store = ref.watch(localStoreProvider);
+  try {
+    final value = store.getBool(key);
+    if (value != null) return value;
+  } catch (e) {
+    debugPrint('local_store: ignoring non-boolean $key ($e)');
+  }
+  final raw = store.getString(key);
+  if (raw == null) return fallback;
+  return raw == '1' || raw.toLowerCase() == 'true';
 }
 
 /// The AI service backing the chat and the study tools.
@@ -120,12 +136,24 @@ final selectedSubjectProvider = StateProvider<String?>((ref) => null);
 
 /// Whether study reminders are enabled in settings.
 final notificationsEnabledProvider = StateProvider<bool>((ref) {
-  return ref.watch(localStoreProvider).getBool('notifications') ?? true;
+  return _restoreBool(ref, 'notifications', true);
+});
+
+/// The hour of the daily study reminder (24-hour clock).
+final reminderHourProvider = StateProvider<int>((ref) {
+  final raw = ref.watch(localStoreProvider).getString('reminder_hour');
+  return (int.tryParse(raw ?? '') ?? 19).clamp(0, 23);
+});
+
+/// The minute of the daily study reminder.
+final reminderMinuteProvider = StateProvider<int>((ref) {
+  final raw = ref.watch(localStoreProvider).getString('reminder_minute');
+  return (int.tryParse(raw ?? '') ?? 0).clamp(0, 59);
 });
 
 /// Whether feedback sounds and clicks are enabled in settings.
 final soundsEnabledProvider = StateProvider<bool>((ref) {
-  return ref.watch(localStoreProvider).getBool('sounds') ?? true;
+  return _restoreBool(ref, 'sounds', true);
 });
 
 /// The exam session in progress, if any.
@@ -436,6 +464,21 @@ final studyStatsProvider = StateProvider<StudyStats>((ref) {
 /// The provider carries no value of its own: watching it from the app root is
 /// what keeps the listeners alive for the lifetime of the process.
 final persistenceProvider = Provider<void>((ref) {
+  void syncReminder() {
+    if (ref.read(notificationsEnabledProvider)) {
+      NotificationService.instance.scheduleDaily(
+        hour: ref.read(reminderHourProvider),
+        minute: ref.read(reminderMinuteProvider),
+      );
+    } else {
+      NotificationService.instance.cancelDaily();
+    }
+  }
+
+  ref.listen<bool>(notificationsEnabledProvider, (_, __) => syncReminder());
+  ref.listen<int>(reminderHourProvider, (_, __) => syncReminder());
+  ref.listen<int>(reminderMinuteProvider, (_, __) => syncReminder());
+
   final store = ref.watch(localStoreProvider);
   if (!store.isAvailable) return;
 
@@ -446,6 +489,12 @@ final persistenceProvider = Provider<void>((ref) {
   ) {
     ref.listen<T>(source, (_, next) {
       store.setString(key, encode(next));
+    });
+  }
+
+  void saveBool(ProviderListenable<bool> source, String key) {
+    ref.listen<bool>(source, (_, next) {
+      store.setBool(key, next);
     });
   }
 
@@ -462,10 +511,8 @@ final persistenceProvider = Provider<void>((ref) {
   save(challengeResultsProvider, 'challenge_results', encodeChallengeResults);
   save(studyStatsProvider, 'study_stats', encodeStudyStats);
   save(selectedGradeProvider, 'selected_grade', (value) => value);
-  save(
-    notificationsEnabledProvider,
-    'notifications',
-    (value) => value ? '1' : '0',
-  );
-  save(soundsEnabledProvider, 'sounds', (value) => value ? '1' : '0');
+  save(reminderHourProvider, 'reminder_hour', (value) => '$value');
+  save(reminderMinuteProvider, 'reminder_minute', (value) => '$value');
+  saveBool(notificationsEnabledProvider, 'notifications');
+  saveBool(soundsEnabledProvider, 'sounds');
 });

@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/notification_service.dart';
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
@@ -323,7 +324,11 @@ class _RemindersSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final enabled = ref.watch(notificationsEnabledProvider);
+    final hour = ref.watch(reminderHourProvider);
+    final minute = ref.watch(reminderMinuteProvider);
     final tasks = ref.watch(taskScheduleProvider).forDay();
+    final timeLabel =
+        '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
 
     return SafeArea(
       child: Padding(
@@ -346,10 +351,76 @@ class _RemindersSheet extends ConsumerWidget {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('تذكير المذاكرة'),
-              subtitle: const Text('بيظهر جرس في الرئيسية لما يكون عندك مهام'),
+              subtitle: const Text(
+                'منبه يومي من النظام — بيظهر حتى لو التطبيق مقفول',
+              ),
               value: enabled,
-              onChanged: (value) =>
-                  ref.read(notificationsEnabledProvider.notifier).state = value,
+              onChanged: (value) async {
+                ref.read(notificationsEnabledProvider.notifier).state = value;
+                if (value) {
+                  final ok = await NotificationService.instance.scheduleDaily(
+                    hour: hour,
+                    minute: minute,
+                  );
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        ok
+                            ? 'اتظبط منبه يومي الساعة $timeLabel 📚'
+                            : 'مش قادر أجدول المنبه — راجع إذن الإشعارات.',
+                      ),
+                    ),
+                  );
+                } else {
+                  await NotificationService.instance.cancelDaily();
+                }
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              enabled: enabled,
+              leading: Icon(
+                Icons.alarm_rounded,
+                color: enabled
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).disabledColor,
+              ),
+              title: const Text('وقت التذكير'),
+              subtitle: Text(timeLabel),
+              trailing: const Icon(Icons.edit_outlined),
+              onTap: enabled
+                  ? () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay(hour: hour, minute: minute),
+                      );
+                      if (picked == null) return;
+                      ref.read(reminderHourProvider.notifier).state =
+                          picked.hour;
+                      ref.read(reminderMinuteProvider.notifier).state =
+                          picked.minute;
+                      ref.read(notificationsEnabledProvider.notifier).state =
+                          true;
+                      final ok = await NotificationService.instance
+                          .scheduleDaily(
+                            hour: picked.hour,
+                            minute: picked.minute,
+                          );
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            ok
+                                ? 'المنبه اليومي اتظبط على '
+                                      '${picked.hour.toString().padLeft(2, '0')}:'
+                                      '${picked.minute.toString().padLeft(2, '0')}'
+                                : 'مش قادر أجدول المنبه — راجع إذن الإشعارات.',
+                          ),
+                        ),
+                      );
+                    }
+                  : null,
             ),
             if (tasks.isEmpty)
               const Padding(
