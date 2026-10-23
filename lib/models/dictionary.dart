@@ -148,6 +148,24 @@ class Phrase {
   String toString() => '$text $startSurah:${startAya}-$endSurah:$endAya';
 }
 
+/// One repeated phrase and the verses it appears in.
+class MutashabihatPhrase {
+  const MutashabihatPhrase({required this.text, required this.refs});
+
+  final String text;
+
+  /// Verse references such as `2:23`, in dataset order.
+  final List<String> refs;
+}
+
+/// A pair of similar verses (`source` ↔ `related`).
+class MutashabihatPair {
+  const MutashabihatPair({required this.source, required this.related});
+
+  final String source;
+  final String related;
+}
+
 /// The full mutashabihat dataset split into its recovered sub-tables:
 /// phrases, pairs, similar, popular.
 class MutashabihatData {
@@ -158,7 +176,15 @@ class MutashabihatData {
     required this.phraseTiers,
     required this.occurrenceTiers,
     required this.similarTiers,
+    this.phrases = const [],
+    this.pairs = const [],
   });
+
+  /// The repeated phrases with every verse they occur in.
+  final List<MutashabihatPhrase> phrases;
+
+  /// Pairs of verses the dataset marks as similar.
+  final List<MutashabihatPair> pairs;
 
   /// Dataset version, as shipped in the `version` field.
   final String version;
@@ -180,11 +206,13 @@ class MutashabihatData {
 
   /// Parsed from the gzipped `mutashabihat.json` inside
   /// `assets/quran/mutashabihat.json.gz`.
-  static MutashabihatData parse(File file) {
-    final raw = file.readAsStringSync();
+  static MutashabihatData parse(File file) => parseJson(file.readAsStringSync());
+
+  /// Parses the decompressed dataset JSON.
+  static MutashabihatData parseJson(String raw) {
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
     return MutashabihatData(
-      version: decoded['version'] as String? ?? '3',
+      version: '${decoded['version'] ?? 3}',
       builtAt: decoded['built'] as String? ?? '',
       sourceFiles: [
         ...((decoded['sources'] as List?) ?? const []).cast<String>(),
@@ -192,7 +220,49 @@ class MutashabihatData {
       phraseTiers: _tiers(decoded['phrase_tiers']),
       occurrenceTiers: _tiers(decoded['occurrence_tiers']),
       similarTiers: _tiers(decoded['similar_tiers']),
+      phrases: _parsePhraseTable(decoded['phrases']),
+      pairs: _parsePairTable(decoded['pairs']),
     );
+  }
+
+  /// `phrases: [{ "t": text, "o": [[ref, start, end, src, tier], …] }]`
+  static List<MutashabihatPhrase> _parsePhraseTable(dynamic raw) {
+    final out = <MutashabihatPhrase>[];
+    if (raw is! List) return out;
+    for (final row in raw) {
+      if (row is! Map) continue;
+      final text = row['t'] as String? ?? '';
+      if (text.isEmpty) continue;
+      final refs = <String>[];
+      for (final occurrence in (row['o'] as List?) ?? const []) {
+        if (occurrence is List && occurrence.isNotEmpty) {
+          refs.add('${occurrence.first}');
+        }
+      }
+      if (refs.isEmpty) continue;
+      out.add(MutashabihatPhrase(text: text, refs: refs));
+    }
+    return out;
+  }
+
+  /// `pairs: { "101:6": [[1503, "7:8"], …], … }`
+  static List<MutashabihatPair> _parsePairTable(dynamic raw) {
+    final out = <MutashabihatPair>[];
+    if (raw is! Map) return out;
+    for (final entry in raw.entries) {
+      final value = entry.value;
+      if (value is! List) continue;
+      for (final pair in value) {
+        if (pair is! List || pair.length < 2) continue;
+        out.add(
+          MutashabihatPair(
+            source: '${entry.key}',
+            related: '${pair[1]}',
+          ),
+        );
+      }
+    }
+    return out;
   }
 
   static Map<String, int> _tiers(dynamic obj) {

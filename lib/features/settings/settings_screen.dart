@@ -1,9 +1,9 @@
 /// Settings and the account section.
 ///
 /// The original app's settings group its entries under headings recovered
-/// from the shipped strings — e.g. "2. أين تحفظ البيانات؟" and
-/// "4. الاشتراكات والمدفوعات". Account, subscription, and wallet entries
-/// push their own screens.
+/// from the shipped strings — e.g. "2. أين تحفظ البيانات؟". Account and wallet
+/// entries push their own screens. Every feature in the app is free: there is
+/// no subscription screen, plan gate, or paywall.
 library;
 
 import 'package:flutter/material.dart';
@@ -50,12 +50,6 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push(ZakerRoutes.account),
           ),
           _Tile(
-            icon: Icons.workspace_premium_rounded,
-            title: 'الاشتراكات والمدفوعات',
-            subtitle: 'إدارة الاشتراك والفواتير',
-            onTap: () => context.push(ZakerRoutes.subscription),
-          ),
-          _Tile(
             icon: Icons.wallet_rounded,
             title: 'المحفظة',
             subtitle: 'مدفوعاتك وميزانيتك',
@@ -78,7 +72,9 @@ class SettingsScreen extends ConsumerWidget {
           _Tile(
             icon: Icons.cloud_sync_outlined,
             title: 'المزامنة المباشرة',
-            subtitle: liveEnabled ? 'شغالة — متصدرين وتحديات مشتركة' : 'مقفولة',
+            subtitle: liveEnabled
+                ? 'شغالة — متصدرين وتحديات مشتركة'
+                : 'متوقفة — شغّلها من الحساب',
             onTap: () => context.push(ZakerRoutes.account),
           ),
           _Tile(

@@ -30,7 +30,6 @@ import '../features/quran/tasbih_screen.dart';
 import '../features/question_bank/question_bank_screen.dart';
 import '../features/recall/active_recall_screen.dart';
 import '../features/settings/settings_screen.dart';
-import '../features/subscription/subscription_screen.dart';
 import '../features/tasks/tasks_screen.dart';
 import '../features/tools/calculator_screen.dart';
 import '../features/tools/irab_screen.dart';
@@ -58,7 +57,6 @@ class ZakerRoutes {
   static const String glossary = '/glossary';
   static const String settings = '/settings';
   static const String account = '/account';
-  static const String subscription = '/subscription';
   static const String lesson = '/lesson';
   static const String grade = '/grade';
   static const String chat = '/chat';
@@ -133,10 +131,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.account,
       builder: (context, state) => const AccountScreen(),
-    ),
-    GoRoute(
-      path: ZakerRoutes.subscription,
-      builder: (context, state) => const SubscriptionScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.grade,

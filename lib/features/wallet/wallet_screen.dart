@@ -38,7 +38,10 @@ class WalletScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
-          _BalanceCard(wallet: wallet),
+          _BalanceCard(
+            wallet: wallet,
+            onSetAllowance: () => _setAllowance(context, ref),
+          ),
           const SizedBox(height: ZakerSpacing.lg),
           SectionHeader(
             title: 'التزاماتي',
@@ -71,6 +74,48 @@ class WalletScreen extends ConsumerWidget {
           else
             for (final e in wallet.expenses)
               _ExpenseTile(expense: e),
+        ],
+      ),
+    );
+  }
+
+  /// Sets the monthly allowance the balance card is measured against.
+  void _setAllowance(BuildContext context, WidgetRef ref) {
+    final wallet = ref.read(walletProvider);
+    final amount = TextEditingController(
+      text: wallet.allowance > 0 ? '${wallet.allowance}' : '',
+    );
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const TrText('حدد ميزانيتك الشهرية'),
+        content: TextField(
+          controller: amount,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(hintText: 'المبلغ الشهري'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const TrText('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = int.tryParse(amount.text.trim()) ?? 0;
+              if (value > 0) {
+                ref.read(walletProvider.notifier).state = Wallet(
+                  month: wallet.month,
+                  allowance: value,
+                  committed: wallet.committed,
+                  commitments: wallet.commitments,
+                  expenses: wallet.expenses,
+                );
+              }
+              Navigator.of(context).pop();
+            },
+            child: const TrText('احفظ'),
+          ),
         ],
       ),
     );
@@ -191,9 +236,10 @@ class WalletScreen extends ConsumerWidget {
 
 /// The balance header card.
 class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({required this.wallet});
+  const _BalanceCard({required this.wallet, required this.onSetAllowance});
 
   final Wallet wallet;
+  final VoidCallback onSetAllowance;
 
   @override
   Widget build(BuildContext context) {
@@ -244,6 +290,20 @@ class _BalanceCard extends StatelessWidget {
               ),
             ),
           ],
+          const SizedBox(height: ZakerSpacing.md),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white54),
+            ),
+            onPressed: onSetAllowance,
+            icon: const Icon(Icons.tune_rounded, size: 18),
+            label: TrText(
+              wallet.allowance == 0
+                  ? 'حدد ميزانيتك الشهرية'
+                  : 'عدّل ميزانيتك: ${wallet.allowance}',
+            ),
+          ),
         ],
       ),
     );

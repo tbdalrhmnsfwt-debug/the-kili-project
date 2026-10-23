@@ -1,20 +1,16 @@
 /// The tasbih (مسبحة) counter screen.
 ///
-/// The screen is a big round counter the user taps, plus a voice mode where
-/// the phone listens and counts on its own.
+/// The screen is a big round counter the user taps; each tap is counted and
+/// confirmed with a light haptic.
 ///
 /// Shipped strings this screen is built from:
 ///   * `المسبحة`
 ///   * `وِرد التسبيح`
-///   * `سبح بإيدك أو بصوتك — وإحنا نعد`
-///   * `سبح بصوتك`
-///   * `دوس «ابدأ السمع» وسبح طبيعي`
-///   * `سامعك… سبح وإحنا نعد`
-///   * `مسمعتش حاجة — اكتب بإيدك.`
 ///   * `تسبيح النهارده`
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/strings.dart' show ZakerStrings;
@@ -58,6 +54,7 @@ class _TasbihScreenState extends ConsumerState<TasbihScreen> {
 
   void _tap() {
     setState(_state.tap);
+    HapticFeedback.selectionClick();
   }
 
   @override
@@ -79,7 +76,7 @@ class _TasbihScreenState extends ConsumerState<TasbihScreen> {
           ? const EmptyState(
               icon: Icons.spa_outlined,
               title: ZakerStrings.s_75607, // وِرد التسبيح
-              message: ZakerStrings.s_3d0df, // مسمعتش حاجة — اكتب بإيدك.
+              message: 'مفيش أذكار محمّلة دلوقتي — افتح الشاشة تاني.',
             )
           : ListView(
               padding: const EdgeInsets.all(ZakerSpacing.lg),
@@ -94,11 +91,12 @@ class _TasbihScreenState extends ConsumerState<TasbihScreen> {
                 ),
                 const SizedBox(height: ZakerSpacing.lg),
                 _CounterDial(state: _state, onTap: _tap),
-                const SizedBox(height: ZakerSpacing.lg),
-                _VoicePanel(
-                  listening: _state.listening,
-                  onToggle: () =>
-                      setState(() => _state.setListening(!_state.listening)),
+                const SizedBox(height: ZakerSpacing.md),
+                const TrText(
+                  'دوس على الدايرة في النص عشان تعد — كل دوسة بتتسجل '
+                  'وبتحس بهزة خفيفة.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, height: 1.6),
                 ),
                 const SizedBox(height: ZakerSpacing.lg),
                 _TodayCard(state: _state),
@@ -216,60 +214,6 @@ class _CounterDial extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// The voice-counting panel.
-class _VoicePanel extends StatelessWidget {
-  const _VoicePanel({required this.listening, required this.onToggle});
-
-  final bool listening;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(ZakerSpacing.lg),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        borderRadius: ZakerRadius.card,
-        border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TrText(
-            ZakerStrings.s_a3267, // سبح بإيدك أو بصوتك — وإحنا نعد
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: ZakerSpacing.xs),
-          TrText(
-            listening
-                ? ZakerStrings.s_0aced // سامعك… سبح وإحنا نعد
-                : ZakerStrings.s_374b7, // دوس «ابدأ السمع» وسبح طبيعي
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: ZakerSpacing.md),
-          FilledButton.icon(
-            onPressed: onToggle,
-            icon: Icon(
-              listening ? Icons.stop_rounded : Icons.mic_rounded,
-            ),
-            label: TrText(
-              listening
-                  ? ZakerStrings.s_6c784 // سبح بصوتك
-                  : ZakerStrings.s_67cdf, // ابدأ السمع
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -58,7 +58,7 @@ class ChallengesScreen extends ConsumerWidget {
                   title: ZakerStrings.s_dd129, // تحدي ٣٠ ثانية
                   subtitle: ZakerStrings.s_dfb31, // اختيارات وتحديات قصيرة
                   icon: Icons.timer_rounded,
-                  onTap: () => context.push(ZakerRoutes.quiz),
+                  onTap: () => _startSpeed(context, ref, 30),
                 ),
               ),
               const SizedBox(width: ZakerSpacing.md),
@@ -67,7 +67,7 @@ class ChallengesScreen extends ConsumerWidget {
                   title: ZakerStrings.s_f628c, // تحدي ٦٠ ثانية
                   subtitle: ZakerStrings.s_dfb31,
                   icon: Icons.timer_outlined,
-                  onTap: () => context.push(ZakerRoutes.quiz),
+                  onTap: () => _startSpeed(context, ref, 60),
                 ),
               ),
             ],
@@ -89,7 +89,8 @@ class ChallengesScreen extends ConsumerWidget {
             const EmptyState(
               icon: Icons.bolt_outlined,
               title: ZakerStrings.s_d2734, // مفيش تحدي مفتوح
-              message: ZakerStrings.s_bf817, // التحديات لسه بتتجهز — جرب بعد شوية.
+              message: 'مفيش تحدي مفتوح دلوقتي — اعمل تحدي مباشر وابعت الكود '
+                  'لصاحبك.',
             )
           else
             for (final c in live) _ChallengeTile(challenge: c),
@@ -101,7 +102,7 @@ class ChallengesScreen extends ConsumerWidget {
           if (past.isEmpty && results.isEmpty)
             const EmptyState(
               icon: Icons.flag_outlined,
-              title: ZakerStrings.s_bf817,
+              title: 'مفيش تحديات سابقة',
               message: ZakerStrings.s_671b2, // تحدي يومي قصير يخليك مذاكر كل يوم.
             )
           else
@@ -163,7 +164,7 @@ class ChallengesScreen extends ConsumerWidget {
             TrText(
               shared
                   ? 'التحدي اتنشر على السيرفر — أي حد بيدخل بالكود هيلاقيه.'
-                  : 'المزامنة المباشرة مقفولة، فالتحدي محفوظ على جهازك بس.',
+                  : 'المزامنة المباشرة متوقفة، فالتحدي محفوظ على جهازك بس.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -184,6 +185,14 @@ class ChallengesScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Starts a timed run. The quiz shows the countdown and ends by itself.
+  void _startSpeed(BuildContext context, WidgetRef ref, int seconds) {
+    ref.read(examSessionProvider.notifier).state = null;
+    ref.read(activeChallengeProvider.notifier).state = null;
+    ref.read(quizTimeLimitProvider.notifier).state = seconds;
+    context.push(ZakerRoutes.quiz);
   }
 
   /// A short, unambiguous room code (no 0/O or 1/I).
@@ -212,6 +221,7 @@ class _DailyChallengeCard extends ConsumerWidget {
         break;
       }
     }
+    final done = daily?.over ?? false;
 
     return Container(
       padding: const EdgeInsets.all(ZakerSpacing.lg),
@@ -236,7 +246,9 @@ class _DailyChallengeCard extends ConsumerWidget {
           const SizedBox(height: ZakerSpacing.xs),
           TrText(
             daily == null
-                ? ZakerStrings.s_4f071 // بنجهزلك تحدي النهارده...
+                ? 'مفيش تحدي النهارده — اعمل تحدي جديد وابدأ.'
+                : done
+                ? 'خلصت تحدي النهارده — قابلني بكرة 🌟'
                 : ZakerStrings.s_00591, // تحدي النهارده جاهز! ⚡
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
@@ -267,9 +279,13 @@ class _DailyChallengeCard extends ConsumerWidget {
                 backgroundColor: Colors.white,
                 foregroundColor: theme.colorScheme.primary,
               ),
-              onPressed: () => _play(context, ref, daily!),
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: TrText(ZakerStrings.s_d19ff), // تحدي النهارده مستنيك
+              onPressed: done ? null : () => _play(context, ref, daily!),
+              icon: Icon(
+                done ? Icons.task_alt_rounded : Icons.play_arrow_rounded,
+              ),
+              label: TrText(
+                done ? 'تحدي النهارده خلص ✅' : ZakerStrings.s_d19ff,
+              ),
             ),
           ],
         ],
@@ -277,47 +293,14 @@ class _DailyChallengeCard extends ConsumerWidget {
     );
   }
 
-  /// Marks the daily challenge as finished and awards the points.
+  /// Runs the challenge as a real, timed quiz. The result is recorded by the
+  /// quiz runner from the answers the user actually gives.
   void _play(BuildContext context, WidgetRef ref, Challenge challenge) {
-    final challenges = ref.read(challengesProvider);
-    ref.read(challengesProvider.notifier).state = [
-      for (final c in challenges)
-        if (c.id == challenge.id)
-          Challenge(
-            id: c.id,
-            title: c.title,
-            kind: c.kind,
-            status: ChallengeStatus.finished,
-            code: c.code,
-            questionCount: c.questionCount,
-            timeLimitSeconds: c.timeLimitSeconds,
-            points: c.points,
-            hostName: c.hostName,
-            joinedBy: c.joinedBy,
-            createdAt: c.createdAt,
-            finishedAt: DateTime.now(),
-          )
-        else
-          c,
-    ];
-
-    final results = ref.read(challengeResultsProvider);
-    ref.read(challengeResultsProvider.notifier).state = [
-      ChallengeResult(
-        challengeId: challenge.id,
-        score: challenge.points,
-        total: challenge.questionCount,
-        correct: challenge.questionCount,
-        finishedAt: DateTime.now(),
-      ),
-      ...results,
-    ];
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: TrText(ZakerStrings.s_8_c721a), // خلصت تحدي النهارده — 8 نقط في رصيدك 🎉
-      ),
-    );
+    ref.read(examSessionProvider.notifier).state = null;
+    ref.read(activeChallengeProvider.notifier).state = challenge;
+    ref.read(quizTimeLimitProvider.notifier).state =
+        challenge.timeLimitSeconds > 0 ? challenge.timeLimitSeconds : null;
+    context.push(ZakerRoutes.quiz);
   }
 }
 
@@ -396,73 +379,13 @@ class _ChallengeTile extends ConsumerWidget {
     );
   }
 
-  /// Marks the challenge as finished, records the result, and shares both
-  /// with the backend when live sync is enabled.
-  Future<void> _play(BuildContext context, WidgetRef ref) async {
-    final user = ref.read(authUserProvider);
-    final now = DateTime.now();
-    final name = user?.displayName ?? 'لاعب';
-    final finished = Challenge(
-      id: challenge.id,
-      title: challenge.title,
-      kind: challenge.kind,
-      status: ChallengeStatus.finished,
-      code: challenge.code,
-      questionCount: challenge.questionCount,
-      timeLimitSeconds: challenge.timeLimitSeconds,
-      points: challenge.points,
-      hostName: challenge.hostName,
-      joinedBy: name,
-      createdAt: challenge.createdAt,
-      finishedAt: now,
-    );
-
-    final current = ref.read(challengesProvider);
-    final replaced = current.any((c) => c.id == challenge.id);
-    ref.read(challengesProvider.notifier).state = [
-      if (!replaced) finished,
-      for (final c in current)
-        if (c.id == challenge.id) finished else c,
-    ];
-
-    final result = ChallengeResult(
-      challengeId: challenge.id,
-      score: challenge.points,
-      total: challenge.questionCount,
-      correct: challenge.questionCount,
-      finishedAt: now,
-    );
-    ref.read(challengeResultsProvider.notifier).state = [
-      result,
-      ...ref.read(challengeResultsProvider),
-    ];
-
-    final config = ref.read(liveConfigProvider);
-    if (LiveService.canSync(config)) {
-      final service = ref.read(liveServiceProvider);
-      await service.joinChallenge(
-        challenge.id,
-        name: name,
-        status: ChallengeStatus.finished,
-        config: config,
-      );
-      if (user != null) {
-        await service.publishResult(result, user.uid, config);
-        final week = ref.read(leaderboardProvider);
-        for (final row in week.rows) {
-          if (row.isMe) {
-            await service.publishRow(week.weekStart, row, config);
-            break;
-          }
-        }
-      }
-    }
-
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: TrText('خلصت ${challenge.title} — ${challenge.points} نقطة 🎉'),
-      ),
-    );
+  /// Opens the challenge as a quiz. The quiz runner records the real result
+  /// and marks the challenge finished once it is completed.
+  void _play(BuildContext context, WidgetRef ref) {
+    ref.read(examSessionProvider.notifier).state = null;
+    ref.read(activeChallengeProvider.notifier).state = challenge;
+    ref.read(quizTimeLimitProvider.notifier).state =
+        challenge.timeLimitSeconds > 0 ? challenge.timeLimitSeconds : null;
+    context.push(ZakerRoutes.quiz);
   }
 }

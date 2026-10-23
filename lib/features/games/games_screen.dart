@@ -12,6 +12,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/question_bank_builder.dart';
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
 import '../../models/exam.dart';
@@ -51,10 +52,94 @@ class GamesScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.md),
+          if (banks.isEmpty) ...[
+            _PrepareBankCard(
+              onPrepare: () => _prepareBanks(context, ref),
+            ),
+            const SizedBox(height: ZakerSpacing.md),
+          ],
           for (final stop in GameStop.all) ...[
             _GameStopTile(stop: stop, hasBank: banks.isNotEmpty),
             const SizedBox(height: ZakerSpacing.sm),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// Builds banks from the library so the map is playable on a fresh install.
+  Future<void> _prepareBanks(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: TrText('بنجهز أسئلة من كتبك…')),
+      );
+    try {
+      final service = ref.read(assetServiceProvider);
+      final grades = await ref.read(gradesProvider.future);
+      final prepared = await buildQuestionBanks(
+        service: service,
+        grades: grades,
+      );
+      ref.read(questionBanksProvider.notifier).state = prepared;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: TrText(
+              prepared.isEmpty
+                  ? 'مفيش كتب مقروءة على الجهاز — افتح مكتبتك وجرّب تاني.'
+                  : 'جهزنا ${prepared.length} بنوك أسئلة ✅',
+            ),
+          ),
+        );
+    } catch (_) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: TrText('مش قادر أجهز البنك دلوقتي.')),
+        );
+    }
+  }
+}
+
+/// The prompt shown when no question bank exists yet.
+class _PrepareBankCard extends StatelessWidget {
+  const _PrepareBankCard({required this.onPrepare});
+
+  final VoidCallback onPrepare;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(ZakerSpacing.md),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.07),
+        borderRadius: ZakerRadius.card,
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.auto_awesome_rounded,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: ZakerSpacing.sm),
+          const Expanded(
+            child: TrText(
+              'جهّز بنك أسئلة من كتبك الأول عشان الألعاب تشتغل.',
+              style: TextStyle(fontSize: 12, height: 1.5),
+            ),
+          ),
+          const SizedBox(width: ZakerSpacing.sm),
+          FilledButton(
+            onPressed: onPrepare,
+            child: const TrText('جهّز'),
+          ),
         ],
       ),
     );
@@ -167,7 +252,7 @@ class _GameStopTile extends StatelessWidget {
                     ..showSnackBar(
                       const SnackBar(
                         content: TrText(
-                          'اللعبة محتاجة بنك أسئلة — افتح أي درس وحمّل أسئلته الأول.',
+                          'اللعبة محتاجة بنك أسئلة — دوس على «جهّز» فوق الأول.',
                         ),
                       ),
                     );
@@ -210,7 +295,7 @@ class _GameStopTile extends StatelessWidget {
                       TrText(
                         hasBank
                             ? stop.subtitle
-                            : 'محتاج بنك أسئلة من أي درس الأول',
+                            : 'محتاج بنك أسئلة — دوس «جهّز» فوق',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

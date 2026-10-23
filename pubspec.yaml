@@ -32,9 +32,6 @@ dependencies:
   shared_preferences: ^2.2.3
   path_provider: ^2.1.4
 
-  # Payments
-  in_app_purchase: ^3.1.5
-
   # UI
   flutter_markdown: ^0.7.3+1
   shadcn_ui: ^0.57.3
@@ -115,6 +112,11 @@ flutter:
     - family: Cairo
       fonts:
         - asset: assets/fonts/Cairo.ttf
+    - family: Amiri
+      fonts:
+        - asset: assets/fonts/AmiriPdf-Regular.ttf
+        - asset: assets/fonts/AmiriPdf-Bold.ttf
+          weight: 700
     - family: Tajawal
       fonts:
         - asset: assets/fonts/TajawalPdf-Regular.ttf

@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
+import '../../models/dictionary.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
@@ -185,11 +186,161 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
           ),
           FeatureTile(
             title: ZakerStrings.s_9fe71, // ترجمة كلمة
-            subtitle: 'معنى أي كلمة إنجليزي',
+            subtitle: 'دور على معنى أي كلمة في القاموس — من غير نت',
             icon: Icons.abc_rounded,
-            onTap: () => _sourceFocus.requestFocus(),
+            onTap: () => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              showDragHandle: true,
+              shape: const RoundedRectangleBorder(
+                borderRadius: ZakerRadius.sheet,
+              ),
+              builder: (_) => const _WordLookupSheet(),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// An offline dictionary lookup over the bundled word list.
+class _WordLookupSheet extends ConsumerStatefulWidget {
+  const _WordLookupSheet();
+
+  @override
+  ConsumerState<_WordLookupSheet> createState() => _WordLookupSheetState();
+}
+
+class _WordLookupSheetState extends ConsumerState<_WordLookupSheet> {
+  final TextEditingController _query = TextEditingController();
+  late final Future<DictionaryEntry> _dictionary;
+
+  @override
+  void initState() {
+    super.initState();
+    _dictionary = ref.read(assetServiceProvider).loadDictionary();
+  }
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  /// Folds Arabic diacritics so a plain query still matches a vocalised word.
+  static String _fold(String text) =>
+      text.replaceAll(RegExp(r'[ً-ْٰـ]'), '').toLowerCase();
+
+  List<WordEntry> _matches(DictionaryEntry dictionary) {
+    final q = _fold(_query.text.trim());
+    if (q.isEmpty) return dictionary.entries.take(30).toList();
+    final out = <WordEntry>[];
+    for (final entry in dictionary.entries) {
+      if (_fold(entry.arabic).contains(q) ||
+          entry.english.toLowerCase().contains(q)) {
+        out.add(entry);
+        if (out.length >= 50) break;
+      }
+    }
+    return out;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SizedBox(
+        height: 520,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                ZakerSpacing.lg,
+                0,
+                ZakerSpacing.lg,
+                ZakerSpacing.md,
+              ),
+              child: TextField(
+                controller: _query,
+                autofocus: true,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  hintText: 'اكتب كلمة بالعربي أو بالإنجليزي',
+                  prefixIcon: Icon(Icons.search_rounded),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            Expanded(
+              child: FutureBuilder<DictionaryEntry>(
+                future: _dictionary,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const LoadingBox();
+                  }
+                  if (snapshot.hasError || snapshot.data == null) {
+                    return const EmptyState(
+                      icon: Icons.error_outline_rounded,
+                      title: 'القاموس مش متاح',
+                      message: 'جرّب تفتح الشاشة تاني.',
+                    );
+                  }
+                  final matches = _matches(snapshot.data!);
+                  if (matches.isEmpty) {
+                    return const EmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: 'مفيش نتيجة',
+                      message: 'جرّب كلمة أقصر أو بالعربي.',
+                    );
+                  }
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(
+                      ZakerSpacing.lg,
+                      0,
+                      ZakerSpacing.lg,
+                      ZakerSpacing.lg,
+                    ),
+                    itemCount: matches.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final entry = matches[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: TrText(
+                          entry.arabic,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: TrText(entry.english),
+                        trailing: IconButton(
+                          tooltip: 'انسخ',
+                          icon: const Icon(Icons.copy_rounded, size: 18),
+                          onPressed: () {
+                            Clipboard.setData(
+                              ClipboardData(
+                                text: '${entry.arabic} — ${entry.english}',
+                              ),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: TrText('اتنسخت الكلمة ✅'),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

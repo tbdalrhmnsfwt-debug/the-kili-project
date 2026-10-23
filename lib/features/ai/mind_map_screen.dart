@@ -37,12 +37,33 @@ class _MindMapScreenState extends ConsumerState<MindMapScreen> {
   MindMap? _map;
   bool _working = false;
 
+  late final TextEditingController _titleController;
+  late final TextEditingController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(
+      text: widget.title == 'خريطة' ? '' : widget.title,
+    );
+    _textController = TextEditingController(text: widget.sourceText);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _textController.dispose();
+    super.dispose();
+  }
+
   Future<void> _build() async {
+    final typedTitle = _titleController.text.trim();
+    final typedText = _textController.text.trim();
     setState(() => _working = true);
     final service = ref.read(aiServiceProvider);
     final map = await service.mindMap(
-      title: widget.title,
-      text: widget.sourceText,
+      title: typedTitle.isEmpty ? widget.title : typedTitle,
+      text: typedText.isEmpty ? widget.sourceText : typedText,
       style: _style,
     );
     if (!mounted) return;
@@ -89,6 +110,8 @@ class _MindMapScreenState extends ConsumerState<MindMapScreen> {
           ? _Builder(
               style: _style,
               working: _working,
+              titleController: _titleController,
+              textController: _textController,
               onStyle: (s) => setState(() => _style = s),
               onBuild: _build,
             )
@@ -102,12 +125,16 @@ class _Builder extends StatelessWidget {
   const _Builder({
     required this.style,
     required this.working,
+    required this.titleController,
+    required this.textController,
     required this.onStyle,
     required this.onBuild,
   });
 
   final MapStyle style;
   final bool working;
+  final TextEditingController titleController;
+  final TextEditingController textController;
   final ValueChanged<MapStyle> onStyle;
   final VoidCallback onBuild;
 
@@ -117,6 +144,27 @@ class _Builder extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(ZakerSpacing.lg),
       children: [
+        TextField(
+          controller: titleController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'موضوع الخريطة',
+            hintText: 'مثال: الخلية ووظائف أعضائها',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: ZakerSpacing.md),
+        TextField(
+          controller: textController,
+          minLines: 3,
+          maxLines: 6,
+          decoration: const InputDecoration(
+            labelText: 'النص أو ملاحظاتك (اختياري)',
+            hintText: 'الصق فقرة من درسك وهنحوّلها لفروع الخريطة.',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: ZakerSpacing.lg),
         TrText(
           'اختار شكل من ${MapStyle.values.length}: '
           '${MapStyle.values.take(4).map((s) => s.label).join('، ')} وغيرهم.',
@@ -231,6 +279,17 @@ class _MapView extends StatelessWidget {
         ),
         const SizedBox(height: ZakerSpacing.lg),
         _Node(node: map.root, depth: 0),
+        if (map.root.children.isEmpty) ...[
+          const SizedBox(height: ZakerSpacing.md),
+          TrText(
+            'الخريطة محتاجة نص أكتر — ارجع واكتب أو الصق فقرة من درسك '
+            'عشان نطلع الفروع.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ],
     );
   }

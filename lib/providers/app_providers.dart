@@ -8,7 +8,6 @@ import '../core/ai_service.dart';
 import '../core/api_client.dart';
 import '../core/asset_service.dart';
 import '../core/auth_service.dart';
-import '../core/billing_service.dart';
 import '../core/curriculum_search.dart';
 import '../core/live_service.dart';
 import '../core/local_store.dart';
@@ -112,15 +111,6 @@ final liveConfigProvider = Provider<LiveConfig>((ref) {
 /// REST client for the live leaderboard and challenges.
 final liveServiceProvider = Provider<LiveService>((ref) {
   return LiveService(ref.watch(apiClientProvider));
-});
-
-/// Google Play billing.
-final billingServiceProvider = Provider<BillingService>((ref) {
-  final service = BillingService(api: ref.watch(apiClientProvider));
-  ref.onDispose(() {
-    service.close();
-  });
-  return service;
 });
 
 /// Reads and decodes a persisted value, falling back when it is missing or
@@ -253,6 +243,13 @@ final soundsEnabledProvider = StateProvider<bool>((ref) {
 
 /// The exam session in progress, if any.
 final examSessionProvider = StateProvider<ExamSession?>((ref) => null);
+
+/// The challenge the quiz was opened for, when it was opened from the
+/// challenges screen. The quiz records the real result against it.
+final activeChallengeProvider = StateProvider<Challenge?>((ref) => null);
+
+/// Seconds allowed for the current quiz run, or `null` for no limit.
+final quizTimeLimitProvider = StateProvider<int?>((ref) => null);
 
 /// The questions shown by the quiz runner.
 ///

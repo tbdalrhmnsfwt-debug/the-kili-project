@@ -144,7 +144,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             subtitle: TrText(
               liveEnabled
                   ? 'التطبيق بيقرا ويكتب المتصدرين والتحديات على السيرفر.'
-                  : 'مقفولة — النقاط والمتصدرين بيتحسبوا على جهازك بس.',
+                  : 'متوقفة — النقاط والمتصدرين بيتحسبوا على جهازك بس.',
             ),
             value: liveEnabled,
             onChanged: (value) {

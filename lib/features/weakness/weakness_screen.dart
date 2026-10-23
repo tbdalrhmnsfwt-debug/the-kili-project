@@ -68,10 +68,21 @@ class WeaknessScreen extends ConsumerWidget {
             icon: Icons.trending_down_rounded,
           ),
           if (spots.isEmpty)
-            const EmptyState(
+            EmptyState(
               icon: Icons.trending_up_rounded,
               title: ZakerStrings.s_4f9d4, // غلطاتك متجمعة
-              message: ZakerStrings.s_02c27, // غلطاتك متجمعة عشان تراجعها
+              message: 'ابدأ اختبار قصير — كل غلطة بتتسجل هنا وبتوريني '
+                  'نقاط ضعفك.',
+              action: FilledButton.icon(
+                onPressed: () {
+                  ref.read(examSessionProvider.notifier).state = null;
+                  ref.read(activeChallengeProvider.notifier).state = null;
+                  ref.read(quizTimeLimitProvider.notifier).state = null;
+                  context.push(ZakerRoutes.quiz);
+                },
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const TrText('اختبر نفسك'),
+              ),
             )
           else
             for (final s in spots) _WeakSpotTile(spot: s),
@@ -128,8 +139,10 @@ class _HeaderCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TrText(
-            'الفصل محتاج تثبيت: ${weak.length} من ${spots.length}. '
-            'هنراجع النقاط الضعيفة بس.',
+            spots.isEmpty
+                ? 'لسه مفيش غلطات متسجلة — ابدأ اختبار وهنرصد نقاط ضعفك.'
+                : 'الفصل محتاج تثبيت: ${weak.length} من ${spots.length}. '
+                      'هنراجع النقاط الضعيفة بس.',
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w700,

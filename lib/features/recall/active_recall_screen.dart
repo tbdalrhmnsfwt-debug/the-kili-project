@@ -11,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/recall_card_builder.dart';
 import '../../core/theme.dart';
 import '../../models/recall.dart';
 import '../../providers/app_providers.dart';
@@ -320,19 +321,70 @@ class _GradingBar extends StatelessWidget {
   }
 }
 
-/// The empty state.
-class _NoCards extends ConsumerWidget {
+/// The empty state, with an action that builds cards from the library.
+class _NoCards extends ConsumerStatefulWidget {
   const _NoCards({required this.queue});
 
   final ReviewQueue queue;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_NoCards> createState() => _NoCardsState();
+}
+
+class _NoCardsState extends ConsumerState<_NoCards> {
+  bool _working = false;
+
+  /// Builds recall cards on-device from the readable textbooks.
+  Future<void> _build() async {
+    if (_working) return;
+    setState(() => _working = true);
+    try {
+      final cards = await buildRecallCards(
+        service: ref.read(assetServiceProvider),
+        grades: await ref.read(gradesProvider.future),
+      );
+      if (!mounted) return;
+      ref.read(reviewQueueProvider.notifier).state = ReviewQueue(cards: cards);
+      if (cards.isEmpty) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: TrText('مفيش كتب مقروءة على الجهاز — افتح مكتبتك الأول.'),
+            ),
+          );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: TrText('مش قادر أجهز الكروت دلوقتي.')),
+        );
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final queue = widget.queue;
     if (queue.cards.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.style_outlined,
         title: 'مفيش كروت لسه',
-        message: 'افتح أي درس واعمل كروت استرجاع منه.',
+        message: 'جهّز كروت من كتبك — هنحوّل كل فقرة لسؤال مراجعة.',
+        action: FilledButton.icon(
+          onPressed: _working ? null : _build,
+          icon: _working
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.auto_awesome_rounded),
+          label: TrText(_working ? 'بنجهز الكروت…' : 'جهّز كروت من كتبك'),
+        ),
       );
     }
     return EmptyState(

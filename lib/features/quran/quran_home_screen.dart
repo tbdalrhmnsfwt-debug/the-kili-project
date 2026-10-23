@@ -15,6 +15,8 @@ import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
 import 'adhkar_screen.dart';
 import 'mutashabihat_screen.dart';
+import 'quran_reader_screen.dart';
+import 'tajweed_screen.dart';
 import 'tasbih_screen.dart';
 import '../home/shell_screen.dart';
 import '../../widgets/tr_text.dart';
@@ -40,12 +42,16 @@ class QuranHomeScreen extends ConsumerWidget {
             subtitle: ZakerStrings.s_336bc, // المصحف كامل — واستمع بصوت الشيخ
             icon: Icons.headphones_rounded,
             color: theme.colorScheme.primary,
-            comingSoon: true,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const QuranReaderScreen(),
+              ),
+            ),
           ),
           const SizedBox(height: ZakerSpacing.md),
           _Hero(
             title: ZakerStrings.s_265c6, // المسبحة
-            subtitle: ZakerStrings.s_a3267, // سبح بإيدك أو بصوتك — وإحنا نعد
+            subtitle: 'سبح بإيدك — وعداد بيحفظ وِردك',
             icon: Icons.fingerprint_rounded,
             color: theme.colorScheme.secondary,
             onTap: () => Navigator.of(context).push(
@@ -80,15 +86,21 @@ class QuranHomeScreen extends ConsumerWidget {
             subtitle: ZakerStrings.s_b1145, // ترتيل هادئ
             icon: Icons.record_voice_over_rounded,
             color: theme.colorScheme.secondary,
-            comingSoon: true,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const TajweedScreen()),
+            ),
           ),
           const SizedBox(height: ZakerSpacing.md),
           _Hero(
             title: ZakerStrings.s_7b273, // اقرا صفحة من المصحف
-            subtitle: ZakerStrings.s_bb6ef, // بنجهز المصحف…
+            subtitle: 'المصحف كامل — اقرا أي سورة',
             icon: Icons.auto_stories_rounded,
             color: theme.colorScheme.tertiary,
-            comingSoon: true,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const QuranReaderScreen(),
+              ),
+            ),
           ),
         ],
       ),
@@ -104,7 +116,6 @@ class _Hero extends StatelessWidget {
     required this.icon,
     required this.color,
     this.onTap,
-    this.comingSoon = false,
   });
 
   final String title;
@@ -113,24 +124,13 @@ class _Hero extends StatelessWidget {
   final Color color;
   final VoidCallback? onTap;
 
-  /// Shows a «قريبًا» badge until the feature's data is wired up.
-  final bool comingSoon;
-
-  void _showSoon(BuildContext context) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: TrText('الأداة دي هتتضاف قريب إن شاء الله.')),
-      );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: comingSoon ? () => _showSoon(context) : onTap,
+        onTap: onTap,
         borderRadius: BorderRadius.circular(ZakerRadius.lg),
         child: Container(
           padding: const EdgeInsets.all(ZakerSpacing.lg),
@@ -173,26 +173,7 @@ class _Hero extends StatelessWidget {
                   ],
                 ),
               ),
-              if (comingSoon)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: TrText(
-                    'قريبًا',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_left_rounded),
+              const Icon(Icons.chevron_left_rounded),
             ],
           ),
         ),

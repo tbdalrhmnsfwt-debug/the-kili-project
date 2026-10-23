@@ -18,7 +18,6 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../models/dictionary.dart';
 import '../models/manhaji.dart';
@@ -262,14 +261,10 @@ class AssetService {
     return DictionaryEntry.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 
-  /// Loads the mutashabihat dataset (gzipped JSON).
+  /// Loads the mutashabihat dataset, inflating the bundled gzip payload.
   Future<MutashabihatData> loadMutashabihat() async {
     final bytes = await _bundle.load('assets/quran/mutashabihat.json.gz');
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/mutashabihat.json');
-    if (!file.existsSync()) {
-      await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
-    }
-    return MutashabihatData.parse(file);
+    final inflated = gzip.decode(bytes.buffer.asUint8List());
+    return MutashabihatData.parseJson(utf8.decode(inflated));
   }
 }

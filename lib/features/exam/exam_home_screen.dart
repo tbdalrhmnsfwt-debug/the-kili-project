@@ -49,7 +49,7 @@ class ExamHomeScreen extends ConsumerWidget {
             title: 'بنك أسئلة',
             subtitle: 'اتمرن على أسئلة أي درس',
             icon: Icons.storage_rounded,
-            onTap: () => _startFromLesson(context, ref),
+            onTap: () => context.push(ZakerRoutes.questionBank),
           ),
           const SizedBox(height: ZakerSpacing.md),
           _ModeCard(
@@ -81,6 +81,11 @@ class ExamHomeScreen extends ConsumerWidget {
   }
 
   void _startFromLesson(BuildContext context, WidgetRef ref) {
+    // A fresh quiz is generated from the most relevant readable book; the
+    // question bank screen offers explicit per-book banks.
+    ref.read(examSessionProvider.notifier).state = null;
+    ref.read(activeChallengeProvider.notifier).state = null;
+    ref.read(quizTimeLimitProvider.notifier).state = null;
     context.push(ZakerRoutes.quiz);
   }
 }

@@ -5,6 +5,8 @@
 /// one exists, otherwise cloze questions derived from a readable textbook.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../models/arena.dart';
 import '../../models/exam.dart';
+import '../../models/mistakes.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
@@ -74,9 +77,35 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
   final Map<String, AnswerResult> _results = {};
   bool _revealed = false;
   bool _saved = false;
+  Timer? _timer;
+  int? _secondsLeft;
 
   List<ExamQuestion> get _questions => widget.questions;
   ExamQuestion get _current => _questions[_index];
+
+  @override
+  void initState() {
+    super.initState();
+    final limit = ref.read(quizTimeLimitProvider);
+    if (limit != null && limit > 0) {
+      _secondsLeft = limit;
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        final left = (_secondsLeft ?? 1) - 1;
+        setState(() => _secondsLeft = left);
+        if (left <= 0) {
+          _timer?.cancel();
+          _showResults();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +116,49 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
       appBar: AppBar(
         title: TrText('سؤال ${_index + 1} من ${_questions.length}'),
         actions: [
+          if (_secondsLeft != null)
+            Padding(
+              padding: const EdgeInsets.only(left: ZakerSpacing.sm),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: ZakerSpacing.sm,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: (_secondsLeft! <= 10
+                            ? ZakerColors.danger
+                            : theme.colorScheme.primary)
+                        .withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.timer_rounded,
+                        size: 16,
+                        color: _secondsLeft! <= 10
+                            ? ZakerColors.danger
+                            : theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${_secondsLeft! ~/ 60}:'
+                        '${(_secondsLeft! % 60).toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          color: _secondsLeft! <= 10
+                              ? ZakerColors.danger
+                              : theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.close_rounded),
             onPressed: () => Navigator.of(context).maybePop(),
@@ -196,6 +268,58 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
             : 'الإجابة الصحيحة: ${_current.options[correct]}',
       );
     });
+    _recordMistake(_current, isCorrect: isCorrect);
+  }
+
+  /// Keeps the mistakes notebook in sync with what was answered here.
+  ///
+  /// A wrong answer is added (or rescheduled); a right answer advances an
+  /// existing entry up the mastery ladder until it leaves the notebook.
+  void _recordMistake(ExamQuestion question, {required bool isCorrect}) {
+    final notebook = ref.read(mistakesProvider);
+    final index = notebook.entries.indexWhere(
+      (e) => e.prompt == question.prompt,
+    );
+    final existing = index < 0 ? null : notebook.entries[index];
+
+    MistakeEntry? updated;
+    if (isCorrect) {
+      if (existing != null && !existing.mastered) {
+        updated = existing.passed();
+      }
+    } else {
+      final now = DateTime.now();
+      final correct = question.correctIndex;
+      updated = (existing ??
+              MistakeEntry(
+                id: 'm-${question.id}-${now.millisecondsSinceEpoch}',
+                prompt: question.prompt,
+                bookId:
+                    ref.read(examSessionProvider)?.bookId ??
+                    ref.read(examSessionProvider)?.title ??
+                    'تدريبات',
+                lessonNumber: question.lessonNumber,
+                options: question.options,
+                correctIndex: question.correctIndex,
+                correctAnswer: correct == null
+                    ? ''
+                    : question.options[correct],
+                timesWrong: 0,
+                createdAt: now,
+              ))
+          .failed(now: now);
+    }
+    if (updated == null) return;
+
+    final entries = [...notebook.entries];
+    if (index >= 0) {
+      entries[index] = updated;
+    } else {
+      entries.insert(0, updated);
+    }
+    ref.read(mistakesProvider.notifier).state = MistakeNotebook(
+      entries: entries,
+    );
   }
 
   void _next() {
@@ -210,12 +334,20 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
   }
 
   void _showResults() {
+    _timer?.cancel();
     final correct = _results.values.where((r) => r.isCorrect).length;
     if (!_saved) {
       _saved = true;
+      final challenge = ref.read(activeChallengeProvider);
+      final challengePoints = challenge == null
+          ? correct * 10
+          : (_questions.isEmpty
+                ? 0
+                : (challenge.points * correct / _questions.length).round());
       final result = ChallengeResult(
-        challengeId: 'quiz-${DateTime.now().millisecondsSinceEpoch}',
-        score: correct * 10,
+        challengeId:
+            challenge?.id ?? 'quiz-${DateTime.now().millisecondsSinceEpoch}',
+        score: challengePoints,
         total: _questions.length,
         correct: correct,
         wrongQuestionIds: [
@@ -228,6 +360,33 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
         result,
         ...ref.read(challengeResultsProvider),
       ];
+
+      if (challenge != null) {
+        final now = DateTime.now();
+        final challenges = ref.read(challengesProvider);
+        ref.read(challengesProvider.notifier).state = [
+          for (final c in challenges)
+            if (c.id == challenge.id)
+              Challenge(
+                id: c.id,
+                title: c.title,
+                kind: c.kind,
+                status: ChallengeStatus.finished,
+                code: c.code,
+                questionCount: c.questionCount,
+                timeLimitSeconds: c.timeLimitSeconds,
+                points: c.points,
+                hostName: c.hostName,
+                joinedBy: c.joinedBy,
+                createdAt: c.createdAt,
+                finishedAt: now,
+              )
+            else
+              c,
+        ];
+        ref.read(activeChallengeProvider.notifier).state = null;
+      }
+      ref.read(quizTimeLimitProvider.notifier).state = null;
     }
     showModalBottomSheet<void>(
       context: context,

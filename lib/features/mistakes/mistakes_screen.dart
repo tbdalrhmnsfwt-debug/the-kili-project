@@ -17,8 +17,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/router.dart';
 import '../../core/theme.dart';
+import '../../models/exam.dart';
 import '../../models/mistakes.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
@@ -80,28 +83,44 @@ class MistakesScreen extends ConsumerWidget {
     );
   }
 
-  /// Marks a due entry as answered correctly and advances it up the ladder.
+  /// Replays the due entries as a real quiz. The runner updates each entry:
+  /// a right answer advances it, a wrong one reschedules it.
   void _review(BuildContext context, WidgetRef ref, List<MistakeEntry> due) {
-    final notebook = ref.read(mistakesProvider);
-    final entry = due.first;
-    final updated = entry.passed();
+    final questions = <ExamQuestion>[
+      for (final e in due)
+        if (e.options.length >= 2 && e.correctIndex != null)
+          ExamQuestion(
+            id: e.id,
+            prompt: e.prompt,
+            answerKind: AnswerKind.multipleChoice,
+            options: e.options,
+            correctIndex: e.correctIndex,
+            explanation: e.correctAnswer.isEmpty
+                ? ''
+                : 'الإجابة الصح: ${e.correctAnswer}',
+            lessonNumber: e.lessonNumber,
+          ),
+    ];
 
-    ref.read(mistakesProvider.notifier).state = MistakeNotebook(
-      entries: [
-        for (final e in notebook.entries)
-          if (e.id == entry.id) updated else e,
-      ],
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: TrText(
-          updated.mastered
-              ? 'اتقنته — جاوبته صح ٣ مرات وخرج من الدفتر 🏆'
-              : 'كويس. بص على السؤال اللي غلطت فيه تاني وانت هتثبته.',
+    if (questions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: TrText('الغلطات دي مقالية — راجعها من الكتاب الأول.'),
         ),
-      ),
+      );
+      return;
+    }
+
+    ref.read(examSessionProvider.notifier).state = ExamSession(
+      id: 'mistakes-${DateTime.now().millisecondsSinceEpoch}',
+      title: 'مراجعة دفتر أخطائي',
+      questions: questions,
+      bookId: due.first.bookId,
+      startedAt: DateTime.now(),
     );
+    ref.read(activeChallengeProvider.notifier).state = null;
+    ref.read(quizTimeLimitProvider.notifier).state = null;
+    context.push(ZakerRoutes.quiz);
   }
 }
 
