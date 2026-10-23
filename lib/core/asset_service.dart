@@ -264,7 +264,10 @@ class AssetService {
   /// Loads the mutashabihat dataset, inflating the bundled gzip payload.
   Future<MutashabihatData> loadMutashabihat() async {
     final bytes = await _bundle.load('assets/quran/mutashabihat.json.gz');
-    final raw = bytes.buffer.asUint8List();
+    final raw = bytes.buffer.asUint8List(
+      bytes.offsetInBytes,
+      bytes.lengthInBytes,
+    );
     // The asset is stored as gzip; tolerate a bundle that already inflated it.
     String json;
     try {

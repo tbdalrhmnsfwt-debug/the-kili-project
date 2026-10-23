@@ -122,11 +122,6 @@ flutter:
         - asset: assets/fonts/TajawalPdf-Regular.ttf
         - asset: assets/fonts/TajawalPdf-Bold.ttf
           weight: 700
-    - family: Amiri
-      fonts:
-        - asset: assets/fonts/AmiriPdf-Regular.ttf
-        - asset: assets/fonts/AmiriPdf-Bold.ttf
-          weight: 700
     - family: Naskh
       fonts:
         - asset: assets/fonts/NaskhPdf-Regular.ttf
