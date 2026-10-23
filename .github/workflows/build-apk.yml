@@ -125,6 +125,42 @@ jobs:
           PY
           grep -n "useLegacyPackaging" android/app/build.gradle.kts
 
+      # Release builds must stay unminified: R8 full mode can strip classes
+      # that Flutter plugins and the native MethodChannel reach reflectively
+      # (Tesseract in particular), which makes the APK crash on launch. Keep
+      # resource shrinking off too, and pin the release ABI set explicitly so
+      # the packaged .so files always cover 64-bit and 32-bit ARM devices.
+      - name: Pin release build flags (no R8, explicit ABIs)
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('android/app/build.gradle.kts')
+          text = path.read_text()
+          if 'isMinifyEnabled = false' not in text:
+              text += '''
+          android {
+              defaultConfig {
+                  ndk {
+                      abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+                  }
+              }
+              buildTypes {
+                  getByName("release") {
+                      isMinifyEnabled = false
+                      isShrinkResources = false
+                      proguardFiles(
+                          getDefaultProguardFile("proguard-android-optimize.txt"),
+                          "proguard-rules.pro",
+                      )
+                  }
+              }
+          }
+          '''
+              path.write_text(text)
+          PY
+          grep -n -E "isMinifyEnabled|isShrinkResources|abiFilters|proguard-rules" android/app/build.gradle.kts
+
       # Several plugin releases still compile against android-34, but
       # flutter_plugin_android_lifecycle now requires consumers to compile
       # against android-36 (AGP's AAR metadata check fails the build
