@@ -105,11 +105,27 @@ class ChallengesScreen extends ConsumerWidget {
               title: 'مفيش تحديات سابقة',
               message: ZakerStrings.s_671b2, // تحدي يومي قصير يخليك مذاكر كل يوم.
             )
-          else
+          else ...[
             for (final c in past) _ChallengeTile(challenge: c),
+            for (final result in _orphanResults(past, results))
+              _ResultTile(result: result),
+          ],
         ],
       ),
     );
+  }
+
+  /// Results whose challenge is no longer in the local list, e.g. after the
+  /// app restarts and only the persisted results remain.
+  List<ChallengeResult> _orphanResults(
+    List<Challenge> past,
+    List<ChallengeResult> results,
+  ) {
+    final ids = {for (final c in past) c.id};
+    return results
+        .where((r) => !ids.contains(r.challengeId))
+        .take(10)
+        .toList(growable: false);
   }
 
   /// Opens a direct challenge: a six-character room code the user can send
@@ -221,7 +237,12 @@ class _DailyChallengeCard extends ConsumerWidget {
         break;
       }
     }
-    final done = daily?.over ?? false;
+    final results = ref.watch(challengeResultsProvider);
+    final dailyId = daily?.id;
+    final done =
+        daily != null &&
+        (daily.over ||
+            results.any((r) => r.challengeId == dailyId));
 
     return Container(
       padding: const EdgeInsets.all(ZakerSpacing.lg),
@@ -301,6 +322,67 @@ class _DailyChallengeCard extends ConsumerWidget {
     ref.read(quizTimeLimitProvider.notifier).state =
         challenge.timeLimitSeconds > 0 ? challenge.timeLimitSeconds : null;
     context.push(ZakerRoutes.quiz);
+  }
+}
+
+/// A recorded result, kept for challenges whose local entry is gone (the
+/// list is not persisted, but the results are).
+class _ResultTile extends StatelessWidget {
+  const _ResultTile({required this.result});
+
+  final ChallengeResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final date = result.finishedAt;
+    final stamp = date == null
+        ? ''
+        : '${date.year}/${date.month.toString().padLeft(2, '0')}/'
+              '${date.day.toString().padLeft(2, '0')}';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: ZakerSpacing.sm),
+      child: Container(
+        padding: const EdgeInsets.all(ZakerSpacing.md),
+        decoration: BoxDecoration(
+          color: theme.cardTheme.color,
+          borderRadius: ZakerRadius.card,
+          border: Border.all(
+            color: theme.dividerTheme.color ?? Colors.black12,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.emoji_events_outlined, color: ZakerColors.accent),
+            const SizedBox(width: ZakerSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TrText(
+                    '${result.correct} من ${result.total} صح',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  TrText(
+                    stamp,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            StatChip(
+              value: '${result.score}',
+              label: 'نقطة',
+              icon: Icons.stars_outlined,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
