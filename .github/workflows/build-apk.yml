@@ -100,6 +100,31 @@ jobs:
           PY
           grep -n "isCoreLibraryDesugaringEnabled\|coreLibraryDesugaring" android/app/build.gradle.kts
 
+      # AGP 9 rejects an explicit android:extractNativeLibs="true" in the
+      # manifest.  The recovered manifest sets it (the original APK extracts
+      # its .so files at install time); the supported equivalent is legacy
+      # JNI packaging in the app's build script.
+      - name: Configure legacy JNI packaging
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('android/app/build.gradle.kts')
+          text = path.read_text()
+          if 'useLegacyPackaging' not in text:
+              text += '''
+          android {
+              packaging {
+                  jniLibs {
+                      useLegacyPackaging = true
+                  }
+              }
+          }
+          '''
+              path.write_text(text)
+          PY
+          grep -n "useLegacyPackaging" android/app/build.gradle.kts
+
       # Several plugin releases still compile against android-34, but
       # flutter_plugin_android_lifecycle now requires consumers to compile
       # against android-36 (AGP's AAR metadata check fails the build
