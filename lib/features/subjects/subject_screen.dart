@@ -106,6 +106,12 @@ class _SubjectScreenState extends ConsumerState<SubjectScreen> {
       readLessons: read,
       track: track,
     );
+    var readCount = 0;
+    for (final book in books) {
+      for (var lesson = 1; lesson <= book.lessons; lesson++) {
+        if (read.contains('${grade.id}/${book.id}/$lesson')) readCount++;
+      }
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -196,7 +202,7 @@ class _SubjectScreenState extends ConsumerState<SubjectScreen> {
         const SizedBox(height: ZakerSpacing.xl),
         TrText(
           'نسبة إنجاز ${subject.title}: ${(progress * 100).round()}% — '
-          '${read.length} درس مقروء على جهازك.',
+          '${readCount} درس مقروء على جهازك.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -259,19 +265,22 @@ class _SubjectScreenState extends ConsumerState<SubjectScreen> {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Row(
-          children: [
-            const SizedBox(
-              width: 26,
-              height: 26,
-              child: CircularProgressIndicator(strokeWidth: 3),
-            ),
-            const SizedBox(width: ZakerSpacing.lg),
-            Expanded(
-              child: TrText('بنجهز أسئلة من كتب ${subject.title}…'),
-            ),
-          ],
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Row(
+            children: [
+              const SizedBox(
+                width: 26,
+                height: 26,
+                child: CircularProgressIndicator(strokeWidth: 3),
+              ),
+              const SizedBox(width: ZakerSpacing.lg),
+              Expanded(
+                child: TrText('بنجهز أسئلة من كتب ${subject.title}…'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -466,25 +475,22 @@ class _SubjectHeader extends StatelessWidget {
                 const SizedBox(height: ZakerSpacing.lg),
                 Row(
                   children: [
-                    StatChip(
+                    _GlassStat(
                       value: '$books',
                       label: 'كتاب',
                       icon: Icons.library_books_outlined,
-                      color: Colors.white,
                     ),
                     const SizedBox(width: ZakerSpacing.sm),
-                    StatChip(
+                    _GlassStat(
                       value: '$lessons',
                       label: 'درس',
                       icon: Icons.play_lesson_outlined,
-                      color: Colors.white,
                     ),
                     const SizedBox(width: ZakerSpacing.sm),
-                    StatChip(
+                    _GlassStat(
                       value: '${(progress * 100).round()}%',
                       label: 'إنجاز',
                       icon: Icons.trending_up_rounded,
-                      color: Colors.white,
                     ),
                   ],
                 ),
@@ -499,6 +505,54 @@ class _SubjectHeader extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A translucent stat pill for use on top of the coloured header gradient.
+class _GlassStat extends StatelessWidget {
+  const _GlassStat({
+    required this.value,
+    required this.label,
+    required this.icon,
+  });
+
+  final String value;
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(ZakerRadius.pill),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.9)),
+          const SizedBox(width: 5),
+          TrText(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 4),
+          TrText(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.82),
+              fontSize: 10.5,
             ),
           ),
         ],

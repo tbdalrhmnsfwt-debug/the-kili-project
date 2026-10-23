@@ -381,22 +381,68 @@ class _CurriculumHeader extends StatelessWidget {
                 const SizedBox(height: ZakerSpacing.md),
                 Row(
                   children: [
-                    StatChip(
+                    _GlassStat(
                       value: '$subjects',
                       label: 'مادة',
                       icon: Icons.auto_stories_outlined,
-                      color: Colors.white,
                     ),
                     const SizedBox(width: ZakerSpacing.sm),
-                    StatChip(
+                    _GlassStat(
                       value: '$lessons',
                       label: 'درس',
                       icon: Icons.play_lesson_outlined,
-                      color: Colors.white,
                     ),
                   ],
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A translucent stat pill for use on top of the teal hero gradient.
+class _GlassStat extends StatelessWidget {
+  const _GlassStat({
+    required this.value,
+    required this.label,
+    required this.icon,
+  });
+
+  final String value;
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(ZakerRadius.pill),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.9)),
+          const SizedBox(width: 5),
+          TrText(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 4),
+          TrText(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.82),
+              fontSize: 10.5,
             ),
           ),
         ],
