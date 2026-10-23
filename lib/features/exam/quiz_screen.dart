@@ -363,26 +363,26 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
 
       if (challenge != null) {
         final now = DateTime.now();
+        Challenge finished(Challenge c) => Challenge(
+          id: c.id,
+          title: c.title,
+          kind: c.kind,
+          status: ChallengeStatus.finished,
+          code: c.code,
+          questionCount: c.questionCount,
+          timeLimitSeconds: c.timeLimitSeconds,
+          points: c.points,
+          hostName: c.hostName,
+          joinedBy: c.joinedBy,
+          createdAt: c.createdAt,
+          finishedAt: now,
+        );
         final challenges = ref.read(challengesProvider);
+        final known = challenges.any((c) => c.id == challenge.id);
         ref.read(challengesProvider.notifier).state = [
           for (final c in challenges)
-            if (c.id == challenge.id)
-              Challenge(
-                id: c.id,
-                title: c.title,
-                kind: c.kind,
-                status: ChallengeStatus.finished,
-                code: c.code,
-                questionCount: c.questionCount,
-                timeLimitSeconds: c.timeLimitSeconds,
-                points: c.points,
-                hostName: c.hostName,
-                joinedBy: c.joinedBy,
-                createdAt: c.createdAt,
-                finishedAt: now,
-              )
-            else
-              c,
+            if (c.id == challenge.id) finished(c) else c,
+          if (!known) finished(challenge),
         ];
         ref.read(activeChallengeProvider.notifier).state = null;
       }

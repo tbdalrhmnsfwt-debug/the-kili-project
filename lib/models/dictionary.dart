@@ -118,36 +118,6 @@ class ReferenceList {
   }
 }
 
-/// Data source tags for phrases.
-///
-/// The upstream dataset tags each phrase with `src`, whose observed values
-/// are `both` (agreement between two corpora) and single-corpus tags.
-enum PhraseSource { both, single, unknown }
-
-/// One phrase occurrence (`t` + alignment metadata).
-class Phrase {
-  const Phrase({
-    required this.text,
-    required this.startSurah,
-    required this.startAya,
-    required this.endSurah,
-    required this.endAya,
-    required this.source,
-    required this.tier,
-  });
-
-  final String text;
-  final String startSurah;
-  final int startAya;
-  final String endSurah;
-  final int endAya;
-  final PhraseSource source;
-  final String tier; // A / B / C
-
-  @override
-  String toString() => '$text $startSurah:${startAya}-$endSurah:$endAya';
-}
-
 /// One repeated phrase and the verses it appears in.
 class MutashabihatPhrase {
   const MutashabihatPhrase({required this.text, required this.refs});
@@ -279,39 +249,4 @@ class MutashabihatData {
   Map<String, int> get occurrenceTiersCount => occurrenceTiers;
   Map<String, int> get similarTiersCount => similarTiers;
 
-  static List<Phrase> parsePhrases(File file) {
-    final decoded = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-    final out = <Phrase>[];
-    for (final p in (decoded['phrases'] as List?) ?? const []) {
-      final m = p as Map<String, dynamic>;
-      out.add(
-        Phrase(
-          text: m['t'] as String? ?? '',
-          startSurah: m['surah'] as String? ?? '',
-          startAya:
-              (m['start_aya'] as num?)?.toInt() ??
-              (m['startAya'] as num?)?.toInt() ??
-              0,
-          endSurah: m['end_surah'] as String? ?? '',
-          endAya:
-              (m['end_aya'] as num?)?.toInt() ??
-              (m['endAya'] as num?)?.toInt() ??
-              0,
-          source: switch (m['src'] as String? ?? '') {
-            'both' => PhraseSource.both,
-            '' => PhraseSource.unknown,
-            _ => PhraseSource.single,
-          },
-          tier: m['tier'] as String? ?? 'B',
-        ),
-      );
-    }
-    return out;
-  }
-
-  static List<Map<String, dynamic>> parsePairs(File file) {
-    final decoded = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-    return (decoded['pairs'] as List?)?.cast<Map<String, dynamic>>() ??
-        const [];
-  }
 }
