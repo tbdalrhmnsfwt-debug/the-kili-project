@@ -2,8 +2,9 @@ package com.zaker.zaker_ai.widgets
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
-import android.graphics.Color
+import android.content.SharedPreferences
 import android.widget.RemoteViews
+import com.zaker.zaker_ai.R
 import es.antonborri.home_widget.HomeWidgetProvider
 
 /**
@@ -31,7 +32,7 @@ abstract class ZakerWidgetProvider : HomeWidgetProvider() {
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray,
-        widgetData: android.os.Bundle,
+        widgetData: SharedPreferences,
     ) {
         val items = items(context)
 

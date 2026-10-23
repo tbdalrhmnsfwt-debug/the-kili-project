@@ -3,6 +3,7 @@ package com.zaker.zaker_ai
 import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
 /**
  * The app's single activity.
@@ -18,7 +19,7 @@ class MainActivity : FlutterActivity() {
 
         // The AI job service mirrors Dart-side progress into its
         // notification.  Dart pushes updates through this channel.
-        flutterEngine.dartExecutor.binaryMessenger
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AI_JOBS_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "startAiJob" -> {
@@ -57,5 +58,10 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         // Keep the screen on while a focus session or a recording is running.
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    companion object {
+        /** Channel used by Dart to drive the AI-job notification. */
+        const val AI_JOBS_CHANNEL = "zaker/ai_jobs"
     }
 }
