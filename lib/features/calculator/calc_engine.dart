@@ -403,6 +403,8 @@ String formatCalc(double value, {int? fix, bool asFraction = false}) {
 
 /// Returns `n/d` when [value] is close to a simple rational number.
 String? _asFraction(double value) {
+  // Keep away from int range limits: huge results are shown exponentially.
+  if (!value.isFinite || value.abs() >= 1e12) return null;
   if (value == value.roundToDouble()) return value.round().toString();
   final sign = value < 0 ? -1 : 1;
   final target = value.abs();
