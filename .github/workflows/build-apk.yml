@@ -100,6 +100,42 @@ jobs:
           PY
           grep -n "isCoreLibraryDesugaringEnabled\|coreLibraryDesugaring" android/app/build.gradle.kts
 
+      # Several plugin releases still compile against android-34, but
+      # flutter_plugin_android_lifecycle now requires consumers to compile
+      # against android-36 (AGP's AAR metadata check fails the build
+      # otherwise). Raise every cached plugin module's compileSdk; bumping
+      # compileSdk does not change targetSdk or minSdk behaviour.
+      - name: Raise plugin compileSdk to 36
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          cache = Path(os.environ.get('PUB_CACHE', Path.home() / '.pub-cache'))
+          plugin_dirs = cache / 'hosted' / 'pub.dev'
+          pattern = re.compile(r'(compileSdk(?:Version)?\s*[= ]\s*)(\d+)')
+
+          changed = []
+          for name in ('build.gradle', 'build.gradle.kts'):
+              for gradle in sorted(plugin_dirs.glob(f'*/android/{name}')):
+                  text = gradle.read_text()
+                  new = pattern.sub(
+                      lambda m: m.group(1) + str(max(int(m.group(2)), 36)),
+                      text,
+                  )
+                  if new != text:
+                      gradle.write_text(new)
+                      changed.append(gradle)
+          if not changed:
+              raise SystemExit('no plugin build files were updated')
+          for gradle in changed:
+              print(f'compileSdk -> 36: {gradle}')
+          PY
+          grep -R -n -E "compileSdk(Version)?[ =]+3[0-5]\b" \
+            "${PUB_CACHE:-$HOME/.pub-cache}/hosted/pub.dev"/*/android/build.gradle* \
+            && echo 'still below 36' >&2 && exit 1 || true
+
       # flutter_tesseract_ocr 0.4.31 (the latest release) still declares
       # `jcenter()`, which Gradle 9 removed, and pins AGP 7.1.2 in its own
       # buildscript, which is too old for Gradle 9. Point it at Maven Central
