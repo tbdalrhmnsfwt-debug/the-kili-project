@@ -152,10 +152,11 @@ jobs:
                   if new != text:
                       gradle.write_text(new)
                       changed.append(gradle)
-          if not changed:
-              raise SystemExit('no plugin build files were updated')
-          for gradle in changed:
-              print(f'compileSdk -> 36: {gradle}')
+          if changed:
+              for gradle in changed:
+                  print(f'compileSdk -> 36: {gradle}')
+          else:
+              print('all plugin build files already compile against 36+')
           PY
           grep -R -n -E "compileSdk(Version)?[ =]+3[0-5]\b" \
             "${PUB_CACHE:-$HOME/.pub-cache}/hosted/pub.dev"/*/android/build.gradle* \
