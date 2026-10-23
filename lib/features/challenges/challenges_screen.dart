@@ -39,6 +39,7 @@ class ChallengesScreen extends ConsumerWidget {
     final results = ref.watch(challengeResultsProvider);
     final live = challenges.where((c) => !c.over).toList();
     final past = challenges.where((c) => c.over).toList();
+    final orphanResults = _orphanResults(past, results);
 
     return Scaffold(
       appBar: AppBar(title: const TrText('تحديات')),
@@ -99,7 +100,7 @@ class ChallengesScreen extends ConsumerWidget {
             title: ZakerStrings.s_3cdfa, // تحديات سابقة
             icon: Icons.history_rounded,
           ),
-          if (past.isEmpty && results.isEmpty)
+          if (past.isEmpty && orphanResults.isEmpty)
             const EmptyState(
               icon: Icons.flag_outlined,
               title: 'مفيش تحديات سابقة',
@@ -107,8 +108,7 @@ class ChallengesScreen extends ConsumerWidget {
             )
           else ...[
             for (final c in past) _ChallengeTile(challenge: c),
-            for (final result in _orphanResults(past, results))
-              _ResultTile(result: result),
+            for (final result in orphanResults) _ResultTile(result: result),
           ],
         ],
       ),
@@ -123,7 +123,12 @@ class ChallengesScreen extends ConsumerWidget {
   ) {
     final ids = {for (final c in past) c.id};
     return results
-        .where((r) => !ids.contains(r.challengeId))
+        // `quiz-…` ids come from ordinary quiz runs, not challenges.
+        .where(
+          (r) =>
+              !r.challengeId.startsWith('quiz-') &&
+              !ids.contains(r.challengeId),
+        )
         .take(10)
         .toList(growable: false);
   }
