@@ -91,7 +91,6 @@ class _AdhkarScreenState extends ConsumerState<AdhkarScreen> {
                 ZakerStrings.s_85ae2, // تسبيحات
                 ZakerStrings.s_6f49f, // أذكار الصباح
                 ZakerStrings.s_13ecd, // أذكار المساء
-                ZakerStrings.s_b62a3, // أذكار النوم
               ],
               selected: _selectedLabel,
               onSelected: _onChip,

@@ -16,6 +16,7 @@ import '../../core/theme.dart';
 import 'adhkar_screen.dart';
 import 'mutashabihat_screen.dart';
 import 'tasbih_screen.dart';
+import '../home/shell_screen.dart';
 import '../../widgets/tr_text.dart';
 
 /// The Quran tab.
@@ -27,7 +28,10 @@ class QuranHomeScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const TrText('القرآن الكريم')),
+      appBar: AppBar(
+        leading: shellMenuLeading(context),
+        title: const TrText('القرآن الكريم'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
@@ -36,6 +40,7 @@ class QuranHomeScreen extends ConsumerWidget {
             subtitle: ZakerStrings.s_336bc, // المصحف كامل — واستمع بصوت الشيخ
             icon: Icons.headphones_rounded,
             color: theme.colorScheme.primary,
+            comingSoon: true,
           ),
           const SizedBox(height: ZakerSpacing.md),
           _Hero(
@@ -75,6 +80,7 @@ class QuranHomeScreen extends ConsumerWidget {
             subtitle: ZakerStrings.s_b1145, // ترتيل هادئ
             icon: Icons.record_voice_over_rounded,
             color: theme.colorScheme.secondary,
+            comingSoon: true,
           ),
           const SizedBox(height: ZakerSpacing.md),
           _Hero(
@@ -82,6 +88,7 @@ class QuranHomeScreen extends ConsumerWidget {
             subtitle: ZakerStrings.s_bb6ef, // بنجهز المصحف…
             icon: Icons.auto_stories_rounded,
             color: theme.colorScheme.tertiary,
+            comingSoon: true,
           ),
         ],
       ),
@@ -97,6 +104,7 @@ class _Hero extends StatelessWidget {
     required this.icon,
     required this.color,
     this.onTap,
+    this.comingSoon = false,
   });
 
   final String title;
@@ -105,13 +113,24 @@ class _Hero extends StatelessWidget {
   final Color color;
   final VoidCallback? onTap;
 
+  /// Shows a «قريبًا» badge until the feature's data is wired up.
+  final bool comingSoon;
+
+  void _showSoon(BuildContext context) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: TrText('الأداة دي هتتضاف قريب إن شاء الله.')),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: comingSoon ? () => _showSoon(context) : onTap,
         borderRadius: BorderRadius.circular(ZakerRadius.lg),
         child: Container(
           padding: const EdgeInsets.all(ZakerSpacing.lg),
@@ -154,7 +173,26 @@ class _Hero extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_left_rounded),
+              if (comingSoon)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: TrText(
+                    'قريبًا',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              else
+                const Icon(Icons.chevron_left_rounded),
             ],
           ),
         ),

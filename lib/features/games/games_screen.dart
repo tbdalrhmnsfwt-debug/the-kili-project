@@ -20,6 +20,9 @@ import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 
+/// Option bullets: Arabic ordinal letters, not consecutive Unicode letters.
+const List<String> _optionLetters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و'];
+
 /// The games map: pick a game, play it, collect stars and coins.
 class GamesScreen extends ConsumerWidget {
   const GamesScreen({super.key});
@@ -89,18 +92,19 @@ class _ProfileCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.md),
-          Row(
+          Wrap(
+            spacing: ZakerSpacing.sm,
+            runSpacing: ZakerSpacing.sm,
             children: [
               StatChip(
                 value: '${profile.stars}',
-                label: ZakerStrings.s_cc68d, // شاراتك ونجومك
+                label: 'نجومك',
                 icon: Icons.star_rounded,
                 color: Colors.white,
               ),
-              const SizedBox(width: ZakerSpacing.sm),
               StatChip(
                 value: '${profile.coins}',
-                label: ZakerStrings.s_9d028, // ورا كل صندوق مفاجأة…
+                label: 'عملاتك',
                 icon: Icons.monetization_on_rounded,
                 color: Colors.white,
               ),
@@ -144,62 +148,84 @@ class _GameStopTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: ZakerRadius.card,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => GamePlayScreen(kind: stop.kind, title: stop.title),
-          ),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(ZakerSpacing.md),
-          decoration: BoxDecoration(
-            color: theme.cardTheme.color,
-            borderRadius: ZakerRadius.card,
-            border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(ZakerSpacing.sm),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(ZakerRadius.sm),
-                ),
-                child: Icon(
-                  _iconFor(stop.kind),
-                  color: theme.colorScheme.primary,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: ZakerSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TrText(
-                      stop.title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
+    return Opacity(
+      opacity: hasBank ? 1 : 0.62,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: ZakerRadius.card,
+          onTap: hasBank
+              ? () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        GamePlayScreen(kind: stop.kind, title: stop.title),
+                  ),
+                )
+              : () {
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      const SnackBar(
+                        content: TrText(
+                          'اللعبة محتاجة بنك أسئلة — افتح أي درس وحمّل أسئلته الأول.',
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    TrText(
-                      stop.subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+                    );
+                },
+          child: Container(
+            padding: const EdgeInsets.all(ZakerSpacing.md),
+            decoration: BoxDecoration(
+              color: theme.cardTheme.color,
+              borderRadius: ZakerRadius.card,
+              border: Border.all(
+                color: theme.dividerTheme.color ?? Colors.black12,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(ZakerSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(ZakerRadius.sm),
+                  ),
+                  child: Icon(
+                    _iconFor(stop.kind),
+                    color: theme.colorScheme.primary,
+                    size: 24,
+                  ),
                 ),
-              ),
-              Icon(
-                Icons.play_arrow_rounded,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ],
+                const SizedBox(width: ZakerSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TrText(
+                        stop.title,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      TrText(
+                        hasBank
+                            ? stop.subtitle
+                            : 'محتاج بنك أسئلة من أي درس الأول',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  hasBank
+                      ? Icons.play_arrow_rounded
+                      : Icons.lock_outline_rounded,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -313,7 +339,7 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
                     state: _optionState(i),
                     onTap: _revealed ? null : () => _pick(i),
                   ),
-                  const SizedBox(width: ZakerSpacing.sm),
+                  const SizedBox(height: ZakerSpacing.sm),
                 ],
                 const SizedBox(height: ZakerSpacing.md),
                 if (_revealed)
@@ -495,7 +521,7 @@ class _OptionTile extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: TrText(
-                  String.fromCharCode(0x0623 + index),
+                  _optionLetters[index % _optionLetters.length],
                   style: TextStyle(
                     color: border,
                     fontWeight: FontWeight.w800,
@@ -546,18 +572,19 @@ class _Results extends StatelessWidget {
             ),
           ),
           const SizedBox(height: ZakerSpacing.lg),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            spacing: ZakerSpacing.sm,
+            runSpacing: ZakerSpacing.sm,
+            alignment: WrapAlignment.center,
             children: [
               StatChip(
                 value: '${session.stars}',
-                label: ZakerStrings.s_cc68d,
+                label: 'نجوم',
                 icon: Icons.star_rounded,
               ),
-              const SizedBox(width: ZakerSpacing.sm),
               StatChip(
                 value: '${session.coins}',
-                label: ZakerStrings.s_9d028,
+                label: 'عملات',
                 icon: Icons.monetization_on_rounded,
               ),
             ],

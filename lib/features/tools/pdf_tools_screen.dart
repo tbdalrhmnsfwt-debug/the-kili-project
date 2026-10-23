@@ -493,49 +493,59 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
   void _showSheetDetail(AiOutput sheet) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(ZakerSpacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TrText(
+                        sheet.title,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'حذف',
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      onPressed: () {
+                        final outputs = ref.read(aiOutputsProvider);
+                        ref.read(aiOutputsProvider.notifier).state = outputs
+                            .where((o) => o.id != sheet.id)
+                            .toList();
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+                const Divider(),
+                const SizedBox(height: ZakerSpacing.sm),
+                Flexible(
+                  child: SingleChildScrollView(
                     child: TrText(
-                      sheet.title,
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      sheet.preview.isEmpty ? 'مفيش تفاصيل' : sheet.preview,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'حذف',
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    onPressed: () {
-                      final outputs = ref.read(aiOutputsProvider);
-                      ref.read(aiOutputsProvider.notifier).state = outputs
-                          .where((o) => o.id != sheet.id)
-                          .toList();
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              ),
-              const Divider(),
-              const SizedBox(height: ZakerSpacing.sm),
-              TrText(
-                sheet.preview.isEmpty ? 'مفيش تفاصيل' : sheet.preview,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-              ),
-              const SizedBox(height: ZakerSpacing.lg),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const TrText('تم'),
-              ),
-            ],
+                const SizedBox(height: ZakerSpacing.lg),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const TrText('تم'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -576,7 +586,7 @@ class _ToolGrid extends StatelessWidget {
         crossAxisCount: 3,
         mainAxisSpacing: ZakerSpacing.sm,
         crossAxisSpacing: ZakerSpacing.sm,
-        childAspectRatio: 1.15,
+        childAspectRatio: 0.95,
       ),
       itemCount: _tools.length,
       itemBuilder: (context, index) {

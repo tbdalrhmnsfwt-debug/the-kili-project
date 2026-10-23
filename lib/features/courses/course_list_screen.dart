@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../models/manhaji.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../home/shell_screen.dart';
 import '../lesson/book_lessons_screen.dart';
 import '../../widgets/tr_text.dart';
 
@@ -70,6 +71,7 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: shellMenuLeading(context),
         title: const TrText('المواد'),
         actions: [
           IconButton(

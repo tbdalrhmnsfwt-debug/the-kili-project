@@ -150,7 +150,7 @@ class _WeekBanner extends StatelessWidget {
               const SizedBox(width: ZakerSpacing.sm),
               StatChip(
                 value: '${report.totalPoints}',
-                label: ZakerStrings.s_0_1_b7157, // {0} نقطة • الأسبوع ده {1}
+                label: 'نقاطك',
                 icon: Icons.star_rounded,
                 color: Colors.white,
               ),
@@ -194,7 +194,7 @@ class _NumbersGrid extends StatelessWidget {
             Expanded(
               child: StatChip(
                 value: report.averageMinutes.toStringAsFixed(0),
-                label: ZakerStrings.s_0_c7b5c, // متوسط أسبوعك {0} دقيقة
+                label: 'متوسط يومي',
                 icon: Icons.timelapse_rounded,
               ),
             ),

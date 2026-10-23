@@ -249,8 +249,8 @@ class _Node extends StatelessWidget {
     final isRoot = depth == 0;
 
     return Padding(
-      padding: EdgeInsets.only(
-        left: depth * ZakerSpacing.lg,
+      padding: EdgeInsetsDirectional.only(
+        start: depth * ZakerSpacing.lg,
         bottom: ZakerSpacing.sm,
       ),
       child: Column(

@@ -133,7 +133,7 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
             ),
             child: _target.text.isEmpty && !_busy
                 ? TrText(
-                    ZakerStrings.s_b9628, // جاري الترجمة بالذكاء الاصطناعي…
+                    ZakerStrings.s_ab238, // اكتب أو الصق النص اللي عايز تترجمه الأول.
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -173,7 +173,7 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
                         ),
                       );
                     },
-                    child: TrText(ZakerStrings.s_1a4ff), // خبي الترجمة
+                    child: const TrText('انسخ الترجمة'),
                   ),
                 ),
               ],

@@ -37,6 +37,9 @@ class _WhiteboardScreenState extends ConsumerState<WhiteboardScreen> {
   double _progress = 0;
   String? _error;
 
+  /// The narrator picked for the render.
+  String _voice = 'فهيم';
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -61,13 +64,19 @@ class _WhiteboardScreenState extends ConsumerState<WhiteboardScreen> {
             ),
           ),
           const SizedBox(height: ZakerSpacing.lg),
-          const _VoicePicker(),
+          _VoicePicker(
+            selected: _voice,
+            onSelected: (voice) => setState(() => _voice = voice),
+          ),
           const SizedBox(height: ZakerSpacing.lg),
           const SectionHeader(
             title: ZakerStrings.s_b055a, // الصوت ده للفيديو والمدرس والسبورة…
             icon: Icons.record_voice_over_rounded,
           ),
-          const _VoiceGrid(),
+          _VoiceGrid(
+            selected: _voice,
+            onSelected: (voice) => setState(() => _voice = voice),
+          ),
           const SizedBox(height: ZakerSpacing.xl),
           FilledButton.icon(
             onPressed: _progress > 0 && _progress < 1 ? null : _render,
@@ -102,6 +111,9 @@ class _WhiteboardScreenState extends ConsumerState<WhiteboardScreen> {
     final ai = ref.read(aiServiceProvider);
     final title = widget.lessonTitle ?? ZakerStrings.s_95410;
     final text = widget.lessonText ?? '';
+    final prompt = text.isEmpty
+        ? '${ZakerStrings.s_ddb1c}\n\nالصوت: $_voice'
+        : '${ZakerStrings.s_ddb1c}\n\n$text\n\nالصوت: $_voice';
 
     setState(() {
       _progress = 0;
@@ -114,12 +126,7 @@ class _WhiteboardScreenState extends ConsumerState<WhiteboardScreen> {
         title: title,
         work: (onProgress) async {
           onProgress(0.25);
-          await ai.ask(
-            text.isEmpty
-                ? ZakerStrings.s_ddb1c // اشرح الدرس على السبورة
-                : '${ZakerStrings.s_ddb1c}\n\n$text',
-            subject: title,
-          );
+          await ai.ask(prompt, subject: title);
           onProgress(0.75);
         },
       );
@@ -190,23 +197,27 @@ class _HeroCard extends StatelessWidget {
 
 /// The narrator voice the lesson will be spoken in.
 class _VoicePicker extends StatelessWidget {
-  const _VoicePicker();
+  const _VoicePicker({required this.selected, required this.onSelected});
+
+  final String selected;
+  final ValueChanged<String> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return const ChipStrip(
-      items: ['فهيم', 'نور', 'كريم', 'سلمى'],
-      selected: 'فهيم',
-      onSelected: _noop,
+    return ChipStrip(
+      items: const ['فهيم', 'نور', 'كريم', 'سلمى'],
+      selected: selected,
+      onSelected: onSelected,
     );
   }
-
-  static void _noop(String _) {}
 }
 
 /// The voice list the user picks from.
 class _VoiceGrid extends StatelessWidget {
-  const _VoiceGrid();
+  const _VoiceGrid({required this.selected, required this.onSelected});
+
+  final String selected;
+  final ValueChanged<String> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -228,9 +239,15 @@ class _VoiceGrid extends StatelessWidget {
           runSpacing: ZakerSpacing.sm,
           children: [
             for (final voice in const ['فهيم', 'نور', 'كريم', 'سلمى'])
-              Chip(
-                avatar: const Icon(Icons.record_voice_over_rounded, size: 16),
+              ChoiceChip(
+                avatar: Icon(
+                  Icons.record_voice_over_rounded,
+                  size: 16,
+                  color: voice == selected ? theme.colorScheme.primary : null,
+                ),
                 label: TrText(voice),
+                selected: voice == selected,
+                onSelected: (_) => onSelected(voice),
               ),
           ],
         ),

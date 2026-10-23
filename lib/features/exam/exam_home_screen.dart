@@ -11,6 +11,7 @@ import '../../models/exam.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
+import '../home/shell_screen.dart';
 
 /// The exams tab.
 class ExamHomeScreen extends ConsumerWidget {
@@ -22,7 +23,10 @@ class ExamHomeScreen extends ConsumerWidget {
     final session = ref.watch(examSessionProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const TrText('الاختبارات')),
+      appBar: AppBar(
+        leading: shellMenuLeading(context),
+        title: const TrText('الاختبارات'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [

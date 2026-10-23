@@ -185,10 +185,14 @@ class _Card extends StatelessWidget {
           borderRadius: ZakerRadius.card,
           border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             Center(
               child: Chip(
                 label: TrText(card.kind.arabicLabel),
@@ -247,8 +251,11 @@ class _Card extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-            ],
-          ],
+                  ],
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

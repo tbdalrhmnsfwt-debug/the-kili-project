@@ -63,11 +63,12 @@ class ZakerRadius {
   static const double sm = 8;
   static const double md = 14;
   static const double lg = 20;
+  static const double xl = 28;
   static const double pill = 999;
 
   static const BorderRadius card = BorderRadius.all(Radius.circular(md));
   static const BorderRadius sheet = BorderRadius.vertical(
-    top: Radius.circular(lg),
+    top: Radius.circular(26),
   );
 }
 
@@ -76,7 +77,11 @@ class ZakerTheme {
   const ZakerTheme._();
 
   static const String fontUi = 'Cairo';
-  static const String fontBody = 'Tajawal';
+
+  /// Body copy uses the same family as headings so the approved mockup keeps
+  /// a single, consistent typographic voice. (The recovered APK also ships
+  /// Tajawal; it stays bundled for PDF embedding.)
+  static const String fontBody = 'Cairo';
   static const String fontQuran = 'Amiri';
 
   static ThemeData light() => _build(Brightness.light);

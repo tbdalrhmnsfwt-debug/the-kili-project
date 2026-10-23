@@ -72,9 +72,11 @@ class NotebooksScreen extends ConsumerWidget {
             title: 'أدوات النوتة',
             icon: Icons.auto_awesome_rounded,
             actionLabel: 'المزيد',
-            onAction: () => _showTools(context),
+            onAction: () => _showTools(context, ref),
           ),
-          const _NotebookTypeChips(),
+          _NotebookTypeChips(
+            onPick: (variant) => _createFromTemplate(context, ref, variant),
+          ),
           const SizedBox(height: ZakerSpacing.lg),
           FeatureTile(
             title: 'تحدث مع النوتة',
@@ -137,31 +139,100 @@ class NotebooksScreen extends ConsumerWidget {
     );
   }
 
+  /// The body pre-filled into a notebook created from [variant].
+  static const Map<String, String> _templates = {
+    'ملاحظاتك السريعة': '',
+    'ملاحظاتك السريعة اليومية':
+        'تاريخ اليوم:\n\nالمهام:\n- \n\nملاحظات:\n',
+    'ملاحظات لاصقة':
+        'فكرة سريعة:\n\n\nمهم:\n',
+    'ملاحظات كورنيل':
+        'السؤال أو الفكرة الرئيسية:\n\n\nالملاحظات:\n\n\nالخلاصة:\n',
+    'النوتة الذكية':
+        'الفكرة:\n\nشرح مبسط:\n\nأسئلة للمراجعة:\n1. \n',
+  };
+
+  /// Creates a notebook from one of the note templates and opens it.
+  void _createFromTemplate(
+    BuildContext context,
+    WidgetRef ref,
+    String variant,
+  ) {
+    final id = 'nb-${DateTime.now().millisecondsSinceEpoch}';
+    final template = _templates[variant] ?? '';
+    final notebooks = ref.read(notebooksProvider);
+    ref.read(notebooksProvider.notifier).state = [
+      Notebook(
+        id: id,
+        subject: variant,
+        createdAt: DateTime.now(),
+        pages: template.isEmpty
+            ? null
+            : [
+                NotebookPage(
+                  id: '$id-page-1',
+                  title: variant,
+                  body: template,
+                  createdAt: DateTime.now(),
+                ),
+              ],
+      ),
+      ...notebooks,
+    ];
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => NotebookEditorScreen(notebookId: id),
+      ),
+    );
+  }
+
   /// Shows the notebook tools sheet.
-  void _showTools(BuildContext context) {
+  void _showTools(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => SafeArea(
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final tool in const [
-              ('نظم النوتة', Icons.sort_rounded),
-              ('ملاحظاتك السريعة', Icons.bolt_rounded),
-              ('ملاحظات لاصقة', Icons.sticky_note_2_outlined),
-              ('ملاحظات كورنيل', Icons.account_tree_outlined),
-              ('النوتة الذكية', Icons.auto_awesome_rounded),
-            ])
+            ListTile(
+              leading: const Icon(Icons.sort_rounded),
+              title: const TrText('نظم النوتة'),
+              subtitle: const TrText('رتّب النوتات حسب المادة'),
+              onTap: () {
+                final notebooks = [...ref.read(notebooksProvider)]
+                  ..sort((a, b) => a.subject.compareTo(b.subject));
+                ref.read(notebooksProvider.notifier).state = notebooks;
+                Navigator.of(sheetContext).pop();
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    const SnackBar(content: TrText('اتنظمت النوتات ✅')),
+                  );
+              },
+            ),
+            for (final entry in _templates.entries)
               ListTile(
-                leading: Icon(tool.$2),
-                title: TrText(tool.$1),
-                onTap: () => Navigator.of(context).pop(),
+                leading: Icon(_templateIcons[entry.key] ?? Icons.note_rounded),
+                title: TrText(entry.key),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _createFromTemplate(context, ref, entry.key);
+                },
               ),
           ],
         ),
       ),
     );
   }
+
+  static const Map<String, IconData> _templateIcons = {
+    'ملاحظاتك السريعة': Icons.bolt_rounded,
+    'ملاحظاتك السريعة اليومية': Icons.today_rounded,
+    'ملاحظات لاصقة': Icons.sticky_note_2_outlined,
+    'ملاحظات كورنيل': Icons.account_tree_outlined,
+    'النوتة الذكية': Icons.auto_awesome_rounded,
+  };
 }
 
 /// A single notebook card.
@@ -229,7 +300,9 @@ class _NotebookTile extends StatelessWidget {
 
 /// The set of notebook variants offered on this screen.
 class _NotebookTypeChips extends StatelessWidget {
-  const _NotebookTypeChips();
+  const _NotebookTypeChips({required this.onPick});
+
+  final ValueChanged<String> onPick;
 
   static const List<String> _variants = [
     'ملاحظاتك السريعة',
@@ -241,6 +314,10 @@ class _NotebookTypeChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChipStrip(items: _variants, selected: null, onSelected: (_) {});
+    return ChipStrip(
+      items: _variants,
+      selected: null,
+      onSelected: onPick,
+    );
   }
 }

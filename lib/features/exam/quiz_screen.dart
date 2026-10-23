@@ -16,6 +16,9 @@ import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 
+/// Option bullets: Arabic ordinal letters, not consecutive Unicode letters.
+const List<String> _optionLetters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و'];
+
 /// A question's four answer kinds, as listed in the app's UI strings:
 /// "اختيار من متعدد، صح وخطأ، أكمل، وع…".
 enum QuizQuestionType { multipleChoice, trueFalse, fillBlank, written }
@@ -334,7 +337,7 @@ class _OptionTile extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: TrText(
-                  String.fromCharCode(0x0623 + index),
+                  _optionLetters[index % _optionLetters.length],
                   style: TextStyle(
                     color: border,
                     fontWeight: FontWeight.w800,

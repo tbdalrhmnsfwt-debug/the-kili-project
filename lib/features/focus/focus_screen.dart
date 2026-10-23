@@ -8,6 +8,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
@@ -97,7 +98,51 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   }
 
   void _start(FocusPreset preset) {
-    final minutes = preset == FocusPreset.custom ? 30 : preset.minutes;
+    // A custom session asks for its length instead of silently using 30.
+    if (preset == FocusPreset.custom) {
+      _pickCustomDuration();
+      return;
+    }
+    _begin(preset, preset.minutes);
+  }
+
+  Future<void> _pickCustomDuration() async {
+    final controller = TextEditingController(text: '30');
+    final minutes = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const TrText('مدة مخصصة'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(
+            hintText: 'المدة بالدقايق',
+            suffixText: 'دقيقة',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const TrText('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text.trim()) ?? 30;
+              Navigator.of(dialogContext).pop(value.clamp(1, 240));
+            },
+            child: const TrText('ابدأ'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (minutes == null || !mounted) return;
+    _begin(FocusPreset.custom, minutes);
+  }
+
+  void _begin(FocusPreset preset, int minutes) {
     ref.read(focusSessionProvider.notifier).state = FocusSession(
       id: 'focus-${DateTime.now().millisecondsSinceEpoch}',
       preset: preset,

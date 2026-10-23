@@ -290,7 +290,9 @@ class _Bubble extends StatelessWidget {
     final theme = Theme.of(context);
     final isUser = message.isUser;
     return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isUser
+          ? AlignmentDirectional.centerStart
+          : AlignmentDirectional.centerEnd,
       child: Container(
         margin: const EdgeInsets.only(bottom: ZakerSpacing.md),
         padding: const EdgeInsets.symmetric(
@@ -302,11 +304,11 @@ class _Bubble extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: isUser ? theme.colorScheme.primary : theme.cardTheme.color,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(ZakerRadius.md),
-            topRight: const Radius.circular(ZakerRadius.md),
-            bottomLeft: Radius.circular(isUser ? ZakerRadius.md : 4),
-            bottomRight: Radius.circular(isUser ? 4 : ZakerRadius.md),
+          borderRadius: BorderRadiusDirectional.only(
+            topStart: const Radius.circular(ZakerRadius.md),
+            topEnd: const Radius.circular(ZakerRadius.md),
+            bottomStart: Radius.circular(isUser ? 4 : ZakerRadius.md),
+            bottomEnd: Radius.circular(isUser ? ZakerRadius.md : 4),
           ),
           border: isUser
               ? null

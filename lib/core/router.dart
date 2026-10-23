@@ -32,6 +32,8 @@ import '../features/recall/active_recall_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/subscription/subscription_screen.dart';
 import '../features/tasks/tasks_screen.dart';
+import '../features/tools/calculator_screen.dart';
+import '../features/tools/irab_screen.dart';
 import '../features/tools/pdf_tools_screen.dart';
 import '../features/tools/pdf_viewer_screen.dart';
 import '../features/tools/scan_screen.dart';
@@ -80,6 +82,8 @@ class ZakerRoutes {
   static const String pdfTools = '/pdf-tools';
   static const String pdfViewer = '/pdf-viewer';
   static const String scan = '/scan';
+  static const String calculator = '/calculator';
+  static const String irab = '/irab';
   static const String wallet = '/wallet';
   static const String achievements = '/achievements';
 
@@ -240,6 +244,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.scan,
       builder: (context, state) => const ScanScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.calculator,
+      builder: (context, state) => const CalculatorScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.irab,
+      builder: (context, state) => const IrabScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.wallet,
