@@ -8,11 +8,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
 
 import 'core/local_store.dart';
 import 'core/localization.dart';
 import 'core/notification_service.dart';
 import 'core/router.dart';
+import 'core/shad_theme.dart';
 import 'core/theme.dart';
 import 'providers/app_providers.dart';
 
@@ -66,11 +68,17 @@ class ZakerlyApp extends ConsumerWidget {
       builder: (context, child) {
         // The app is Arabic-first: force RTL for the Arabic locale.
         final locale = Localizations.localeOf(context);
+        // shadcn_ui components read their colours and typography from a
+        // ShadTheme; provide one that mirrors the active Material theme.
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Directionality(
           textDirection: locale.languageCode == 'ar'
               ? TextDirection.rtl
               : TextDirection.ltr,
-          child: child ?? const SizedBox.shrink(),
+          child: ShadTheme(
+            data: isDark ? ZakerShadTheme.dark() : ZakerShadTheme.light(),
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );

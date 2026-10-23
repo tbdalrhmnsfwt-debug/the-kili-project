@@ -151,8 +151,11 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: ZakerRoutes.chat,
-      builder: (context, state) =>
-          ChatScreen(subject: state.uri.queryParameters['subject']),
+      builder: (context, state) => ChatScreen(
+        subject: state.uri.queryParameters['subject'],
+        // The home search field hands its text over as `q`.
+        initialQuestion: state.uri.queryParameters['q'],
+      ),
     ),
     GoRoute(
       path: ZakerRoutes.recall,
