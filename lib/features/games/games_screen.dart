@@ -25,11 +25,31 @@ import '../../widgets/tr_text.dart';
 const List<String> _optionLetters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و'];
 
 /// The games map: pick a game, play it, collect stars and coins.
-class GamesScreen extends ConsumerWidget {
+class GamesScreen extends ConsumerStatefulWidget {
   const GamesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GamesScreen> createState() => _GamesScreenState();
+}
+
+class _GamesScreenState extends ConsumerState<GamesScreen> {
+  bool _preparing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Question banks live in memory, so build them on a fresh install and
+    // after a restart instead of showing a locked map.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(questionBanksProvider).isEmpty) {
+        _prepareBanks(auto: true);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profile = ref.watch(gameProfileProvider);
     final banks = ref.watch(questionBanksProvider);
 
@@ -54,7 +74,8 @@ class GamesScreen extends ConsumerWidget {
           const SizedBox(height: ZakerSpacing.md),
           if (banks.isEmpty) ...[
             _PrepareBankCard(
-              onPrepare: () => _prepareBanks(context, ref),
+              preparing: _preparing,
+              onPrepare: _preparing ? null : _prepareBanks,
             ),
             const SizedBox(height: ZakerSpacing.md),
           ],
@@ -68,13 +89,17 @@ class GamesScreen extends ConsumerWidget {
   }
 
   /// Builds banks from the library so the map is playable on a fresh install.
-  Future<void> _prepareBanks(BuildContext context, WidgetRef ref) async {
+  Future<void> _prepareBanks({bool auto = false}) async {
+    if (_preparing) return;
+    setState(() => _preparing = true);
     final messenger = ScaffoldMessenger.of(context);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: TrText('بنجهز أسئلة من كتبك…')),
-      );
+    if (!auto) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: TrText('بنجهز أسئلة من كتبك…')),
+        );
+    }
     try {
       final service = ref.read(assetServiceProvider);
       final grades = await ref.read(gradesProvider.future);
@@ -100,15 +125,18 @@ class GamesScreen extends ConsumerWidget {
         ..showSnackBar(
           const SnackBar(content: TrText('مش قادر أجهز البنك دلوقتي.')),
         );
+    } finally {
+      if (mounted) setState(() => _preparing = false);
     }
   }
 }
 
 /// The prompt shown when no question bank exists yet.
 class _PrepareBankCard extends StatelessWidget {
-  const _PrepareBankCard({required this.onPrepare});
+  const _PrepareBankCard({required this.preparing, this.onPrepare});
 
-  final VoidCallback onPrepare;
+  final bool preparing;
+  final VoidCallback? onPrepare;
 
   @override
   Widget build(BuildContext context) {
@@ -129,16 +157,18 @@ class _PrepareBankCard extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
           const SizedBox(width: ZakerSpacing.sm),
-          const Expanded(
+          Expanded(
             child: TrText(
-              'جهّز بنك أسئلة من كتبك الأول عشان الألعاب تشتغل.',
-              style: TextStyle(fontSize: 12, height: 1.5),
+              preparing
+                  ? 'بنجهز بنك الأسئلة من كتبك…'
+                  : 'بنجهز بنك أسئلة من كتبك تلقائياً — أو دوس «جهّز».',
+              style: const TextStyle(fontSize: 12, height: 1.5),
             ),
           ),
           const SizedBox(width: ZakerSpacing.sm),
           FilledButton(
             onPressed: onPrepare,
-            child: const TrText('جهّز'),
+            child: TrText(preparing ? '…' : 'جهّز'),
           ),
         ],
       ),
@@ -252,7 +282,7 @@ class _GameStopTile extends StatelessWidget {
                     ..showSnackBar(
                       const SnackBar(
                         content: TrText(
-                          'اللعبة محتاجة بنك أسئلة — دوس على «جهّز» فوق الأول.',
+                          'الأسئلة بتتجهز من كتبك — استنى لحظة وجرّب تاني.',
                         ),
                       ),
                     );
@@ -295,7 +325,7 @@ class _GameStopTile extends StatelessWidget {
                       TrText(
                         hasBank
                             ? stop.subtitle
-                            : 'محتاج بنك أسئلة — دوس «جهّز» فوق',
+                            : 'الأسئلة بتتجهز من كتبك…',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -306,7 +336,7 @@ class _GameStopTile extends StatelessWidget {
                 Icon(
                   hasBank
                       ? Icons.play_arrow_rounded
-                      : Icons.lock_outline_rounded,
+                      : Icons.hourglass_empty_rounded,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ],
