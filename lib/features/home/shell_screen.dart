@@ -287,6 +287,12 @@ class _Sidebar extends ConsumerWidget {
                   const SizedBox(height: 16),
                   const _SidebarLabel('أدوات سريعة'),
                   _SidebarItem(
+                    icon: HugeIcons.strokeRoundedBookOpen01,
+                    label: 'منهج الثانوي',
+                    selected: false,
+                    onTap: () => context.push(ZakerRoutes.subjects),
+                  ),
+                  _SidebarItem(
                     icon: HugeIcons.strokeRoundedWallet01,
                     label: 'محفظتي',
                     selected: false,

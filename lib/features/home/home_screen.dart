@@ -20,6 +20,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:shadcn_ui/shadcn_ui.dart'
     show ShadDecoration, ShadIconButton, ShadInput;
 
+import '../../core/curriculum.dart';
 import '../../core/router.dart';
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
@@ -1313,15 +1314,27 @@ class _SubjectGrid extends StatelessWidget {
               subject: entry.key,
               books: entry.value,
               accent: accent,
-              onTap: () => context.push(
-                ZakerRoutes.lessonPath(entry.value.first),
-              ),
+              onTap: () => context.push(_subjectRoute(grade, entry.value.first)),
             );
           },
         );
       },
     );
   }
+}
+
+/// Routes a subject card of a secondary grade to the curriculum screen; other
+/// grades keep opening the first book directly.
+String _subjectRoute(Grade grade, Book book) {
+  final curriculum = curriculumForGrade(grade.id);
+  if (curriculum != null) {
+    for (final subject in curriculum.subjects) {
+      if (!subject.assetSubjects.contains(book.subject)) continue;
+      final trackId = subject.tracks.isEmpty ? null : subject.tracks.first;
+      return ZakerRoutes.subjectPath(grade.id, subject.id, track: trackId);
+    }
+  }
+  return ZakerRoutes.lessonPath(book);
 }
 
 class _SubjectCard extends StatelessWidget {
@@ -1493,6 +1506,12 @@ class _AllToolsSection extends StatelessWidget {
             onTap: () => context.push(ZakerRoutes.exams),
           ),
           (
+            title: 'منهج الثانوي',
+            icon: Icons.school_rounded,
+            subtitle: 'مواد ومسارات',
+            onTap: () => context.push(ZakerRoutes.subjects),
+          ),
+          (
             title: ZakerStrings.s_9cfe0, // بنك الأسئلة
             icon: Icons.quiz_rounded,
             subtitle: ZakerStrings.s_d6b7e, // بنك الأسئلة اللي في مكتبتك
@@ -1533,7 +1552,7 @@ class _AllToolsSection extends StatelessWidget {
           (
             title: 'الآلة الحاسبة',
             icon: Icons.calculate_rounded,
-            subtitle: 'عمليات سريعة',
+            subtitle: 'علمية متقدمة',
             onTap: () => context.push(ZakerRoutes.calculator),
           ),
           (

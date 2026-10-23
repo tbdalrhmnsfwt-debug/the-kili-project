@@ -67,6 +67,11 @@ class LessonReaderScreen extends ConsumerWidget {
           ZakerSpacing.xxl,
         ),
         children: [
+          _MarkRead(
+            gradeId: gradeId,
+            bookId: book.id,
+            lessonNumber: lesson.number,
+          ),
           TrText(
             '${book.title} — الدرس ${lesson.number}',
             style: theme.textTheme.bodySmall?.copyWith(
@@ -316,4 +321,41 @@ class _FigureView extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Marks the lesson as read once the reader is opened.
+///
+/// It is a tiny, invisible child of the lesson list so [LessonReaderScreen]
+/// can stay a stateless widget. Saving happens after the first frame, never
+/// during build.
+class _MarkRead extends ConsumerStatefulWidget {
+  const _MarkRead({
+    required this.gradeId,
+    required this.bookId,
+    required this.lessonNumber,
+  });
+
+  final String gradeId;
+  final String bookId;
+  final int lessonNumber;
+
+  @override
+  ConsumerState<_MarkRead> createState() => _MarkReadState();
+}
+
+class _MarkReadState extends ConsumerState<_MarkRead> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final key = '${widget.gradeId}/${widget.bookId}/${widget.lessonNumber}';
+      final current = ref.read(readLessonsProvider);
+      if (current.contains(key)) return;
+      ref.read(readLessonsProvider.notifier).state = {...current, key};
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

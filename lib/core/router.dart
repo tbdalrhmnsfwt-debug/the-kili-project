@@ -12,6 +12,7 @@ import '../features/account/account_screen.dart';
 import '../features/ai/chat_screen.dart';
 import '../features/ai/mind_map_screen.dart';
 import '../features/challenges/challenges_screen.dart';
+import '../features/calculator/calculator_screen.dart';
 import '../features/courses/course_list_screen.dart';
 import '../features/exam/exam_home_screen.dart';
 import '../features/exam/quiz_screen.dart';
@@ -30,8 +31,9 @@ import '../features/quran/tasbih_screen.dart';
 import '../features/question_bank/question_bank_screen.dart';
 import '../features/recall/active_recall_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/subjects/subject_screen.dart';
+import '../features/subjects/subjects_screen.dart';
 import '../features/tasks/tasks_screen.dart';
-import '../features/tools/calculator_screen.dart';
 import '../features/tools/irab_screen.dart';
 import '../features/tools/pdf_tools_screen.dart';
 import '../features/tools/pdf_viewer_screen.dart';
@@ -51,6 +53,7 @@ class ZakerRoutes {
 
   static const String home = '/';
   static const String courses = '/courses';
+  static const String subjects = '/subjects';
   static const String exams = '/exams';
   static const String quiz = '/quiz';
   static const String quran = '/quran';
@@ -90,6 +93,18 @@ class ZakerRoutes {
 
   /// Builds the path for a grade's book list.
   static String gradePath(String gradeId) => '$grade/$gradeId';
+
+  /// Builds the path for a subject inside a grade and, when present, a track.
+  static String subjectPath(
+    String gradeId,
+    String subjectId, {
+    String? track,
+  }) {
+    final base = '$subjects/$gradeId/$subjectId';
+    return track == null || track.isEmpty
+        ? base
+        : '$base?track=${Uri.encodeQueryComponent(track)}';
+  }
 }
 
 /// The root router.
@@ -115,6 +130,21 @@ final GoRouter appRouter = GoRouter(
       path: ZakerRoutes.quran,
       builder: (context, state) =>
           const ShellScreen(initialIndex: 3, child: QuranHomeScreen()),
+    ),
+    GoRoute(
+      path: ZakerRoutes.subjects,
+      builder: (context, state) => SubjectsScreen(
+        gradeId: state.uri.queryParameters['grade'],
+        trackId: state.uri.queryParameters['track'],
+      ),
+    ),
+    GoRoute(
+      path: '${ZakerRoutes.subjects}/:gradeId/:subjectId',
+      builder: (context, state) => SubjectScreen(
+        gradeId: state.pathParameters['gradeId'] ?? 'sec1',
+        subjectId: state.pathParameters['subjectId'] ?? '',
+        trackId: state.uri.queryParameters['track'],
+      ),
     ),
     GoRoute(
       path: ZakerRoutes.quiz,

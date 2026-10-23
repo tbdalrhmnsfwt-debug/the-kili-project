@@ -17,6 +17,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart' as sf;
 
 import '../../core/router.dart';
 import '../../core/theme.dart';
@@ -144,12 +145,139 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       throw const FormatException('الملف ده مش PDF صالح.');
     }
     if (!mounted) return;
+    if (_isEncrypted(bytes)) {
+      setState(() => _loading = false);
+      _unlockAndOpen(bytes, name);
+      return;
+    }
     setState(() {
       _bytes = bytes;
       _name = name;
       _error = null;
       _loading = false;
     });
+  }
+
+  /// True when the PDF carries an `/Encrypt` dictionary.
+  static bool _isEncrypted(Uint8List bytes) {
+    const marker = [0x2F, 0x45, 0x6E, 0x63, 0x72, 0x79, 0x70, 0x74];
+    final limit = bytes.length - marker.length;
+    for (var i = 0; i <= limit; i++) {
+      var match = true;
+      for (var j = 0; j < marker.length; j++) {
+        if (bytes[i + j] != marker[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) return true;
+    }
+    return false;
+  }
+
+  /// Opens an encrypted PDF: first with an empty password (permissions-only
+  /// encryption), then by asking the student for the file password.
+  Future<void> _unlockAndOpen(Uint8List bytes, String name) async {
+    final free = await _decrypt(bytes, '');
+    if (!mounted) return;
+    if (free != null) {
+      _showOpened(free, name, unlocked: true);
+      return;
+    }
+
+    for (var attempt = 0; attempt < 3 && mounted; attempt++) {
+      final password = await _askPassword(firstAttempt: attempt == 0);
+      if (!mounted || password == null) return;
+      final unlocked = await _decrypt(bytes, password);
+      if (!mounted) return;
+      if (unlocked != null) {
+        _showOpened(unlocked, name, unlocked: true);
+        return;
+      }
+      if (attempt < 2) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: TrText('كلمة السر مش صح — جرّب تاني.')),
+        );
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _error = 'الملف مشفر ومقدرناش نفتحه. اتأكد من كلمة السر أو اطلب نسخة '
+          'مش محمية من صاحب الملف.';
+      _loading = false;
+    });
+  }
+
+  void _showOpened(Uint8List bytes, String name, {bool unlocked = false}) {
+    if (!mounted) return;
+    setState(() {
+      _bytes = bytes;
+      _name = name;
+      _error = null;
+      _loading = false;
+    });
+    if (unlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: TrText('اتفك تشفير الملف واتفتح ✅')),
+      );
+    }
+  }
+
+  /// Returns decrypted bytes, or null when [password] does not unlock the file.
+  Future<Uint8List?> _decrypt(Uint8List bytes, String password) async {
+    sf.PdfDocument? document;
+    try {
+      document = sf.PdfDocument(inputBytes: bytes, password: password);
+      final saved = document.saveSync();
+      return Uint8List.fromList(saved);
+    } catch (_) {
+      return null;
+    } finally {
+      document?.dispose();
+    }
+  }
+
+  Future<String?> _askPassword({required bool firstAttempt}) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const TrText('الملف محمي بكلمة سر'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TrText(
+              firstAttempt
+                  ? 'اكتب كلمة سر الملف عشان نقدر نعرضه على الجهاز.'
+                  : 'جرّب كلمة سر تانية.',
+            ),
+            const SizedBox(height: ZakerSpacing.md),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              obscureText: true,
+              textDirection: TextDirection.ltr,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (value) => Navigator.of(context).pop(value),
+              decoration: const InputDecoration(hintText: 'Password'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const TrText('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const TrText('فتح'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
   }
 
   Future<void> _share() async {

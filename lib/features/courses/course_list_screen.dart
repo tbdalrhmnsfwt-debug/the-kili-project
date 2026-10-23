@@ -3,7 +3,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/manhaji.dart';
 import '../../providers/app_providers.dart';
@@ -105,6 +107,7 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
 
           return Column(
             children: [
+              _CurriculumBanner(gradeId: _gradeId),
               _GradeSelector(
                 selected: _gradeId,
                 onChanged: (id) {
@@ -156,6 +159,101 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// A prominent entry point to the secondary curriculum hub.
+class _CurriculumBanner extends StatelessWidget {
+  const _CurriculumBanner({required this.gradeId});
+
+  final String gradeId;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        ZakerSpacing.lg,
+        ZakerSpacing.sm,
+        ZakerSpacing.lg,
+        0,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(ZakerRadius.lg),
+          onTap: () => context.push(
+            '${ZakerRoutes.subjects}?grade=${Uri.encodeQueryComponent(gradeId)}',
+          ),
+          child: Ink(
+            padding: const EdgeInsets.all(ZakerSpacing.md),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(ZakerRadius.lg),
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [
+                  theme.colorScheme.primary,
+                  ZakerColors.primaryLight,
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.school_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: ZakerSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TrText(
+                        'منهج الثانوي',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      TrText(
+                        'مواد أولى وتانية وتالتة ثانوي — اختار شعبتك أو مسارك',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.88),
+                          fontSize: 10.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

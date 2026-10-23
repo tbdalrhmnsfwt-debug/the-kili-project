@@ -69,6 +69,7 @@ class _LessonsList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final lessonsAsync = ref.watch(lessonsProvider(book));
+    final readLessons = ref.watch(readLessonsProvider);
 
     return lessonsAsync.when(
       loading: () => const LoadingBox(),
@@ -95,6 +96,9 @@ class _LessonsList extends ConsumerWidget {
           separatorBuilder: (_, __) => const SizedBox(height: ZakerSpacing.sm),
           itemBuilder: (context, index) {
             final lesson = lessons[index];
+            final isRead = readLessons.contains(
+              '$gradeId/${book.id}/${lesson.number}',
+            );
             return Material(
               color: Colors.transparent,
               child: InkWell(
@@ -144,6 +148,14 @@ class _LessonsList extends ConsumerWidget {
                           style: theme.textTheme.titleSmall,
                         ),
                       ),
+                      if (isRead) ...[
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          size: 18,
+                          color: ZakerColors.success,
+                        ),
+                        const SizedBox(width: 4),
+                      ],
                       const Icon(Icons.chevron_left_rounded),
                     ],
                   ),

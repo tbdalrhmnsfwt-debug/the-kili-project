@@ -219,6 +219,24 @@ final selectedGradeProvider = StateProvider<String>((ref) {
 /// The currently selected subject within a grade.
 final selectedSubjectProvider = StateProvider<String?>((ref) => null);
 
+/// Lessons the student marked as read, keyed `gradeId/bookId/lessonNumber`.
+final readLessonsProvider = StateProvider<Set<String>>((ref) {
+  return _restore(
+    ref,
+    'read_lessons',
+    _decodeReadLessons,
+    const <String>{},
+  );
+});
+
+Set<String> _decodeReadLessons(String raw) {
+  final decoded = jsonDecode(raw);
+  if (decoded is! List) throw const FormatException('not a list');
+  return decoded.map((value) => '$value').toSet();
+}
+
+String _encodeReadLessons(Set<String> value) => jsonEncode(value.toList());
+
 /// Whether study reminders are enabled in settings.
 final notificationsEnabledProvider = StateProvider<bool>((ref) {
   return _restoreBool(ref, 'notifications', true);
@@ -682,6 +700,7 @@ final persistenceProvider = Provider<void>((ref) {
   save(challengeResultsProvider, 'challenge_results', encodeChallengeResults);
   save(studyStatsProvider, 'study_stats', encodeStudyStats);
   save(selectedGradeProvider, 'selected_grade', (value) => value);
+  save(readLessonsProvider, 'read_lessons', _encodeReadLessons);
   save(reminderHourProvider, 'reminder_hour', (value) => '$value');
   save(reminderMinuteProvider, 'reminder_minute', (value) => '$value');
   save(liveDatabaseUrlProvider, 'live_url', (value) => value);
