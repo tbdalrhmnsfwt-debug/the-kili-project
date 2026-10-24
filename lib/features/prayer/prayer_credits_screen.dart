@@ -1,7 +1,9 @@
-/// Credits and licenses for the bundled adhan recordings.
+/// The attribution required by the bundled adhan recordings.
 ///
-/// Kept in sync by hand with `assets/adhan/LICENSES.md` and
-/// `lib/core/adhan_voices.dart`.
+/// Only recordings whose license asks for visible credit (CC BY) are listed
+/// here.  CC0 and public-domain recordings need no attribution, so they stay
+/// in `assets/adhan/LICENSES.md` only.  Kept in sync by hand with that file
+/// and `lib/core/adhan_voices.dart`.
 library;
 
 import 'package:flutter/material.dart';
@@ -34,8 +36,11 @@ class PrayerCreditsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final attributed = AdhanVoiceCatalog.instance.voices
+        .where((voice) => voice.requiresAttribution)
+        .toList();
     return Scaffold(
-      appBar: AppBar(title: const TrText('الأصوات والتراخيص')),
+      appBar: AppBar(title: const TrText('حول والتراخيص')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -44,24 +49,27 @@ class PrayerCreditsScreen extends StatelessWidget {
             children: [
               _IntroCard(),
               const SizedBox(height: 18),
-              const _SectionLabel(title: 'الأصوات المرفقة'),
+              const _SectionLabel(title: 'بيانات الإسناد المطلوبة'),
               const SizedBox(height: 8),
-              for (final voice in kAdhanVoices) ...[
-                _VoiceLicenseCard(
-                  voice: voice,
-                  onSource: () => _open(context, voice.sourceUrl),
-                  onLicense: () => _open(context, voice.licenseUrl),
-                ),
-                const SizedBox(height: 8),
-              ],
+              if (attributed.isEmpty)
+                _NoAttributionCard()
+              else
+                for (final voice in attributed) ...[
+                  _VoiceLicenseCard(
+                    voice: voice,
+                    onSource: () => _open(context, voice.sourceUrl),
+                    onLicense: () => _open(context, voice.licenseUrl),
+                  ),
+                  const SizedBox(height: 8),
+                ],
               const SizedBox(height: 10),
               const _SectionLabel(title: 'ملاحظات'),
               const SizedBox(height: 8),
               _NotesCard(),
               const SizedBox(height: 14),
               TrText(
-                'الملف الكامل موجود كمان في assets/adhan/LICENSES.md داخل '
-                'المشروع، وفيه نفس البيانات دي.',
+                'القائمة الكاملة بكل ملفات الأذان ومصادرها وتراخيصها موجودة '
+                'في assets/adhan/LICENSES.md داخل المشروع.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant.withValues(
                     alpha: 0.8,
@@ -124,7 +132,7 @@ class _IntroCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: TrText(
-                  'أصوات مفتوحة ومرفقة مع التطبيق',
+                  'التراخيص والإسناد',
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w900,
                     fontSize: 14,
@@ -135,9 +143,9 @@ class _IntroCard extends StatelessWidget {
           ),
           const SizedBox(height: 9),
           TrText(
-            'كل التسجيلات دي من مصادر بترخيص مفتوح (ملكية عامة أو CC0 أو '
-            'CC BY)، ومرفقة جوّه التطبيق — مفيش أي تحميل من الإنترنت وقت '
-            'الاستخدام. مفيش صوت اتولّد أو اتصنع صناعيًا.',
+            'التسجيلات اللي ترخيصها بيطلب ذكر المصدر (CC BY) بس هي اللي '
+            'بتظهر هنا ببيانات الإسناد. باقي الأصوات ملكية عامة أو CC0 '
+            'ومش بتحتاج إسناد ظاهر.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
               fontSize: 10.8,
@@ -187,10 +195,6 @@ class _VoiceLicenseCard extends StatelessWidget {
               ),
               if (voice.isFajr)
                 _SmallBadge(label: 'فجر', color: theme.colorScheme.primary),
-              if (voice.isTakbeer) ...[
-                const SizedBox(width: 4),
-                _SmallBadge(label: 'قصير', color: theme.colorScheme.tertiary),
-              ],
             ],
           ),
           const SizedBox(height: 5),
@@ -372,8 +376,8 @@ class _NotesCard extends StatelessWidget {
         children: [
           _Note(
             text:
-                'الملفات اتضغطت بصيغة MP3 أحادية القناة (40 kbps) بعد '
-                'تطبيع الصوت بـ ffmpeg، عشان كل ملف يفضل أقل من 1 ميجا.',
+                'كل الأصوات المرفقة من مصادر مفتوحة (ملكية عامة أو CC0 أو '
+                'CC BY)، وبتشتغل من غير إنترنت.',
             last: false,
           ),
           _Note(
@@ -384,11 +388,34 @@ class _NotesCard extends StatelessWidget {
           ),
           _Note(
             text:
-                'اترفضت تسجيلات تانية لأن ترخيصها مش واضح أو مش بيسمح '
-                'بالاستخدام (مثل CC BY-SA أو NC أو ملفات من غير ترخيص).',
+                'مفيش صوت اتولّد أو اتصنع صناعيًا، واترفضت تسجيلات تانية '
+                'لأن ترخيصها مش واضح أو مش بيسمح بالاستخدام.',
             last: true,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _NoAttributionCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
+      ),
+      child: TrText(
+        'مفيش أصوات محتاجة إسناد ظاهر دلوقتي.',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontSize: 10.5,
+          height: 1.55,
+        ),
       ),
     );
   }

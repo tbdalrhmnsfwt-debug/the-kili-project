@@ -186,17 +186,7 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
     final settings = ref.watch(adhanSettingsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const TrText('أذان الصلاة'),
-        actions: [
-          IconButton(
-            tooltip: 'الأصوات والتراخيص',
-            onPressed: () => context.push(ZakerRoutes.prayerCredits),
-            icon: const Icon(Icons.info_outline_rounded, size: 22),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
+      appBar: AppBar(title: const TrText('أذان الصلاة')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -249,10 +239,6 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
                 testing: _testing,
                 onTest: _testAdhan,
               ),
-              const SizedBox(height: 10),
-              _CreditsTile(
-                onTap: () => context.push(ZakerRoutes.prayerCredits),
-              ),
               const SizedBox(height: 14),
               TrText(
                 'لو الأذان بيتأخر أو مش بييجي والتطبيق مقفول، راجع '
@@ -265,6 +251,10 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
                   fontSize: 10,
                   height: 1.6,
                 ),
+              ),
+              const SizedBox(height: 18),
+              _CreditsTile(
+                onTap: () => context.push(ZakerRoutes.prayerCredits),
               ),
             ],
           ),
@@ -943,7 +933,7 @@ class _CreditsTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TrText(
-                      'الأصوات والتراخيص',
+                      'حول / التراخيص',
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
@@ -951,7 +941,7 @@ class _CreditsTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 1),
                     TrText(
-                      'مصادر التسجيلات وتراخيصها وطريقة ضغطها.',
+                      'بيانات الإسناد المطلوبة قانونيًا للتسجيلات.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 9.8,

@@ -51,10 +51,17 @@ class AdhanPlatform {
   }
 
   /// Plays `res/raw/<resourceName>` in process (used by the voice picker).
-  static Future<bool> playPreview(String resourceName) async {
+  ///
+  /// When the voice is a user-added asset, [assetPath] is passed along and
+  /// the native side opens it from the Flutter asset bundle instead.
+  static Future<bool> playPreview(
+    String resourceName, {
+    String? assetPath,
+  }) async {
     try {
       return await _channel.invokeMethod<bool>('playPreview', {
             'name': resourceName,
+            'asset': assetPath,
           }) ??
           false;
     } catch (_) {
@@ -66,6 +73,39 @@ class AdhanPlatform {
   static Future<void> stopPreview() async {
     try {
       await _channel.invokeMethod<void>('stopPreview');
+    } catch (_) {
+      // Nothing to stop.
+    }
+  }
+
+  /// Starts the foreground adhan player for the full-screen adhan.
+  ///
+  /// The service plays [resource] from `res/raw`, or [assetPath] from the
+  /// Flutter asset bundle for a user-added recording.  It keeps playing while
+  /// the app is in the background, with a notification whose action stops it.
+  static Future<bool> startPlayback({
+    required String resource,
+    required String title,
+    String? assetPath,
+    int? notificationId,
+  }) async {
+    try {
+      return await _channel.invokeMethod<bool>('startAdhanPlayback', {
+            'name': resource,
+            'asset': assetPath,
+            'title': title,
+            'notificationId': notificationId,
+          }) ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Stops the foreground adhan player.
+  static Future<void> stopPlayback() async {
+    try {
+      await _channel.invokeMethod<void>('stopAdhanPlayback');
     } catch (_) {
       // Nothing to stop.
     }

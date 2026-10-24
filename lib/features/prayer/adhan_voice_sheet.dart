@@ -66,7 +66,10 @@ class _AdhanVoiceSheetState extends ConsumerState<_AdhanVoiceSheet> {
     }
 
     setState(() => _previewing = voice.id);
-    final playing = await AdhanPlatform.playPreview(voice.resource);
+    final playing = await AdhanPlatform.playPreview(
+      voice.resource,
+      assetPath: voice.assetPath,
+    );
     if (!mounted) return;
     if (!playing) {
       setState(() => _previewing = null);
@@ -94,6 +97,7 @@ class _AdhanVoiceSheetState extends ConsumerState<_AdhanVoiceSheet> {
     final settings = ref.watch(adhanSettingsProvider);
     final selectedId = settings.voiceIdFor(widget.prayer);
     final isFajr = widget.prayer == PrayerName.fajr;
+    final voices = AdhanVoiceCatalog.instance.voices;
 
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * 0.88,
@@ -152,10 +156,10 @@ class _AdhanVoiceSheetState extends ConsumerState<_AdhanVoiceSheet> {
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-              itemCount: kAdhanVoices.length,
+              itemCount: voices.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
-                final voice = kAdhanVoices[index];
+                final voice = voices[index];
                 return _VoiceCard(
                   voice: voice,
                   selected: voice.id == selectedId,
@@ -165,31 +169,6 @@ class _AdhanVoiceSheetState extends ConsumerState<_AdhanVoiceSheet> {
                   onSelect: () => _select(voice),
                 );
               },
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.offline_bolt_outlined,
-                    size: 15,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: TrText(
-                      'كل الأصوات مرفقة مع التطبيق ومرخّصة للاستخدام.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         ],
@@ -266,7 +245,7 @@ class _VoiceCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w800,
-                              fontSize: 13,
+                              fontSize: 13.5,
                               color: accent,
                             ),
                           ),
@@ -278,24 +257,7 @@ class _VoiceCard extends StatelessWidget {
                             color: theme.colorScheme.primary,
                           ),
                         ],
-                        if (voice.isTakbeer) ...[
-                          const SizedBox(width: 6),
-                          _Badge(
-                            label: 'قصير',
-                            color: theme.colorScheme.tertiary,
-                          ),
-                        ],
                       ],
-                    ),
-                    const SizedBox(height: 2),
-                    TrText(
-                      '${voice.reciter} · ${voice.license}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 10.5,
-                      ),
                     ),
                   ],
                 ),
