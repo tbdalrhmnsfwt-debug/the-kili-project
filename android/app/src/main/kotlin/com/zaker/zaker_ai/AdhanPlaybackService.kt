@@ -11,6 +11,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.database.ContentObserver
+import android.graphics.Color
+import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -24,6 +27,13 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.Settings
+import android.text.TextUtils
+import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -60,6 +70,7 @@ class AdhanPlaybackService : Service() {
     private var screenReceiver: BroadcastReceiver? = null
     private var volumeObserver: ContentObserver? = null
     private var lastAlarmVolume = -1
+    private var overlayView: View? = null
     private val fadeRunnable = object : Runnable {
         override fun run() {
             val current = player ?: return
@@ -78,6 +89,7 @@ class AdhanPlaybackService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         createChannel()
     }
 
@@ -107,6 +119,7 @@ class AdhanPlaybackService : Service() {
                 )
                 isActive = true
                 if (silenceOnHardware) startHardwareWatchers()
+                showOverlayIfAllowed(title)
                 play(
                     intent?.getStringExtra(EXTRA_RESOURCE),
                     intent?.getStringExtra(EXTRA_ASSET),
@@ -121,11 +134,95 @@ class AdhanPlaybackService : Service() {
 
     override fun onDestroy() {
         isActive = false
+        instance = null
         handler.removeCallbacksAndMessages(null)
         stopHardwareWatchers()
+        hideOverlay()
         releasePlayer()
         cancelSourceNotification()
         super.onDestroy()
+    }
+
+    /**
+     * The optional floating card shown when the phone is unlocked or another
+     * app is in front and the user granted "display over other apps".  It is
+     * skipped entirely when the permission is absent or this activity is in
+     * front; the full-screen player already has a stop button.
+     */
+    private fun showOverlayIfAllowed(title: String) {
+        if (MainActivity.isForeground) return
+        if (!Settings.canDrawOverlays(this)) return
+        if (overlayView != null) return
+        try {
+            val density = resources.displayMetrics.density
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(
+                    (16 * density).toInt(),
+                    (10 * density).toInt(),
+                    (8 * density).toInt(),
+                    (10 * density).toInt(),
+                )
+                background = GradientDrawable().apply {
+                    cornerRadius = 20 * density
+                    setColor(0xF21E293B.toInt())
+                    setStroke((1 * density).toInt(), 0x66FFFFFF)
+                }
+            }
+            val label = TextView(this).apply {
+                text = "$title — الأذان شغال"
+                setTextColor(Color.WHITE)
+                textSize = 13f
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
+                setPadding(0, 0, (8 * density).toInt(), 0)
+            }
+            card.addView(
+                label,
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            )
+            val stop = Button(this).apply {
+                text = getString(R.string.adhan_stop)
+                setOnClickListener { stopSelf() }
+            }
+            card.addView(stop)
+
+            val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                @Suppress("DEPRECATION")
+                WindowManager.LayoutParams.TYPE_PHONE
+            }
+            val params = WindowManager.LayoutParams(
+                (300 * density).toInt(),
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT,
+            ).apply {
+                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                y = (52 * density).toInt()
+            }
+            val manager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            manager.addView(card, params)
+            overlayView = card
+        } catch (_: Exception) {
+            // The permission can be revoked between the check and addView.
+            overlayView = null
+        }
+    }
+
+    private fun hideOverlay() {
+        val view = overlayView ?: return
+        overlayView = null
+        try {
+            val manager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            manager.removeView(view)
+        } catch (_: Exception) {
+            // Already removed.
+        }
     }
 
     /** The system ringer is silent or on vibrate: vibrate instead of sound. */
@@ -453,6 +550,15 @@ class AdhanPlaybackService : Service() {
         @Volatile
         var isActive: Boolean = false
             private set
+
+        /** The running service, for the activity to hide the floating card. */
+        @Volatile
+        private var instance: AdhanPlaybackService? = null
+
+        /** Hides the optional floating card once our own screen is in front. */
+        fun hideFloatingCard() {
+            instance?.hideOverlay()
+        }
 
         /** Whether the volume keys may silence the current playback. */
         @Volatile

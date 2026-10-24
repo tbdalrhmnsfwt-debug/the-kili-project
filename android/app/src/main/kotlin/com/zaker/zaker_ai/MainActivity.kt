@@ -166,6 +166,7 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         isForeground = true
+        AdhanPlaybackService.hideFloatingCard()
     }
 
     override fun onPause() {
