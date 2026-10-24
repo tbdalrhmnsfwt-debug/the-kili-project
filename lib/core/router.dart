@@ -26,6 +26,9 @@ import '../features/lesson/book_lessons_screen.dart';
 import '../features/mistakes/mistakes_screen.dart';
 import '../features/notebooks/notebooks_screen.dart';
 import '../features/planner/planner_screen.dart';
+import '../features/prayer/adhan_settings_screen.dart';
+import '../features/prayer/battery_optimization_screen.dart';
+import '../features/prayer/prayer_credits_screen.dart';
 import '../features/prayer/prayer_screen.dart';
 import '../features/quran/quran_home_screen.dart';
 import '../features/quran/tasbih_screen.dart';
@@ -87,6 +90,9 @@ class ZakerRoutes {
   static const String calculator = '/calculator';
   static const String irab = '/irab';
   static const String prayer = '/prayer';
+  static const String prayerNotifications = '/prayer/notifications';
+  static const String prayerBattery = '/prayer/battery';
+  static const String prayerCredits = '/prayer/credits';
   static const String wallet = '/wallet';
   static const String achievements = '/achievements';
 
@@ -282,6 +288,18 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.prayer,
       builder: (context, state) => const PrayerScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.prayerNotifications,
+      builder: (context, state) => const AdhanSettingsScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.prayerBattery,
+      builder: (context, state) => const BatteryOptimizationScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.prayerCredits,
+      builder: (context, state) => const PrayerCreditsScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.wallet,
