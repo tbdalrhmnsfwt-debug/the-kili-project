@@ -75,6 +75,13 @@ class NotificationService {
   static const String _salatChannelGroupId = 'zaker_salat';
   static const String _salatChannelGroupName = 'الصلاة على النبي';
 
+  // ------------------------------------------------------- hifz channel
+
+  static const String _hifzChannelId = 'zaker_hifz_reminders';
+  static const String _hifzChannelName = 'تذكير مراجعة الحفظ';
+  static const String _hifzChannelDescription =
+      'تنبيه بموعد مراجعة الجزء اللي حفظته، على حسب جدول المراجعة.';
+
   static const int _adhanIdBase = 4000;
   static const int _reminderIdBase = 5000;
 
@@ -83,6 +90,10 @@ class NotificationService {
   static const int _salatIdBase = 6000;
   static const int _azkarIdBase = 7000;
   static const int _kahfIdBase = 7100;
+  static const int _hifzIdBase = 8000;
+
+  /// A stable id for the next hifz review reminder.
+  static int hifzNotificationId(int index) => _hifzIdBase + index;
 
   /// The id of the immediately-posted test salat reminder.
   static const int salatTestId = 6600;
@@ -214,6 +225,65 @@ class NotificationService {
       );
     } catch (e) {
       debugPrint('notifications: could not create azkar channels ($e)');
+    }
+  }
+
+  /// Creates the hifz review channel.
+  Future<void> ensureHifzChannels() async {
+    await init();
+    if (!_initialized) return;
+    final android = _android;
+    if (android == null) return;
+    try {
+      await android.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _hifzChannelId,
+          _hifzChannelName,
+          description: _hifzChannelDescription,
+          importance: Importance.high,
+          enableVibration: true,
+          showBadge: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint('notifications: could not create the hifz channel ($e)');
+    }
+  }
+
+  /// Schedules the next hifz review reminder.
+  Future<AdhanScheduleOutcome> scheduleHifzReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    required bool preferExact,
+    required String payload,
+  }) {
+    return _scheduleDetailed(
+      id: id,
+      title: title,
+      body: body,
+      when: when,
+      preferExact: preferExact,
+      details: _hifzDetails(body),
+      payload: payload,
+    );
+  }
+
+  /// Cancels hifz review reminders, leaving every other schedule untouched.
+  Future<void> cancelHifzNotifications() async {
+    await init();
+    if (!_initialized) return;
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      for (final request in pending) {
+        final id = request.id;
+        if (id >= _hifzIdBase && id < _hifzIdBase + 200) {
+          await _plugin.cancel(id);
+        }
+      }
+    } catch (e) {
+      debugPrint('notifications: could not cancel hifz schedules ($e)');
     }
   }
 
@@ -739,6 +809,20 @@ class NotificationService {
       _kahfChannelId,
       _kahfChannelName,
       channelDescription: _kahfChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      channelShowBadge: true,
+      styleInformation: BigTextStyleInformation(body),
+    );
+  }
+
+  AndroidNotificationDetails _hifzDetails(String body) {
+    return AndroidNotificationDetails(
+      _hifzChannelId,
+      _hifzChannelName,
+      channelDescription: _hifzChannelDescription,
       importance: Importance.high,
       priority: Priority.high,
       category: AndroidNotificationCategory.reminder,
