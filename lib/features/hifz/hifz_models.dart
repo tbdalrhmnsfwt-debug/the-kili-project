@@ -159,13 +159,18 @@ HifzHideMode _hideModeFromName(String name) {
 ///
 /// A perfect recitation moves one step down the ladder; any mark that needs
 /// review drops the part back to the first step. The best score is kept.
+/// [firstSession] is the memorize pass itself: it records the score but keeps
+/// the part on the one-day step, so the first review is tomorrow.
 HifzPart hifzApplySession(
   HifzPart part,
   HifzSessionResult result, {
   DateTime? now,
+  bool firstSession = false,
 }) {
   final reference = now ?? DateTime.now();
-  final stage = result.perfect
+  final stage = firstSession
+      ? 0
+      : result.perfect
       ? (part.stage + 1).clamp(0, kHifzReviewDays.length - 1)
       : 0;
   final best = result.score > part.bestScore ? result.score : part.bestScore;
@@ -210,15 +215,16 @@ class HifzState {
     for (final part in parts) {
       if (!part.isDue(now)) continue;
       if (best == null ||
-          part.nextReviewAt!.isBefore(best.nextReviewAt ?? part.nextReviewAt!)) {
+          part.nextReviewAt!.isBefore(
+            best.nextReviewAt ?? part.nextReviewAt!,
+          )) {
         best = part;
       }
     }
     return best;
   }
 
-  int dueCount(DateTime now) =>
-      parts.where((part) => part.isDue(now)).length;
+  int dueCount(DateTime now) => parts.where((part) => part.isDue(now)).length;
 
   HifzState upsertPart(HifzPart part) {
     final next = [
@@ -239,13 +245,19 @@ class HifzState {
     String partId,
     HifzSessionResult result, {
     DateTime? now,
+    bool firstSession = false,
   }) {
     final reference = now ?? DateTime.now();
     final index = parts.indexWhere((part) => part.id == partId);
     var nextParts = parts;
     if (index >= 0) {
       nextParts = [...parts];
-      nextParts[index] = hifzApplySession(parts[index], result, now: reference);
+      nextParts[index] = hifzApplySession(
+        parts[index],
+        result,
+        now: reference,
+        firstSession: firstSession,
+      );
     }
     return copyWith(
       parts: List.unmodifiable(nextParts),
@@ -276,9 +288,7 @@ class HifzState {
   int _streakFor(DateTime now) {
     final today = _dayKey(now);
     if (lastSessionDay == today) return streakDays;
-    final yesterday = _dayKey(
-      DateTime(now.year, now.month, now.day - 1),
-    );
+    final yesterday = _dayKey(DateTime(now.year, now.month, now.day - 1));
     return lastSessionDay == yesterday ? streakDays + 1 : 1;
   }
 
@@ -308,7 +318,8 @@ class HifzState {
       parts: List.unmodifiable(parts),
       remindersEnabled: json['reminders'] == true,
       reminderHour: (json['hour'] as num?)?.toInt() ?? defaultReminderHour,
-      reminderMinute: (json['minute'] as num?)?.toInt() ?? defaultReminderMinute,
+      reminderMinute:
+          (json['minute'] as num?)?.toInt() ?? defaultReminderMinute,
       streakDays: (json['streak'] as num?)?.toInt() ?? 0,
       lastSessionDay: '${json['lastDay'] ?? ''}',
     );
@@ -319,3 +330,35 @@ String _dayKey(DateTime date) =>
     '${date.year.toString().padLeft(4, '0')}-'
     '${date.month.toString().padLeft(2, '0')}-'
     '${date.day.toString().padLeft(2, '0')}';
+
+/// When the next review reminder should fire for [dueDates].
+///
+/// It lands on the earliest due day at [hour]:[minute]. An already-due part
+/// fires today at that time, or tomorrow when today's time has passed.
+/// Returns null when there is nothing to review.
+DateTime? hifzReminderTime({
+  required Iterable<DateTime> dueDates,
+  required int hour,
+  required int minute,
+  required DateTime now,
+}) {
+  DateTime? earliest;
+  for (final due in dueDates) {
+    final day = DateTime(due.year, due.month, due.day);
+    if (earliest == null || day.isBefore(earliest)) earliest = day;
+  }
+  if (earliest == null) return null;
+
+  final onDueDay = DateTime(
+    earliest.year,
+    earliest.month,
+    earliest.day,
+    hour,
+    minute,
+  );
+  if (onDueDay.isAfter(now)) return onDueDay;
+
+  final today = DateTime(now.year, now.month, now.day, hour, minute);
+  if (today.isAfter(now)) return today;
+  return DateTime(now.year, now.month, now.day + 1, hour, minute);
+}

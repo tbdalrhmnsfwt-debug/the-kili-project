@@ -94,6 +94,20 @@ void main() {
       expect(next.bestScore, closeTo(0.75, 1e-9));
     });
 
+    test('a first session keeps the one-day review and records the score', () {
+      final part = _part(stage: 0, nextReviewAt: DateTime(2026, 10, 21));
+      final next = hifzApplySession(
+        part,
+        _result([true, true, true, true]),
+        now: DateTime(2026, 10, 24, 18),
+        firstSession: true,
+      );
+      expect(next.stage, 0);
+      expect(next.nextReviewAt, DateTime(2026, 10, 25));
+      expect(next.bestScore, 1);
+      expect(next.reviewCount, 1);
+    });
+
     test('keeps the best score across sessions', () {
       final part = _part(stage: 2, bestScore: 0.75);
       final next = hifzApplySession(
@@ -205,6 +219,53 @@ void main() {
       final empty = HifzState.fromJson(null);
       expect(empty.parts, isEmpty);
       expect(empty.reminderHour, HifzState.defaultReminderHour);
+    });
+  });
+
+  group('hifzReminderTime', () {
+    test('fires on the due day at the reminder hour', () {
+      expect(
+        hifzReminderTime(
+          dueDates: [DateTime(2026, 10, 25)],
+          hour: 20,
+          minute: 0,
+          now: DateTime(2026, 10, 24, 10),
+        ),
+        DateTime(2026, 10, 25, 20),
+      );
+    });
+
+    test('an overdue part fires today, or tomorrow once the hour passed', () {
+      expect(
+        hifzReminderTime(
+          dueDates: [DateTime(2026, 10, 20)],
+          hour: 20,
+          minute: 0,
+          now: DateTime(2026, 10, 24, 10),
+        ),
+        DateTime(2026, 10, 24, 20),
+      );
+      expect(
+        hifzReminderTime(
+          dueDates: [DateTime(2026, 10, 20)],
+          hour: 20,
+          minute: 0,
+          now: DateTime(2026, 10, 24, 21),
+        ),
+        DateTime(2026, 10, 25, 20),
+      );
+    });
+
+    test('returns null when nothing is scheduled', () {
+      expect(
+        hifzReminderTime(
+          dueDates: const [],
+          hour: 20,
+          minute: 0,
+          now: DateTime(2026, 10, 24, 10),
+        ),
+        isNull,
+      );
     });
   });
 }

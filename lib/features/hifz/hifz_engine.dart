@@ -67,10 +67,6 @@ HifzAyahMask hifzAyahMask(
   final words = hifzSplitWords(ayah);
   return HifzAyahMask(
     words: words,
-    hidden: hifzHiddenIndexes(
-      wordCount: words.length,
-      mode: mode,
-      seed: seed,
-    ),
+    hidden: hifzHiddenIndexes(wordCount: words.length, mode: mode, seed: seed),
   );
 }

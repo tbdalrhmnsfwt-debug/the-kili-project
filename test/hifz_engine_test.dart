@@ -6,10 +6,12 @@ import '../lib/features/hifz/hifz_models.dart';
 void main() {
   group('hifzSplitWords', () {
     test('splits an ayah into whitespace-separated words', () {
-      expect(
-        hifzSplitWords('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'),
-        ['بِسْمِ', 'اللَّهِ', 'الرَّحْمَٰنِ', 'الرَّحِيمِ'],
-      );
+      expect(hifzSplitWords('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'), [
+        'بِسْمِ',
+        'اللَّهِ',
+        'الرَّحْمَٰنِ',
+        'الرَّحِيمِ',
+      ]);
     });
 
     test('collapses repeated whitespace and trims', () {
@@ -23,41 +25,25 @@ void main() {
   group('hifzHiddenIndexes', () {
     test('none hides nothing', () {
       expect(
-        hifzHiddenIndexes(
-          wordCount: 6,
-          mode: HifzHideMode.none,
-          seed: 7,
-        ),
+        hifzHiddenIndexes(wordCount: 6, mode: HifzHideMode.none, seed: 7),
         isEmpty,
       );
     });
 
     test('wholeAyah hides every word', () {
       expect(
-        hifzHiddenIndexes(
-          wordCount: 4,
-          mode: HifzHideMode.wholeAyah,
-          seed: 7,
-        ),
+        hifzHiddenIndexes(wordCount: 4, mode: HifzHideMode.wholeAyah, seed: 7),
         {0, 1, 2, 3},
       );
     });
 
     test('lastWords hides the final third, at least one word', () {
       expect(
-        hifzHiddenIndexes(
-          wordCount: 9,
-          mode: HifzHideMode.lastWords,
-          seed: 7,
-        ),
+        hifzHiddenIndexes(wordCount: 9, mode: HifzHideMode.lastWords, seed: 7),
         {6, 7, 8},
       );
       expect(
-        hifzHiddenIndexes(
-          wordCount: 2,
-          mode: HifzHideMode.lastWords,
-          seed: 7,
-        ),
+        hifzHiddenIndexes(wordCount: 2, mode: HifzHideMode.lastWords, seed: 7),
         {1},
       );
     });
