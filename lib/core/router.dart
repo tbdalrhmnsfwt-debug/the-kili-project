@@ -26,6 +26,7 @@ import '../features/lesson/book_lessons_screen.dart';
 import '../features/mistakes/mistakes_screen.dart';
 import '../features/notebooks/notebooks_screen.dart';
 import '../features/planner/planner_screen.dart';
+import '../features/prayer/prayer_screen.dart';
 import '../features/quran/quran_home_screen.dart';
 import '../features/quran/tasbih_screen.dart';
 import '../features/question_bank/question_bank_screen.dart';
@@ -85,6 +86,7 @@ class ZakerRoutes {
   static const String scan = '/scan';
   static const String calculator = '/calculator';
   static const String irab = '/irab';
+  static const String prayer = '/prayer';
   static const String wallet = '/wallet';
   static const String achievements = '/achievements';
 
@@ -276,6 +278,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.irab,
       builder: (context, state) => const IrabScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.prayer,
+      builder: (context, state) => const PrayerScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.wallet,

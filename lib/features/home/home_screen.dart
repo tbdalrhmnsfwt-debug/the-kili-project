@@ -30,6 +30,7 @@ import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import '../focus/focus_screen.dart';
+import '../prayer/prayer_home_card.dart';
 import 'shell_screen.dart';
 
 /// Accent colours for the tinted cards in the mockup.
@@ -116,6 +117,8 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
                 _ActionCards(streakDays: stats.streakDays),
+                const SizedBox(height: 22),
+                const PrayerHomeSection(),
                 const SizedBox(height: 22),
                 _BannerRow(
                   nextDeadline: nextDeadline,
