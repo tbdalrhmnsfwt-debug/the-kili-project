@@ -13,12 +13,15 @@
 /// callers simply receive `false`.
 library;
 
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import 'adhan_voices.dart';
+import 'salat_audio.dart';
 
 /// How a prayer notification ended up being scheduled.
 enum AdhanScheduleOutcome {
@@ -55,8 +58,49 @@ class NotificationService {
   static const String _prayerReminderChannelDescription =
       'تنبيه بييجي قبل الأذان بدقايق، بصوت إشعار عادي.';
 
+  // ------------------------------------------------- azkar/salat channels
+
+  static const String _azkarChannelGroupId = 'zaker_azkar';
+
+  static const String _azkarChannelId = 'zaker_azkar_daily';
+  static const String _azkarChannelName = 'أذكار الصباح والمساء';
+  static const String _azkarChannelDescription =
+      'تذكير بأذكار الصباح بعد الفجر وبأذكار المساء بعد العصر.';
+
+  static const String _kahfChannelId = 'zaker_kahf_weekly';
+  static const String _kahfChannelName = 'تذكير سورة الكهف';
+  static const String _kahfChannelDescription =
+      'تذكير أسبوعي يوم الجمعة بقراءة سورة الكهف.';
+
+  static const String _salatChannelGroupId = 'zaker_salat';
+  static const String _salatChannelGroupName = 'الصلاة على النبي';
+
   static const int _adhanIdBase = 4000;
   static const int _reminderIdBase = 5000;
+
+  // ------------------------------------------------------ azkar/salat ids
+
+  static const int _salatIdBase = 6000;
+  static const int _azkarIdBase = 7000;
+  static const int _kahfIdBase = 7100;
+
+  /// The id of the immediately-posted test salat reminder.
+  static const int salatTestId = 6600;
+
+  /// The id of the immediately-posted test azkar reminder.
+  static const int azkarTestId = 7200;
+
+  /// A stable id for one salat reminder slot on one of the next days.
+  /// [slot] must stay below 200 so the days cannot overlap.
+  static int salatNotificationId(int dayOffset, int slot) =>
+      _salatIdBase + dayOffset * 200 + slot;
+
+  /// A stable id for morning/evening azkar; [periodIndex] is 0 or 1.
+  static int azkarNotificationId(int dayOffset, int periodIndex) =>
+      _azkarIdBase + dayOffset * 2 + periodIndex;
+
+  /// A stable id for one Friday Kahf reminder.
+  static int kahfNotificationId(int dayOffset) => _kahfIdBase + dayOffset;
 
   /// The id of the immediately-posted test adhan.
   static const int adhanTestId = 3999;
@@ -134,6 +178,118 @@ class NotificationService {
     }
   }
 
+  /// Creates the morning/evening azkar and Friday Kahf channels.
+  Future<void> ensureAzkarChannels() async {
+    await init();
+    if (!_initialized) return;
+    final android = _android;
+    if (android == null) return;
+    try {
+      await android.createNotificationChannelGroup(
+        const AndroidNotificationChannelGroup(
+          _azkarChannelGroupId,
+          'الأذكار والتنبيهات',
+          description: 'تذكيرات أذكار الصباح والمساء وسورة الكهف.',
+        ),
+      );
+      await android.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _azkarChannelId,
+          _azkarChannelName,
+          description: _azkarChannelDescription,
+          importance: Importance.high,
+          enableVibration: true,
+          showBadge: true,
+        ),
+      );
+      await android.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _kahfChannelId,
+          _kahfChannelName,
+          description: _kahfChannelDescription,
+          importance: Importance.high,
+          enableVibration: true,
+          showBadge: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint('notifications: could not create azkar channels ($e)');
+    }
+  }
+
+  /// Creates the salat reminder channels.
+  ///
+  /// Android channel sounds are immutable, so the chime, silence and each
+  /// phrase recording need separate channels.  Vibration is also part of the
+  /// channel for the same reason.  With no bundled phrase recordings, the
+  /// voice choice maps to the silent channel and the phrase is shown as text.
+  Future<void> ensureSalatChannels() async {
+    await init();
+    if (!_initialized) return;
+    final android = _android;
+    if (android == null) return;
+    try {
+      await android.createNotificationChannelGroup(
+        const AndroidNotificationChannelGroup(
+          _salatChannelGroupId,
+          _salatChannelGroupName,
+          description: 'تذكير بالصلاة على النبي ﷺ على فترات منتظمة.',
+        ),
+      );
+      for (final vibration in <bool>[true, false]) {
+        await android.createNotificationChannel(
+          AndroidNotificationChannel(
+            _salatChannelIdFor(null, SalatSoundMode.chime, vibration),
+            'صلاة على النبي — نغمة',
+            description: 'تذكير قصير بنغمة هادئة.',
+            importance: Importance.high,
+            playSound: true,
+            sound: const RawResourceAndroidNotificationSound(
+              kSalatChimeResource,
+            ),
+            enableVibration: vibration,
+            showBadge: false,
+          ),
+        );
+        await android.createNotificationChannel(
+          AndroidNotificationChannel(
+            _salatChannelIdFor(null, SalatSoundMode.silent, vibration),
+            'صلاة على النبي — صامت',
+            description: 'تذكير من غير صوت، مع الاهتزاز حسب الإعداد.',
+            importance: Importance.high,
+            playSound: false,
+            enableVibration: vibration,
+            showBadge: false,
+          ),
+        );
+      }
+      for (final phrase in kSalatPhrases) {
+        if (!SalatAudioCatalog.instance.canSoundNotification(phrase.id)) {
+          continue;
+        }
+        final resource = SalatAudioCatalog.instance.notificationResourceFor(
+          phrase.id,
+        );
+        for (final vibration in <bool>[true, false]) {
+          await android.createNotificationChannel(
+            AndroidNotificationChannel(
+              _salatChannelIdFor(phrase, SalatSoundMode.voice, vibration),
+              'صلاة على النبي — صوت',
+              description: 'تذكير بصوت تسجيل الصلاة على النبي.',
+              importance: Importance.high,
+              playSound: true,
+              sound: RawResourceAndroidNotificationSound(resource!),
+              enableVibration: vibration,
+              showBadge: false,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('notifications: could not create salat channels ($e)');
+    }
+  }
+
   /// Whether the user allows notifications at all.  This does not prompt.
   Future<bool> areNotificationsEnabled() async {
     await init();
@@ -194,6 +350,24 @@ class NotificationService {
     }
   }
 
+  /// Cancels the salat, morning/evening azkar and Friday Kahf schedules,
+  /// leaving prayer, study and task reminders untouched.
+  Future<void> cancelAzkarNotifications() async {
+    await init();
+    if (!_initialized) return;
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      for (final request in pending) {
+        final id = request.id;
+        final isSalat = id >= _salatIdBase && id < _salatIdBase + 700;
+        final isAzkar = id >= _azkarIdBase && id < _azkarIdBase + 300;
+        if (isSalat || isAzkar) await _plugin.cancel(id);
+      }
+    } catch (e) {
+      debugPrint('notifications: could not cancel azkar schedules ($e)');
+    }
+  }
+
   /// Schedules one adhan notification, falling back to an inexact alarm when
   /// Android refuses the exact one.
   Future<AdhanScheduleOutcome> schedulePrayerAdhan({
@@ -205,7 +379,7 @@ class NotificationService {
     required bool preferExact,
     required String payload,
   }) {
-    return _schedulePrayer(
+    return _scheduleDetailed(
       id: id,
       title: title,
       body: body,
@@ -224,7 +398,7 @@ class NotificationService {
     required DateTime when,
     required bool preferExact,
   }) {
-    return _schedulePrayer(
+    return _scheduleDetailed(
       id: id,
       title: title,
       body: body,
@@ -234,7 +408,70 @@ class NotificationService {
     );
   }
 
-  Future<AdhanScheduleOutcome> _schedulePrayer({
+  /// Schedules one salat-on-the-Prophet reminder.
+  Future<AdhanScheduleOutcome> scheduleSalatReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    required SalatPhrase phrase,
+    required SalatSoundMode sound,
+    required bool vibration,
+    required bool preferExact,
+    required String payload,
+  }) {
+    return _scheduleDetailed(
+      id: id,
+      title: title,
+      body: body,
+      when: when,
+      preferExact: preferExact,
+      details: _salatDetails(phrase, sound, vibration),
+      payload: payload,
+    );
+  }
+
+  /// Schedules one morning/evening azkar notification.
+  Future<AdhanScheduleOutcome> scheduleAzkarReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    required bool preferExact,
+    required String payload,
+  }) {
+    return _scheduleDetailed(
+      id: id,
+      title: title,
+      body: body,
+      when: when,
+      preferExact: preferExact,
+      details: _azkarDetails(body),
+      payload: payload,
+    );
+  }
+
+  /// Schedules the Friday Surat Al-Kahf reminder.
+  Future<AdhanScheduleOutcome> scheduleKahfReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    required bool preferExact,
+    required String payload,
+  }) {
+    return _scheduleDetailed(
+      id: id,
+      title: title,
+      body: body,
+      when: when,
+      preferExact: preferExact,
+      details: _kahfDetails(body),
+      payload: payload,
+    );
+  }
+
+  Future<AdhanScheduleOutcome> _scheduleDetailed({
     required int id,
     required String title,
     required String body,
@@ -282,12 +519,10 @@ class NotificationService {
           return AdhanScheduleOutcome.failed;
         }
       }
-      debugPrint(
-        'notifications: could not schedule prayer notification ($error)',
-      );
+      debugPrint('notifications: could not schedule $id ($error)');
       return AdhanScheduleOutcome.failed;
     } catch (e) {
-      debugPrint('notifications: could not schedule prayer notification ($e)');
+      debugPrint('notifications: could not schedule $id ($e)');
       return AdhanScheduleOutcome.failed;
     }
   }
@@ -315,6 +550,68 @@ class NotificationService {
       return true;
     } catch (e) {
       debugPrint('notifications: could not show the test adhan ($e)');
+      return false;
+    }
+  }
+
+  /// Posts a salat reminder right now, using the same channel the scheduler
+  /// would use, so the user can check the phrase, chime and vibration.
+  Future<bool> showTestSalat({
+    required SalatPhrase phrase,
+    required SalatSoundMode sound,
+    required bool vibration,
+  }) async {
+    await init();
+    if (!_initialized) return false;
+    try {
+      await ensureSalatChannels();
+      await _plugin.show(
+        salatTestId,
+        'الصلاة على النبي ﷺ',
+        phrase.text,
+        NotificationDetails(
+          android: _salatDetails(phrase, sound, vibration),
+          iOS: const DarwinNotificationDetails(),
+        ),
+        payload: jsonEncode(<String, Object?>{
+          'type': 'salat',
+          'phrase': phrase.id,
+          'test': true,
+        }),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('notifications: could not show the test salat ($e)');
+      return false;
+    }
+  }
+
+  /// Posts a morning azkar reminder right now, for checking the channel.
+  Future<bool> showTestAzkar({
+    String title = 'اذكار الصباح',
+    String body = 'وقت أذكار الصباح — افتح واقرأ وعدّ.',
+  }) async {
+    await init();
+    if (!_initialized) return false;
+    try {
+      await ensureAzkarChannels();
+      await _plugin.show(
+        azkarTestId,
+        title,
+        body,
+        NotificationDetails(
+          android: _azkarDetails(body),
+          iOS: const DarwinNotificationDetails(),
+        ),
+        payload: jsonEncode(<String, Object?>{
+          'type': 'azkar',
+          'period': 'morning',
+          'test': true,
+        }),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('notifications: could not show the test azkar ($e)');
       return false;
     }
   }
@@ -360,6 +657,93 @@ class NotificationService {
       category: AndroidNotificationCategory.reminder,
       visibility: NotificationVisibility.public,
       channelShowBadge: false,
+      styleInformation: BigTextStyleInformation(body),
+    );
+  }
+
+  static String _salatChannelIdFor(
+    SalatPhrase? phrase,
+    SalatSoundMode mode,
+    bool vibration,
+  ) {
+    final key = switch (mode) {
+      SalatSoundMode.voice
+          when phrase != null &&
+              SalatAudioCatalog.instance.canSoundNotification(phrase.id) =>
+        'voice_${phrase.id}',
+      SalatSoundMode.voice => 'text',
+      SalatSoundMode.chime => 'chime',
+      SalatSoundMode.silent => 'text',
+    };
+    return 'zaker_salat_${key}_${vibration ? 'v' : 'q'}';
+  }
+
+  AndroidNotificationDetails _salatDetails(
+    SalatPhrase phrase,
+    SalatSoundMode requested,
+    bool vibration,
+  ) {
+    // Without a bundled raw recording the voice choice cannot be a channel
+    // sound; use the silent channel and keep the phrase in the body.
+    final mode =
+        requested == SalatSoundMode.voice &&
+            !SalatAudioCatalog.instance.canSoundNotification(phrase.id)
+        ? SalatSoundMode.silent
+        : requested;
+    final resource = switch (mode) {
+      SalatSoundMode.chime => kSalatChimeResource,
+      SalatSoundMode.voice =>
+        SalatAudioCatalog.instance.notificationResourceFor(phrase.id),
+      SalatSoundMode.silent => null,
+    };
+    final channelName = switch (mode) {
+      SalatSoundMode.voice => 'صلاة على النبي — صوت',
+      SalatSoundMode.chime => 'صلاة على النبي — نغمة',
+      SalatSoundMode.silent => 'صلاة على النبي — صامت',
+    };
+    return AndroidNotificationDetails(
+      _salatChannelIdFor(phrase, mode, vibration),
+      channelName,
+      channelDescription: 'تذكير بالصلاة على النبي ﷺ.',
+      importance: Importance.high,
+      priority: Priority.high,
+      sound: resource == null
+          ? null
+          : RawResourceAndroidNotificationSound(resource),
+      playSound: resource != null,
+      enableVibration: vibration,
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      channelShowBadge: false,
+      audioAttributesUsage: AudioAttributesUsage.notification,
+      styleInformation: BigTextStyleInformation(phrase.text),
+    );
+  }
+
+  AndroidNotificationDetails _azkarDetails(String body) {
+    return AndroidNotificationDetails(
+      _azkarChannelId,
+      _azkarChannelName,
+      channelDescription: _azkarChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      channelShowBadge: true,
+      styleInformation: BigTextStyleInformation(body),
+    );
+  }
+
+  AndroidNotificationDetails _kahfDetails(String body) {
+    return AndroidNotificationDetails(
+      _kahfChannelId,
+      _kahfChannelName,
+      channelDescription: _kahfChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      channelShowBadge: true,
       styleInformation: BigTextStyleInformation(body),
     );
   }
