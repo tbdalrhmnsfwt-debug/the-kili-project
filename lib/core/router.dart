@@ -49,6 +49,7 @@ import '../features/quran/quran_home_screen.dart';
 import '../features/quran/tasbih_screen.dart';
 import '../features/question_bank/question_bank_screen.dart';
 import '../features/recall/active_recall_screen.dart';
+import '../features/settings/appearance_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/subjects/subject_screen.dart';
 import '../features/subjects/subjects_screen.dart';
@@ -81,6 +82,7 @@ class ZakerRoutes {
   static const String hifzSetup = '/hifz/setup';
   static const String glossary = '/glossary';
   static const String settings = '/settings';
+  static const String appearance = '/appearance';
   static const String account = '/account';
   static const String lesson = '/lesson';
   static const String grade = '/grade';
@@ -220,6 +222,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.settings,
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.appearance,
+      builder: (context, state) => const AppearanceScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.account,

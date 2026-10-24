@@ -70,6 +70,12 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push(ZakerRoutes.azkar),
           ),
           _Tile(
+            icon: Icons.palette_outlined,
+            title: 'تغيير الشكل',
+            subtitle: 'الثيم وألوان التطبيق',
+            onTap: () => context.push(ZakerRoutes.appearance),
+          ),
+          _Tile(
             icon: Icons.volume_up_outlined,
             title: 'الأصوات',
             subtitle: 'صوت الإنجاز',

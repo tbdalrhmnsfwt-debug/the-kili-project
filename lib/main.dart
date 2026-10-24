@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
 
 import 'core/adhan_voices.dart';
+import 'core/appearance.dart';
 import 'core/local_store.dart';
 import 'core/localization.dart';
 import 'core/notification_service.dart';
@@ -66,6 +67,7 @@ class ZakerlyApp extends ConsumerWidget {
     // restore the account (or the local guest identity) on first build.
     ref.watch(persistenceProvider);
     ref.watch(authBootstrapProvider);
+    final appearance = ref.watch(appearanceProvider);
 
     // The adhan, azkar and hifz hosts live above the router: they reschedule
     // their notification windows on start, resume, midnight and changes.
@@ -80,9 +82,8 @@ class ZakerlyApp extends ConsumerWidget {
                 )?.t('ذاكرلي') ??
                 'ذاكرلي',
             debugShowCheckedModeBanner: false,
-            theme: ZakerTheme.light(),
-            darkTheme: ZakerTheme.dark(),
-            themeMode: ThemeMode.system,
+            theme: ZakerTheme.forStyle(appearance.themeStyle),
+            themeMode: ThemeMode.light,
             routerConfig: appRouter,
             locale: ref.watch(localeProvider),
             supportedLocales: const [Locale('ar'), Locale('en')],
@@ -96,14 +97,13 @@ class ZakerlyApp extends ConsumerWidget {
               // The app is Arabic-first: force RTL for the Arabic locale.
               final locale = Localizations.localeOf(context);
               // shadcn_ui components read their colours and typography from a
-              // ShadTheme; provide one that mirrors the active Material theme.
-              final isDark = Theme.of(context).brightness == Brightness.dark;
+              // ShadTheme; provide one that mirrors the selected appearance.
               return Directionality(
                 textDirection: locale.languageCode == 'ar'
                     ? TextDirection.rtl
                     : TextDirection.ltr,
                 child: ShadTheme(
-                  data: isDark ? ZakerShadTheme.dark() : ZakerShadTheme.light(),
+                  data: ZakerShadTheme.forStyle(appearance.themeStyle),
                   child: child ?? const SizedBox.shrink(),
                 ),
               );
