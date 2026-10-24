@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
+import '../hifz/hifz_home_screen.dart';
 import 'adhkar_screen.dart';
 import 'mutashabihat_screen.dart';
 import 'quran_reader_screen.dart';
@@ -50,6 +51,16 @@ class QuranHomeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: ZakerSpacing.md),
           _Hero(
+            title: 'احفظ وسمّع',
+            subtitle: 'حدد سورة وآيات، خبّي الكلمات وسمّع لنفسك',
+            icon: Icons.psychology_alt_rounded,
+            color: ZakerColors.success,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const HifzHomeScreen()),
+            ),
+          ),
+          const SizedBox(height: ZakerSpacing.md),
+          _Hero(
             title: ZakerStrings.s_265c6, // المسبحة
             subtitle: 'سبح بإيدك — وعداد بيحفظ وِردك',
             icon: Icons.fingerprint_rounded,
@@ -61,7 +72,8 @@ class QuranHomeScreen extends ConsumerWidget {
           const SizedBox(height: ZakerSpacing.md),
           _Hero(
             title: ZakerStrings.s_f9f8b, // الأذكار
-            subtitle: ZakerStrings.s_4d249, // أذكار الصباح والمساء — بعداد يمشي معاك
+            subtitle:
+                ZakerStrings.s_4d249, // أذكار الصباح والمساء — بعداد يمشي معاك
             icon: Icons.spa_rounded,
             color: ZakerColors.accent,
             onTap: () => Navigator.of(context).push(

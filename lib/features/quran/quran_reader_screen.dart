@@ -15,6 +15,7 @@ import '../../core/quran_data.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
+import '../hifz/hifz_setup_screen.dart';
 
 /// The Quran reader: the surah index and a reader for each surah.
 class QuranReaderScreen extends ConsumerStatefulWidget {
@@ -47,9 +48,7 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
       _error = null;
     });
     try {
-      final surahs = await ref
-          .read(quranDataProvider)
-          .surahs(refresh: refresh);
+      final surahs = await ref.read(quranDataProvider).surahs(refresh: refresh);
       if (!mounted) return;
       setState(() {
         _surahs = surahs;
@@ -442,6 +441,16 @@ class _SurahScreenState extends ConsumerState<_SurahScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: 'احفظ السورة',
+            icon: const Icon(Icons.psychology_alt_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    HifzSetupScreen(initialSurahNumber: widget.surah.number),
+              ),
+            ),
+          ),
+          IconButton(
             tooltip: 'استمع للسورة',
             icon: const Icon(Icons.headphones_rounded),
             onPressed: _listen,
@@ -594,4 +603,3 @@ class _ErrorState extends StatelessWidget {
     );
   }
 }
-

@@ -19,6 +19,7 @@ import 'core/salat_audio.dart';
 import 'core/shad_theme.dart';
 import 'core/theme.dart';
 import 'features/azkar/azkar_sync_host.dart';
+import 'features/hifz/hifz_sync_host.dart';
 import 'features/prayer/adhan_launch.dart';
 import 'features/prayer/adhan_sync_host.dart';
 import 'providers/app_providers.dart';
@@ -66,46 +67,48 @@ class ZakerlyApp extends ConsumerWidget {
     ref.watch(persistenceProvider);
     ref.watch(authBootstrapProvider);
 
-    // The adhan and azkar hosts live above the router: they reschedule their
-    // rolling notification windows on start, resume, midnight and changes.
+    // The adhan, azkar and hifz hosts live above the router: they reschedule
+    // their notification windows on start, resume, midnight and changes.
     return AzkarSyncHost(
       child: AdhanSyncHost(
-        child: MaterialApp.router(
-          onGenerateTitle: (context) =>
-              Localizations.of<AppLocalizations>(
-                context,
-                AppLocalizations,
-              )?.t('ذاكرلي') ??
-              'ذاكرلي',
-          debugShowCheckedModeBanner: false,
-          theme: ZakerTheme.light(),
-          darkTheme: ZakerTheme.dark(),
-          themeMode: ThemeMode.system,
-          routerConfig: appRouter,
-          locale: ref.watch(localeProvider),
-          supportedLocales: const [Locale('ar'), Locale('en')],
-          localizationsDelegates: const [
-            AppLocalizationsDelegate(),
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          builder: (context, child) {
-            // The app is Arabic-first: force RTL for the Arabic locale.
-            final locale = Localizations.localeOf(context);
-            // shadcn_ui components read their colours and typography from a
-            // ShadTheme; provide one that mirrors the active Material theme.
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return Directionality(
-              textDirection: locale.languageCode == 'ar'
-                  ? TextDirection.rtl
-                  : TextDirection.ltr,
-              child: ShadTheme(
-                data: isDark ? ZakerShadTheme.dark() : ZakerShadTheme.light(),
-                child: child ?? const SizedBox.shrink(),
-              ),
-            );
-          },
+        child: HifzSyncHost(
+          child: MaterialApp.router(
+            onGenerateTitle: (context) =>
+                Localizations.of<AppLocalizations>(
+                  context,
+                  AppLocalizations,
+                )?.t('ذاكرلي') ??
+                'ذاكرلي',
+            debugShowCheckedModeBanner: false,
+            theme: ZakerTheme.light(),
+            darkTheme: ZakerTheme.dark(),
+            themeMode: ThemeMode.system,
+            routerConfig: appRouter,
+            locale: ref.watch(localeProvider),
+            supportedLocales: const [Locale('ar'), Locale('en')],
+            localizationsDelegates: const [
+              AppLocalizationsDelegate(),
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            builder: (context, child) {
+              // The app is Arabic-first: force RTL for the Arabic locale.
+              final locale = Localizations.localeOf(context);
+              // shadcn_ui components read their colours and typography from a
+              // ShadTheme; provide one that mirrors the active Material theme.
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return Directionality(
+                textDirection: locale.languageCode == 'ar'
+                    ? TextDirection.rtl
+                    : TextDirection.ltr,
+                child: ShadTheme(
+                  data: isDark ? ZakerShadTheme.dark() : ZakerShadTheme.light(),
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

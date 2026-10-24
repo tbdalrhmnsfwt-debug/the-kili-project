@@ -1085,6 +1085,12 @@ class _DailyTools extends StatelessWidget {
             accent: _Accents.sky,
             onTap: () => context.push(ZakerRoutes.recall),
           ),
+          (
+            icon: HugeIcons.strokeRoundedBook02,
+            label: 'حفظ القرآن',
+            accent: _Accents.teal,
+            onTap: () => context.push(ZakerRoutes.hifz),
+          ),
         ];
 
     return Column(

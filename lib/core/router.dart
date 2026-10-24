@@ -27,6 +27,8 @@ import '../features/exam/quiz_screen.dart';
 import '../features/garden/garden_screen.dart';
 import '../features/games/games_screen.dart';
 import '../features/glossary/glossary_screen.dart';
+import '../features/hifz/hifz_home_screen.dart';
+import '../features/hifz/hifz_setup_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/home/shell_screen.dart';
 import '../features/leaderboard/leaderboard_screen.dart';
@@ -75,6 +77,8 @@ class ZakerRoutes {
   static const String exams = '/exams';
   static const String quiz = '/quiz';
   static const String quran = '/quran';
+  static const String hifz = '/hifz';
+  static const String hifzSetup = '/hifz/setup';
   static const String glossary = '/glossary';
   static const String settings = '/settings';
   static const String account = '/account';
@@ -177,6 +181,18 @@ final GoRouter appRouter = GoRouter(
       path: ZakerRoutes.quran,
       builder: (context, state) =>
           const ShellScreen(initialIndex: 3, child: QuranHomeScreen()),
+    ),
+    GoRoute(
+      path: ZakerRoutes.hifz,
+      builder: (context, state) => const HifzHomeScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.hifzSetup,
+      builder: (context, state) => HifzSetupScreen(
+        initialSurahNumber: int.tryParse(
+          state.uri.queryParameters['surah'] ?? '',
+        ),
+      ),
     ),
     GoRoute(
       path: ZakerRoutes.subjects,

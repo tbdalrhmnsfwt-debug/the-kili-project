@@ -45,6 +45,9 @@ void handleNotificationPayload(String? payload) {
     case 'kahf':
       appRouter.go(ZakerRoutes.azkarKahf);
       return;
+    case 'hifz':
+      appRouter.go(ZakerRoutes.hifz);
+      return;
   }
 
   if (data['type'] != 'adhan') return;
