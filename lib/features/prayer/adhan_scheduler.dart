@@ -145,6 +145,7 @@ class PrayerAdhanScheduler {
           final id = NotificationService.adhanNotificationId(
             dayOffset,
             prayer.index,
+            voiceSlot: NotificationService.adhanVoiceSlot(voice.id),
           );
           final outcome = await NotificationService.instance
               .schedulePrayerAdhan(

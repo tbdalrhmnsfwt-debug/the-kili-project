@@ -50,6 +50,47 @@ class AdhanPlatform {
     }
   }
 
+  /// Whether Android will let this app open a full-screen adhan over the lock
+  /// screen. Android 14 can withhold this even with the manifest permission.
+  static Future<bool?> canUseFullScreenIntent() async {
+    try {
+      return await _channel.invokeMethod<bool>('canUseFullScreenIntent');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Opens the system screen where the full-screen-intent permission is
+  /// granted. Returns whether the screen was opened.
+  static Future<bool> requestFullScreenIntentPermission() async {
+    try {
+      return await _channel.invokeMethod<bool>('requestFullScreenIntent') ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Whether the app may draw the optional floating adhan card over other
+  /// apps.
+  static Future<bool?> canDrawOverlays() async {
+    try {
+      return await _channel.invokeMethod<bool>('canDrawOverlays');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Opens the system "display over other apps" screen.
+  static Future<bool> requestOverlayPermission() async {
+    try {
+      return await _channel.invokeMethod<bool>('requestOverlayPermission') ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Plays `res/raw/<resourceName>` in process (used by the voice picker).
   ///
   /// When the voice is a user-added asset, [assetPath] is passed along and

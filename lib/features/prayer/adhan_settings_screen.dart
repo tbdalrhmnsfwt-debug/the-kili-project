@@ -37,6 +37,7 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
   bool? _notificationsAllowed;
   bool? _exactAllowed;
   bool? _ignoringBattery;
+  bool? _fullScreenAllowed;
   bool _testing = false;
 
   @override
@@ -63,12 +64,40 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
     final exact = await NotificationService.instance
         .canScheduleExactNotifications();
     final battery = await AdhanPlatform.isIgnoringBatteryOptimizations();
+    final fullScreen = await AdhanPlatform.canUseFullScreenIntent();
     if (!mounted) return;
     setState(() {
       _notificationsAllowed = notifications;
       _exactAllowed = exact;
       _ignoringBattery = battery;
+      _fullScreenAllowed = fullScreen ?? true;
     });
+  }
+
+  /// Explains why the runtime prompt is about to appear before showing it.
+  Future<bool> _explainNotifications() async {
+    final allow = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const TrText('إذن الإشعارات'),
+        content: const TrText(
+          'عشان الأذان وتذكير الصلاة يوصلك في ميعادهم، التطبيق محتاج إذن '
+          'الإشعارات. من غير الإذن مش هنقدر نعرض لك التنبيه.',
+          style: TextStyle(fontSize: 13, height: 1.7),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const TrText('مش دلوقتي'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const TrText('اسمح'),
+          ),
+        ],
+      ),
+    );
+    return allow ?? false;
   }
 
   Future<void> _setEnabled(bool value) async {
@@ -79,6 +108,7 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
       return;
     }
 
+    if (!await _explainNotifications()) return;
     final granted = await NotificationService.instance.requestPermission();
     if (!mounted) return;
     if (!granted) {
@@ -97,7 +127,7 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
 
   Future<void> _fixNotifications() async {
     var allowed = await NotificationService.instance.areNotificationsEnabled();
-    if (!allowed) {
+    if (!allowed && await _explainNotifications()) {
       allowed = await NotificationService.instance.requestPermission();
     }
     await _refreshSystemState();
@@ -140,6 +170,21 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
   Future<void> _openBattery() async {
     await context.push(ZakerRoutes.prayerBattery);
     await _refreshSystemState();
+  }
+
+  Future<void> _fixFullScreen() async {
+    await AdhanPlatform.requestFullScreenIntentPermission();
+    await _refreshSystemState();
+    if (!mounted) return;
+    if (_fullScreenAllowed == false) {
+      _showSnack(
+        'لسه الشاشة الكاملة مقفولة — اسمح للتطبيق من إعدادات أندرويد.',
+        actionLabel: 'افتح التشخيص',
+        onAction: () async {
+          await context.push(ZakerRoutes.prayerDiagnostics);
+        },
+      );
+    }
   }
 
   Future<void> _testAdhan() async {
@@ -201,9 +246,11 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
                 notificationsAllowed: _notificationsAllowed,
                 exactAllowed: _exactAllowed,
                 ignoringBattery: _ignoringBattery,
+                fullScreenAllowed: _fullScreenAllowed,
                 onNotifications: _fixNotifications,
                 onExact: _fixExactAlarms,
                 onBattery: _openBattery,
+                onFullScreen: _fixFullScreen,
               ),
               const SizedBox(height: 20),
               const _SectionLabel(title: 'الصلوات'),
@@ -352,17 +399,21 @@ class _ReadinessCard extends StatelessWidget {
     required this.notificationsAllowed,
     required this.exactAllowed,
     required this.ignoringBattery,
+    required this.fullScreenAllowed,
     required this.onNotifications,
     required this.onExact,
     required this.onBattery,
+    required this.onFullScreen,
   });
 
   final bool? notificationsAllowed;
   final bool? exactAllowed;
   final bool? ignoringBattery;
+  final bool? fullScreenAllowed;
   final VoidCallback onNotifications;
   final VoidCallback onExact;
   final VoidCallback onBattery;
+  final VoidCallback onFullScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -407,6 +458,23 @@ class _ReadinessCard extends StatelessWidget {
                 ? 'مسموح'
                 : 'مش مسموح',
             onTap: onExact,
+          ),
+          const _Divider(),
+          _StatusRow(
+            icon: HugeIcons.strokeRoundedSmartPhone01,
+            title: 'شاشة الأذان الكاملة',
+            subtitle: 'عشان شاشة الأذان تفتح والموبايل مقفول (أندرويد 14+).',
+            state: fullScreenAllowed == null
+                ? _CheckState.unknown
+                : fullScreenAllowed!
+                ? _CheckState.ok
+                : _CheckState.attention,
+            statusText: fullScreenAllowed == null
+                ? '…'
+                : fullScreenAllowed!
+                ? 'مسموح'
+                : 'مقفول',
+            onTap: onFullScreen,
           ),
           const _Divider(),
           _StatusRow(

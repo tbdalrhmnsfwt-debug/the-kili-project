@@ -143,7 +143,7 @@ class _IslamicHubScreenState extends ConsumerState<IslamicHubScreen> {
         description: 'افحص صلاحيات الإشعارات والصوت',
         icon: HugeIcons.strokeRoundedWrench01,
         accent: ink(const Color(0xFFB45309), const Color(0xFFFBBF24)),
-        route: null,
+        route: ZakerRoutes.prayerDiagnostics,
       ),
       _HubTileData(
         title: 'القرآن الكريم',

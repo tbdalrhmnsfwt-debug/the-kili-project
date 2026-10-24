@@ -37,6 +37,7 @@ import '../features/library/study_grade_screen.dart';
 import '../features/library/study_library_screen.dart';
 import '../features/library/study_subject_screen.dart';
 import '../features/mistakes/mistakes_screen.dart';
+import '../features/islamic/diagnostics_screen.dart';
 import '../features/islamic/islamic_hub_screen.dart';
 import '../features/notebooks/notebooks_screen.dart';
 import '../features/planner/planner_screen.dart';
@@ -117,6 +118,7 @@ class ZakerRoutes {
   static const String prayerNotifications = '/prayer/notifications';
   static const String prayerBattery = '/prayer/battery';
   static const String prayerCredits = '/prayer/credits';
+  static const String prayerDiagnostics = '/prayer/diagnostics';
   static const String azkar = '/azkar';
   static const String azkarMorning = '/azkar/morning';
   static const String azkarEvening = '/azkar/evening';
@@ -384,6 +386,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.prayerCredits,
       builder: (context, state) => const PrayerCreditsScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.prayerDiagnostics,
+      builder: (context, state) => const DiagnosticsScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.azkar,

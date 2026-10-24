@@ -116,10 +116,27 @@ class NotificationService {
   /// The id of the immediately-posted test adhan.
   static const int adhanTestId = 3999;
 
+  /// The id used by the "test notification in 10 seconds" action.
+  static const int delayedTestId = 3998;
+
+  /// The slot of [voiceId] in the bundled voice catalogue. Custom recordings
+  /// share the last slot. Used in the notification id so that choosing another
+  /// sound also chooses a fresh id (Android ignores a sound change on an id
+  /// that was already posted).
+  static int adhanVoiceSlot(String voiceId) {
+    final voices = AdhanVoiceCatalog.instance.voices;
+    final index = voices.indexWhere((voice) => voice.id == voiceId);
+    return index < 0 ? 0 : index.clamp(0, 9);
+  }
+
   /// A stable id for one prayer on one of the next days.  Separating the days
-  /// lets the app keep a rolling window of exact alarms scheduled.
-  static int adhanNotificationId(int dayOffset, int prayerIndex) =>
-      _adhanIdBase + dayOffset * 10 + prayerIndex;
+  /// lets the app keep a rolling window of exact alarms scheduled, and the
+  /// voice slot gives a new id when the sound changes.
+  static int adhanNotificationId(
+    int dayOffset,
+    int prayerIndex, {
+    int voiceSlot = 0,
+  }) => _adhanIdBase + dayOffset * 60 + prayerIndex * 10 + voiceSlot;
 
   /// A stable id for the reminder that precedes one prayer.
   static int prayerReminderNotificationId(int dayOffset, int prayerIndex) =>
@@ -621,6 +638,65 @@ class NotificationService {
     } catch (e) {
       debugPrint('notifications: could not show the test adhan ($e)');
       return false;
+    }
+  }
+
+  /// Schedules one plain test notification after [delay], so the user can
+  /// leave the app and check that the notification really arrives.
+  Future<AdhanScheduleOutcome> scheduleTestNotification({
+    Duration delay = const Duration(seconds: 10),
+  }) async {
+    await init();
+    if (!_initialized) return AdhanScheduleOutcome.failed;
+    await ensureAdhanChannels();
+    await cancelNotification(delayedTestId);
+    return _scheduleDetailed(
+      id: delayedTestId,
+      title: 'اختبار الإشعارات',
+      body: 'لو وصلتك الرسالة دي، الإشعارات شغالة تمام.',
+      when: DateTime.now().add(delay),
+      preferExact: await canScheduleExactNotifications(),
+      details: _reminderDetails('اختبار الإشعارات — كده التنبيه بيوصل.'),
+      payload: 'prayer',
+    );
+  }
+
+  /// The next scheduled adhan, read back from the OS queue.  The payload
+  /// carries the prayer time, which the plugin does not expose directly.
+  Future<({int id, String title, DateTime? when})?>
+  nextScheduledPrayer() async {
+    await init();
+    if (!_initialized) return null;
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      ({int id, String title, DateTime? when})? next;
+      for (final request in pending) {
+        if (request.id < _adhanIdBase || request.id >= _adhanIdBase + 1000) {
+          continue;
+        }
+        DateTime? when;
+        try {
+          final payload = request.payload;
+          if (payload != null && payload.isNotEmpty) {
+            final decoded = jsonDecode(payload);
+            if (decoded is Map<String, dynamic>) {
+              final raw = decoded['time'];
+              if (raw is String) when = DateTime.tryParse(raw);
+            }
+          }
+        } catch (_) {
+          when = null;
+        }
+        if (next == null ||
+            (when != null &&
+                (next.when == null || when.isBefore(next.when!)))) {
+          next = (id: request.id, title: request.title ?? 'الأذان', when: when);
+        }
+      }
+      return next;
+    } catch (e) {
+      debugPrint('notifications: could not read the queue ($e)');
+      return null;
     }
   }
 

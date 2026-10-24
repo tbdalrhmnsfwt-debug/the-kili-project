@@ -88,6 +88,16 @@ class MainActivity : FlutterActivity() {
                         )
                         result.success(startSafely(intent))
                     }
+                    "canUseFullScreenIntent" -> result.success(canUseFullScreenIntent())
+                    "requestFullScreenIntent" -> result.success(startSafely(fullScreenIntentSettings()))
+                    "canDrawOverlays" -> result.success(Settings.canDrawOverlays(this))
+                    "requestOverlayPermission" -> {
+                        val intent = Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:$packageName")
+                        )
+                        result.success(startSafely(intent))
+                    }
                     "playPreview" -> {
                         val name = call.argument<String>("name")
                         val asset = call.argument<String>("asset")
@@ -155,6 +165,34 @@ class MainActivity : FlutterActivity() {
     private fun isIgnoringBatteryOptimizations(): Boolean {
         val power = getSystemService(Context.POWER_SERVICE) as PowerManager
         return power.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    /**
+     * Android 14 can withhold the full-screen-intent permission even when the
+     * manifest declares it, so the diagnostics screen checks it explicitly.
+     */
+    private fun canUseFullScreenIntent(): Boolean {
+        if (Build.VERSION.SDK_INT < 34) return true
+        return try {
+            val manager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            manager.canUseFullScreenIntent()
+        } catch (e: Exception) {
+            true
+        }
+    }
+
+    private fun fullScreenIntentSettings(): Intent {
+        if (Build.VERSION.SDK_INT < 34) {
+            return Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.parse("package:$packageName")
+            )
+        }
+        return Intent(
+            "android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT",
+            Uri.parse("package:$packageName")
+        )
     }
 
     private fun startSafely(intent: Intent): Boolean {
