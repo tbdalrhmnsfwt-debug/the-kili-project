@@ -86,6 +86,7 @@ flutter:
     - assets/dictionary/
     - assets/i18n/
     - assets/quran/
+    - assets/adhan/
     - assets/tessdata/
     - assets/tessdata_config.json
     - assets/courses/computer/
