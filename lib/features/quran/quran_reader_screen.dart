@@ -11,22 +11,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/quran_data.dart';
 import '../../core/theme.dart';
-import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
-
-const String _api = 'https://api.alquran.cloud/v1';
-
-/// Mishary Alafasy, 128 kbps — one file per surah.
-const String _audioBase =
-    'https://cdn.islamic.network/quran/audio-surah/128/ar.alafasy';
-
-/// The surah index, kept for the lifetime of the process.
-List<_Surah>? _surahCache;
-
-/// Surah texts, keyed by surah number.
-final Map<int, List<String>> _ayahCache = {};
 
 /// The Quran reader: the surah index and a reader for each surah.
 class QuranReaderScreen extends ConsumerStatefulWidget {
@@ -41,7 +29,7 @@ class QuranReaderScreen extends ConsumerStatefulWidget {
 }
 
 class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
-  List<_Surah> _surahs = const [];
+  List<QuranSurah> _surahs = const [];
   Object? _error;
   bool _loading = true;
   String _query = '';
@@ -53,30 +41,15 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
     _load();
   }
 
-  Future<void> _load() async {
-    final cached = _surahCache;
-    if (cached != null) {
-      setState(() {
-        _surahs = cached;
-        _loading = false;
-      });
-      _maybeOpenInitialSurah(cached);
-      return;
-    }
+  Future<void> _load({bool refresh = false}) async {
     setState(() {
-      _loading = true;
+      _loading = _surahs.isEmpty;
       _error = null;
     });
     try {
-      final response = await ref
-          .read(apiClientProvider)
-          .raw
-          .get<Map<String, dynamic>>('$_api/surah');
-      final data = (response.data ?? const {})['data'] as List<dynamic>?;
-      final surahs = (data ?? const [])
-          .map((e) => _Surah.fromJson(e as Map<String, dynamic>))
-          .toList(growable: false);
-      _surahCache = surahs;
+      final surahs = await ref
+          .read(quranDataProvider)
+          .surahs(refresh: refresh);
       if (!mounted) return;
       setState(() {
         _surahs = surahs;
@@ -92,7 +65,7 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
     }
   }
 
-  List<_Surah> get _visible {
+  List<QuranSurah> get _visible {
     final query = _query.trim();
     if (query.isEmpty) return _surahs;
     return _surahs
@@ -104,14 +77,14 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
         .toList(growable: false);
   }
 
-  void _open(_Surah surah) {
+  void _open(QuranSurah surah) {
     Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => _SurahScreen(surah: surah)));
   }
 
   /// Pushes the requested surah once, after the index has loaded.
-  void _maybeOpenInitialSurah(List<_Surah> surahs) {
+  void _maybeOpenInitialSurah(List<QuranSurah> surahs) {
     final target = widget.initialSurahNumber;
     if (target == null || _openedInitialSurah) return;
     for (final surah in surahs) {
@@ -124,8 +97,8 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
     }
   }
 
-  Future<void> _listen(_Surah surah) async {
-    final uri = Uri.parse('$_audioBase/${surah.number}.mp3');
+  Future<void> _listen(QuranSurah surah) async {
+    final uri = Uri.parse('$kQuranAudioBase/${surah.number}.mp3');
     try {
       final launched = await launchUrl(
         uri,
@@ -157,10 +130,7 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
               onRetry: _load,
             )
           : RefreshIndicator(
-              onRefresh: () async {
-                _surahCache = null;
-                await _load();
-              },
+              onRefresh: () => _load(refresh: true),
               child: CustomScrollView(
                 slivers: [
                   SliverPadding(
@@ -296,7 +266,7 @@ class _SurahTile extends StatelessWidget {
     required this.onListen,
   });
 
-  final _Surah surah;
+  final QuranSurah surah;
   final VoidCallback onOpen;
   final VoidCallback onListen;
 
@@ -389,7 +359,7 @@ class _SurahTile extends StatelessWidget {
 class _SurahScreen extends ConsumerStatefulWidget {
   const _SurahScreen({required this.surah});
 
-  final _Surah surah;
+  final QuranSurah surah;
 
   @override
   ConsumerState<_SurahScreen> createState() => _SurahScreenState();
@@ -407,28 +377,14 @@ class _SurahScreenState extends ConsumerState<_SurahScreen> {
   }
 
   Future<void> _load() async {
-    final cached = _ayahCache[widget.surah.number];
-    if (cached != null) {
-      setState(() {
-        _ayahs = cached;
-        _loading = false;
-      });
-      return;
-    }
     setState(() {
-      _loading = true;
+      _loading = _ayahs == null;
       _error = null;
     });
     try {
-      final response = await ref
-          .read(apiClientProvider)
-          .raw
-          .get<Map<String, dynamic>>('$_api/surah/${widget.surah.number}');
-      final data = (response.data ?? const {})['data'] as Map<String, dynamic>?;
-      final ayahs = ((data?['ayahs'] as List<dynamic>?) ?? const [])
-          .map((e) => (e as Map<String, dynamic>)['text'] as String? ?? '')
-          .toList(growable: false);
-      _ayahCache[widget.surah.number] = ayahs;
+      final ayahs = await ref
+          .read(quranDataProvider)
+          .ayahsFor(widget.surah.number);
       if (!mounted) return;
       setState(() {
         _ayahs = ayahs;
@@ -444,7 +400,7 @@ class _SurahScreenState extends ConsumerState<_SurahScreen> {
   }
 
   Future<void> _listen() async {
-    final uri = Uri.parse('$_audioBase/${widget.surah.number}.mp3');
+    final uri = Uri.parse('$kQuranAudioBase/${widget.surah.number}.mp3');
     try {
       final launched = await launchUrl(
         uri,
@@ -639,30 +595,3 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
-/// A surah as returned by the AlQuran Cloud index.
-class _Surah {
-  const _Surah({
-    required this.number,
-    required this.name,
-    required this.englishName,
-    required this.ayahCount,
-    required this.revelation,
-  });
-
-  final int number;
-  final String name;
-  final String englishName;
-  final int ayahCount;
-  final String revelation;
-
-  factory _Surah.fromJson(Map<String, dynamic> json) {
-    final type = json['revelationType'] as String? ?? '';
-    return _Surah(
-      number: (json['number'] as num?)?.toInt() ?? 0,
-      name: json['name'] as String? ?? '',
-      englishName: json['englishName'] as String? ?? '',
-      ayahCount: (json['numberOfAyahs'] as num?)?.toInt() ?? 0,
-      revelation: type == 'Medinan' ? 'مدنية' : 'مكية',
-    );
-  }
-}
