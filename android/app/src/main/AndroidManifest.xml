@@ -29,6 +29,15 @@
     <uses-permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT" />
 
     <!--
+      Prayer times: the location is read only to resolve the user's city (and
+      to refresh it after moving more than ~10 km).  The times themselves are
+      computed offline; coarse location is enough, fine is requested so the
+      city name is accurate.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!--
       The focus timer draws a system overlay so the countdown stays visible
       over other apps (flutter_overlay_window, subtype focus_lock_overlay).
     -->
