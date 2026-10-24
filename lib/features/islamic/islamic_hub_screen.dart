@@ -136,7 +136,7 @@ class _IslamicHubScreenState extends ConsumerState<IslamicHubScreen> {
         description: 'علّم كل صلاة وشوف سلسلتك',
         icon: HugeIcons.strokeRoundedTaskDone01,
         accent: accents.islamic,
-        route: null,
+        route: ZakerRoutes.prayerLog,
       ),
       _HubTileData(
         title: 'تشخيص الأذان',
