@@ -14,7 +14,19 @@ or invented.
 | `adhan_madeenah` | `adhan_madeenah.mp3` | Oración Al-Azzan | B9. | https://commons.wikimedia.org/wiki/File:Oraci%C3%B3n_Al-Azzan.ogg | Public domain | "Oración Al-Azzan" by B9., Wikimedia Commons, public domain |
 | `adhan_ejaz215` | `adhan_ejaz215.mp3` | Call to prayer from the Prophet's Mosque | ejaz215 | https://commons.wikimedia.org/wiki/File:33937_ejaz215_call-to-prayer-from-the-prophet-s-mo.ogg (original: https://freesound.org/people/ejaz215/sounds/33937/) | CC BY 3.0 | "Call to prayer from the prophet mosque" by ejaz215, Freesound, via Wikimedia Commons, CC BY 3.0 — compressed and loudness-normalised |
 | `adhan_fouad_fajr` | `adhan_fouad_fajr.mp3` | Adhan Fouad Adan (Fajr) | Fouad Adan | https://archive.org/details/AdanAlfajrFouadAdan | Public Domain Mark 1.0 | "Adhan Fouad Adan" by Fouad Adan, Internet Archive, Public Domain Mark 1.0 — compressed and loudness-normalised |
-| `takbeer_short` | `takbeer_short.mp3` | Allahu Akbar (takbir) | Bod lnga klang | https://commons.wikimedia.org/wiki/File:Allahuakbar.opus | CC0 1.0 | "Allahuakbar" by Bod lnga klang, Wikimedia Commons, CC0 1.0 |
+| `adhan_egyptian_cairo` | `adhan_egyptian_cairo.mp3` | Morning Call to Prayer in Cairo | musesdelight (uploader) | https://www.masmaa.org/en/audio/morning-call-to-prayer-in-cairo | CC0 1.0 | "Morning Call to Prayer in Cairo" — Masmaa sound archive (masmaa.org), CC0 1.0 — compressed and loudness-normalised |
+
+The CC0 and public-domain recordings need no visible attribution.  Only the
+CC BY recording is repeated on the in-app **About / Licenses** screen, which is
+linked from the bottom of the adhan settings.
+
+## User-added Egyptian recordings
+
+The app looks for `assets/adhan/egyptian_*.mp3` at start and adds every match
+to the voice picker as «أذان مصري».  A user-added file is played from the app
+assets by the full-screen player; its notification is silent.  To use it as a
+notification sound too, place a copy with the same name in
+`android/app/src/main/res/raw`.
 
 ## License texts
 
