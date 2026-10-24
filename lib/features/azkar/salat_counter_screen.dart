@@ -389,7 +389,11 @@ class _PhraseCard extends StatelessWidget {
               ),
             ),
             child: selected
-                ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+                ? Icon(
+                    Icons.check_rounded,
+                    size: 16,
+                    color: theme.colorScheme.onPrimary,
+                  )
                 : null,
           ),
           const SizedBox(width: 12),

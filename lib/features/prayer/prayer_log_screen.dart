@@ -282,10 +282,10 @@ class _PrayerRow extends StatelessWidget {
                     ),
                   ),
                   child: marked
-                      ? const Icon(
+                      ? Icon(
                           Icons.check_rounded,
                           size: 17,
-                          color: Colors.white,
+                          color: theme.colorScheme.onPrimary,
                         )
                       : null,
                 ),
