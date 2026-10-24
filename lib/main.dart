@@ -15,8 +15,10 @@ import 'core/local_store.dart';
 import 'core/localization.dart';
 import 'core/notification_service.dart';
 import 'core/router.dart';
+import 'core/salat_audio.dart';
 import 'core/shad_theme.dart';
 import 'core/theme.dart';
+import 'features/azkar/azkar_sync_host.dart';
 import 'features/prayer/adhan_launch.dart';
 import 'features/prayer/adhan_sync_host.dart';
 import 'providers/app_providers.dart';
@@ -27,6 +29,9 @@ Future<void> main() async {
   // first frame, so the picker and the persisted voice ids agree from the
   // start.
   await AdhanVoiceCatalog.instance.load();
+  // Detect user-added `assets/salat/<phrase_id>_*.mp3` recordings before the
+  // first frame so the settings screen and the salat counter agree.
+  await SalatAudioCatalog.instance.load();
   final store = await LocalStore.open();
   // Tapping a reminder opens its screen; tapping an adhan opens the
   // full-screen player.
@@ -61,45 +66,47 @@ class ZakerlyApp extends ConsumerWidget {
     ref.watch(persistenceProvider);
     ref.watch(authBootstrapProvider);
 
-    // The adhan host lives above the router: it reschedules the rolling
-    // notification window on start, resume, midnight and settings changes.
-    return AdhanSyncHost(
-      child: MaterialApp.router(
-        onGenerateTitle: (context) =>
-            Localizations.of<AppLocalizations>(
-              context,
-              AppLocalizations,
-            )?.t('ذاكرلي') ??
-            'ذاكرلي',
-        debugShowCheckedModeBanner: false,
-        theme: ZakerTheme.light(),
-        darkTheme: ZakerTheme.dark(),
-        themeMode: ThemeMode.system,
-        routerConfig: appRouter,
-        locale: ref.watch(localeProvider),
-        supportedLocales: const [Locale('ar'), Locale('en')],
-        localizationsDelegates: const [
-          AppLocalizationsDelegate(),
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        builder: (context, child) {
-          // The app is Arabic-first: force RTL for the Arabic locale.
-          final locale = Localizations.localeOf(context);
-          // shadcn_ui components read their colours and typography from a
-          // ShadTheme; provide one that mirrors the active Material theme.
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          return Directionality(
-            textDirection: locale.languageCode == 'ar'
-                ? TextDirection.rtl
-                : TextDirection.ltr,
-            child: ShadTheme(
-              data: isDark ? ZakerShadTheme.dark() : ZakerShadTheme.light(),
-              child: child ?? const SizedBox.shrink(),
-            ),
-          );
-        },
+    // The adhan and azkar hosts live above the router: they reschedule their
+    // rolling notification windows on start, resume, midnight and changes.
+    return AzkarSyncHost(
+      child: AdhanSyncHost(
+        child: MaterialApp.router(
+          onGenerateTitle: (context) =>
+              Localizations.of<AppLocalizations>(
+                context,
+                AppLocalizations,
+              )?.t('ذاكرلي') ??
+              'ذاكرلي',
+          debugShowCheckedModeBanner: false,
+          theme: ZakerTheme.light(),
+          darkTheme: ZakerTheme.dark(),
+          themeMode: ThemeMode.system,
+          routerConfig: appRouter,
+          locale: ref.watch(localeProvider),
+          supportedLocales: const [Locale('ar'), Locale('en')],
+          localizationsDelegates: const [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          builder: (context, child) {
+            // The app is Arabic-first: force RTL for the Arabic locale.
+            final locale = Localizations.localeOf(context);
+            // shadcn_ui components read their colours and typography from a
+            // ShadTheme; provide one that mirrors the active Material theme.
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return Directionality(
+              textDirection: locale.languageCode == 'ar'
+                  ? TextDirection.rtl
+                  : TextDirection.ltr,
+              child: ShadTheme(
+                data: isDark ? ZakerShadTheme.dark() : ZakerShadTheme.light(),
+                child: child ?? const SizedBox.shrink(),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

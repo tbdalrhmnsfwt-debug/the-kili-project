@@ -64,6 +64,12 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => _showReminders(context),
           ),
           _Tile(
+            icon: Icons.auto_awesome_rounded,
+            title: 'الأذكار والتنبيهات',
+            subtitle: 'الصلاة على النبي وأذكار الصباح والمساء والكهف',
+            onTap: () => context.push(ZakerRoutes.azkar),
+          ),
+          _Tile(
             icon: Icons.volume_up_outlined,
             title: 'الأصوات',
             subtitle: 'صوت الإنجاز',
@@ -185,7 +191,9 @@ class SettingsScreen extends ConsumerWidget {
                       ? const TrText('اللغة الحالية')
                       : null,
                   onTap: () {
-                    ref.read(localeProvider.notifier).state = const Locale('ar');
+                    ref.read(localeProvider.notifier).state = const Locale(
+                      'ar',
+                    );
                     Navigator.of(dialogContext).pop();
                   },
                 ),
@@ -201,7 +209,9 @@ class SettingsScreen extends ConsumerWidget {
                       ? const TrText('اللغة الحالية')
                       : null,
                   onTap: () {
-                    ref.read(localeProvider.notifier).state = const Locale('en');
+                    ref.read(localeProvider.notifier).state = const Locale(
+                      'en',
+                    );
                     Navigator.of(dialogContext).pop();
                   },
                 ),
@@ -259,7 +269,8 @@ class SettingsScreen extends ConsumerWidget {
       context: context,
       applicationName: 'ذاكرلي',
       applicationVersion: '1.1.0 (86)',
-      applicationLegalese: 'نسخة عربية للطلاب — مناهج، اختبارات، تركيز، ومعلم AI.',
+      applicationLegalese:
+          'نسخة عربية للطلاب — مناهج، اختبارات، تركيز، ومعلم AI.',
       children: const [
         SizedBox(height: ZakerSpacing.md),
         TrText(
@@ -325,9 +336,8 @@ class _RemindersSheet extends ConsumerWidget {
           children: [
             TrText(
               'المنبهات',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,

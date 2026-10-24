@@ -13,6 +13,7 @@ import '../../core/prayer_methods.dart';
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../widgets/tr_text.dart';
+import '../azkar/azkar_providers.dart';
 import 'adhan_providers.dart';
 import 'location_flow.dart';
 import 'prayer_home_card.dart';
@@ -118,6 +119,8 @@ class PrayerScreen extends ConsumerWidget {
                     const _AdhanCard(),
                     const SizedBox(height: 10),
                     const _QiblaCard(),
+                    const SizedBox(height: 10),
+                    const _AzkarCard(),
                     const SizedBox(height: 16),
                     const _Disclaimer(),
                   ],
@@ -695,6 +698,105 @@ class _QiblaCard extends StatelessWidget {
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              TrText(
+                'افتح',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                ),
+              ),
+              Icon(
+                Icons.chevron_left_rounded,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AzkarCard extends ConsumerWidget {
+  const _AzkarCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final settings = ref.watch(azkarSettingsProvider);
+    final active = <String>[
+      if (settings.salatEnabled) 'الصلاة على النبي',
+      if (settings.morningEnabled) 'أذكار الصباح',
+      if (settings.eveningEnabled) 'أذكار المساء',
+      if (settings.kahfEnabled) 'الكهف',
+    ];
+    final subtitle = active.isEmpty
+        ? 'مقفول — فعّل تذكير الصلاة على النبي والأذكار'
+        : 'شغال: ${active.join(' · ')}';
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => context.push(ZakerRoutes.azkar),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: active.isEmpty
+                  ? theme.dividerTheme.color ?? Colors.black12
+                  : theme.colorScheme.primary.withValues(alpha: 0.32),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedStar,
+                    size: 19,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TrText(
+                      'الأذكار والتنبيهات',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 10,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    TrText(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        color: active.isEmpty
+                            ? theme.colorScheme.onSurface
+                            : theme.colorScheme.primary,
                       ),
                     ),
                   ],

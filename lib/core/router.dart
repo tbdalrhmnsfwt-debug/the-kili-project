@@ -11,6 +11,14 @@ import '../features/achievement/achievement_screen.dart';
 import '../features/account/account_screen.dart';
 import '../features/ai/chat_screen.dart';
 import '../features/ai/mind_map_screen.dart';
+import '../features/azkar/azkar_home_screen.dart';
+import '../features/azkar/azkar_licenses_screen.dart';
+import '../features/azkar/azkar_list_screen.dart';
+import '../features/azkar/azkar_models.dart';
+import '../features/azkar/azkar_settings_screen.dart';
+import '../features/azkar/azkar_tasbih_screen.dart';
+import '../features/azkar/kahf_screen.dart';
+import '../features/azkar/salat_counter_screen.dart';
 import '../features/challenges/challenges_screen.dart';
 import '../features/calculator/calculator_screen.dart';
 import '../features/courses/course_list_screen.dart';
@@ -97,6 +105,14 @@ class ZakerRoutes {
   static const String prayerNotifications = '/prayer/notifications';
   static const String prayerBattery = '/prayer/battery';
   static const String prayerCredits = '/prayer/credits';
+  static const String azkar = '/azkar';
+  static const String azkarMorning = '/azkar/morning';
+  static const String azkarEvening = '/azkar/evening';
+  static const String azkarTasbih = '/azkar/tasbih';
+  static const String azkarSalat = '/azkar/salat';
+  static const String azkarKahf = '/azkar/kahf';
+  static const String azkarSettings = '/azkar/settings';
+  static const String azkarLicenses = '/azkar/licenses';
   static const String wallet = '/wallet';
   static const String achievements = '/achievements';
 
@@ -317,6 +333,42 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.prayerCredits,
       builder: (context, state) => const PrayerCreditsScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.azkar,
+      builder: (context, state) => const AzkarHomeScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.azkarMorning,
+      builder: (context, state) =>
+          const AzkarListScreen(period: AzkarPeriod.morning),
+    ),
+    GoRoute(
+      path: ZakerRoutes.azkarEvening,
+      builder: (context, state) =>
+          const AzkarListScreen(period: AzkarPeriod.evening),
+    ),
+    GoRoute(
+      path: ZakerRoutes.azkarTasbih,
+      builder: (context, state) => const AzkarTasbihScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.azkarSalat,
+      builder: (context, state) => SalatCounterScreen(
+        initialPhraseId: state.uri.queryParameters['phrase'],
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.azkarKahf,
+      builder: (context, state) => const KahfScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.azkarSettings,
+      builder: (context, state) => const AzkarSettingsScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.azkarLicenses,
+      builder: (context, state) => const AzkarLicensesScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.wallet,

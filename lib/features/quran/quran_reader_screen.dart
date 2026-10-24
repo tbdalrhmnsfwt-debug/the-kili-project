@@ -30,7 +30,11 @@ final Map<int, List<String>> _ayahCache = {};
 
 /// The Quran reader: the surah index and a reader for each surah.
 class QuranReaderScreen extends ConsumerStatefulWidget {
-  const QuranReaderScreen({super.key});
+  const QuranReaderScreen({super.key, this.initialSurahNumber});
+
+  /// Opens this surah immediately after the index loads.  Used by the Friday
+  /// Kahf reminder; the normal reader flow leaves this null.
+  final int? initialSurahNumber;
 
   @override
   ConsumerState<QuranReaderScreen> createState() => _QuranReaderScreenState();
@@ -41,6 +45,7 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
   Object? _error;
   bool _loading = true;
   String _query = '';
+  bool _openedInitialSurah = false;
 
   @override
   void initState() {
@@ -55,6 +60,7 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
         _surahs = cached;
         _loading = false;
       });
+      _maybeOpenInitialSurah(cached);
       return;
     }
     setState(() {
@@ -76,6 +82,7 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
         _surahs = surahs;
         _loading = false;
       });
+      _maybeOpenInitialSurah(surahs);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -88,17 +95,33 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
   List<_Surah> get _visible {
     final query = _query.trim();
     if (query.isEmpty) return _surahs;
-    return _surahs.where((s) {
-      return s.name.contains(query) ||
-          '${s.number}'.contains(query) ||
-          s.englishName.toLowerCase().contains(query.toLowerCase());
-    }).toList(growable: false);
+    return _surahs
+        .where((s) {
+          return s.name.contains(query) ||
+              '${s.number}'.contains(query) ||
+              s.englishName.toLowerCase().contains(query.toLowerCase());
+        })
+        .toList(growable: false);
   }
 
   void _open(_Surah surah) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => _SurahScreen(surah: surah)),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => _SurahScreen(surah: surah)));
+  }
+
+  /// Pushes the requested surah once, after the index has loaded.
+  void _maybeOpenInitialSurah(List<_Surah> surahs) {
+    final target = widget.initialSurahNumber;
+    if (target == null || _openedInitialSurah) return;
+    for (final surah in surahs) {
+      if (surah.number != target) continue;
+      _openedInitialSurah = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _open(surah);
+      });
+      return;
+    }
   }
 
   Future<void> _listen(_Surah surah) async {
@@ -154,7 +177,8 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
                           const _ReaderHeader(),
                           const SizedBox(height: ZakerSpacing.md),
                           TextField(
-                            onChanged: (value) => setState(() => _query = value),
+                            onChanged: (value) =>
+                                setState(() => _query = value),
                             decoration: const InputDecoration(
                               hintText: 'دوّر على سورة…',
                               prefixIcon: Icon(Icons.search_rounded),
@@ -217,10 +241,7 @@ class _ReaderHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [
-            theme.colorScheme.primary,
-            ZakerColors.primaryDark,
-          ],
+          colors: [theme.colorScheme.primary, ZakerColors.primaryDark],
         ),
       ),
       child: Row(

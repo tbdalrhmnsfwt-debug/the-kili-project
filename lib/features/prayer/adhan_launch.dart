@@ -22,7 +22,32 @@ void handleNotificationPayload(String? payload) {
   }
 
   final data = _decode(payload);
-  if (data == null || data['type'] != 'adhan') return;
+  if (data == null) return;
+
+  switch (data['type']) {
+    case 'salat':
+      final phrase = data['phrase'];
+      appRouter.go(
+        Uri(
+          path: ZakerRoutes.azkarSalat,
+          queryParameters: phrase is String && phrase.isNotEmpty
+              ? <String, String>{'phrase': phrase}
+              : null,
+        ).toString(),
+      );
+      return;
+    case 'azkar':
+      final evening = data['period'] == 'evening';
+      appRouter.go(
+        evening ? ZakerRoutes.azkarEvening : ZakerRoutes.azkarMorning,
+      );
+      return;
+    case 'kahf':
+      appRouter.go(ZakerRoutes.azkarKahf);
+      return;
+  }
+
+  if (data['type'] != 'adhan') return;
 
   final query = <String, String>{};
   void add(String key) {
