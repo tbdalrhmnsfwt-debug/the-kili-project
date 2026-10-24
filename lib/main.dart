@@ -10,6 +10,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
 
+import 'core/adhan_platform.dart';
 import 'core/adhan_voices.dart';
 import 'core/appearance.dart';
 import 'core/local_store.dart';
@@ -38,6 +39,15 @@ Future<void> main() async {
   // Tapping a reminder opens its screen; tapping an adhan opens the
   // full-screen player.
   NotificationService.instance.onTap = handleNotificationPayload;
+  // "إيقاف الأذان" on the heads-up card silences the foreground player and
+  // drops the notification without opening the full-screen player.
+  NotificationService.instance.onAction = (actionId, notificationId, _) async {
+    if (actionId != NotificationService.stopAdhanAction) return;
+    await AdhanPlatform.stopPlayback();
+    if (notificationId != null) {
+      await NotificationService.instance.cancelNotification(notificationId);
+    }
+  };
   // Register the notification channel early so an already-scheduled reminder
   // can be shown right after a reboot, before the first frame.
   await NotificationService.instance.init();

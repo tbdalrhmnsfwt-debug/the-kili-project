@@ -73,6 +73,12 @@ class AdhanSettingsController extends StateNotifier<AdhanSettings> {
     _save();
   }
 
+  void setSilenceOnHardware(bool value) {
+    if (state.silenceOnHardware == value) return;
+    state = state.copyWith(silenceOnHardware: value);
+    _save();
+  }
+
   /// Restores the defaults for the five prayers, keeping the master switch.
   void resetVoices() {
     state = state.copyWith(

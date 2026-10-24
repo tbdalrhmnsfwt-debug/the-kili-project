@@ -129,6 +129,8 @@ class AdhanPlatform {
     required String title,
     String? assetPath,
     int? notificationId,
+    bool fadeIn = false,
+    bool silenceOnHardware = true,
   }) async {
     try {
       return await _channel.invokeMethod<bool>('startAdhanPlayback', {
@@ -136,6 +138,8 @@ class AdhanPlatform {
             'asset': assetPath,
             'title': title,
             'notificationId': notificationId,
+            'fadeIn': fadeIn,
+            'silenceOnHardware': silenceOnHardware,
           }) ??
           false;
     } catch (_) {

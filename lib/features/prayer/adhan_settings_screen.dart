@@ -281,6 +281,15 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
                     .setReminderMinutes(minutes),
               ),
               const SizedBox(height: 20),
+              const _SectionLabel(title: 'إسكات الأذان'),
+              const SizedBox(height: 8),
+              _HardwareSilenceCard(
+                value: settings.silenceOnHardware,
+                onChanged: (value) => ref
+                    .read(adhanSettingsProvider.notifier)
+                    .setSilenceOnHardware(value),
+              ),
+              const SizedBox(height: 20),
               _TestCard(
                 voice: adhanVoiceById(settings.voiceIdFor(PrayerName.dhuhr)),
                 testing: _testing,
@@ -752,6 +761,90 @@ class _PrayerCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ------------------------------------------------------- hardware silencing
+
+/// The default-on setting that lets the phone's own controls silence an adhan
+/// that is playing.
+class _HardwareSilenceCard extends StatelessWidget {
+  const _HardwareSilenceCard({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(13, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedVolumeMute01,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TrText(
+                      'اكتم الأذان بأزرار الجهاز',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    TrText(
+                      'أزرار الصوت، وقفل الشاشة، وتغيير صوت المنبه من تطبيق تاني.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 10,
+                        height: 1.55,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Switch.adaptive(value: value, onChanged: onChanged),
+            ],
+          ),
+          const SizedBox(height: 6),
+          TrText(
+            'بعض أجهزة شاومي وأوبو بتقفل التحكم الكامل في أزرار الصوت أثناء '
+            'الأذان؛ لو الزر مش بيسكت، استخدم زر الإيقاف في الشاشة.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
+              fontSize: 10,
+              height: 1.55,
+            ),
+          ),
+        ],
       ),
     );
   }

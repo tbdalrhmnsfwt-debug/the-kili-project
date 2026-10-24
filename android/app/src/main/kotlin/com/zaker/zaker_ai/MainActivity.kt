@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.KeyEvent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -112,7 +113,18 @@ class MainActivity : FlutterActivity() {
                         val asset = call.argument<String>("asset")
                         val title = call.argument<String>("title")
                             ?: getString(R.string.adhan_playing_title)
-                        AdhanPlaybackService.start(this, name, asset, title)
+                        val notificationId = call.argument<Int>("notificationId") ?: 0
+                        val fadeIn = call.argument<Boolean>("fadeIn") == true
+                        val silence = call.argument<Boolean>("silenceOnHardware") != false
+                        AdhanPlaybackService.start(
+                            this,
+                            name,
+                            asset,
+                            title,
+                            notificationId,
+                            fadeIn,
+                            silence,
+                        )
                         result.success(true)
                     }
                     "stopAdhanPlayback" -> {
@@ -151,10 +163,34 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        isForeground = true
+    }
+
     override fun onPause() {
+        isForeground = false
         super.onPause()
         // A preview must not keep playing while the app is in the background.
         stopPreview()
+    }
+
+    /**
+     * Volume keys silence a playing adhan without changing the alarm volume,
+     * as requested by the "اكتم الأذان بأزرار الجهاز" setting.  The key event
+     * is consumed only while our own playback is active.
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val silencing = event.action == KeyEvent.ACTION_DOWN &&
+            (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
+                event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) &&
+            AdhanPlaybackService.isActive &&
+            AdhanPlaybackService.hardwareSilenceEnabled
+        if (silencing) {
+            AdhanPlaybackService.stop(this)
+            return true
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onDestroy() {
@@ -282,5 +318,13 @@ class MainActivity : FlutterActivity() {
 
         /** Longest preview, in milliseconds. */
         private const val PREVIEW_TIMEOUT_MS = 20_000L
+
+        /**
+         * Whether this activity is in front, read by the adhan player before
+         * it treats an alarm-volume change from another app as "silence me".
+         */
+        @Volatile
+        var isForeground: Boolean = false
+            private set
     }
 }

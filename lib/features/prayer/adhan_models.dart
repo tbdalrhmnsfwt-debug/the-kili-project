@@ -20,6 +20,7 @@ class AdhanSettings {
     this.fajrVoiceId = kDefaultFajrVoiceId,
     this.remindersEnabled = false,
     this.reminderMinutes = 10,
+    this.silenceOnHardware = true,
   });
 
   /// Master switch.  When off, all scheduled prayer notifications are
@@ -42,6 +43,11 @@ class AdhanSettings {
   /// How many minutes before the prayer the reminder fires.
   final int reminderMinutes;
 
+  /// Whether the phone's own hardware silences a playing adhan: the volume
+  /// keys while the screen is in front, the screen turning off, and a change
+  /// to the alarm volume while another app is in front.
+  final bool silenceOnHardware;
+
   bool isPrayerEnabled(PrayerName prayer) => enabledPrayers[prayer] ?? true;
 
   /// The validated voice id for [prayer].
@@ -60,6 +66,7 @@ class AdhanSettings {
     String? fajrVoiceId,
     bool? remindersEnabled,
     int? reminderMinutes,
+    bool? silenceOnHardware,
   }) {
     return AdhanSettings(
       enabled: enabled ?? this.enabled,
@@ -68,6 +75,7 @@ class AdhanSettings {
       fajrVoiceId: fajrVoiceId ?? this.fajrVoiceId,
       remindersEnabled: remindersEnabled ?? this.remindersEnabled,
       reminderMinutes: reminderMinutes ?? this.reminderMinutes,
+      silenceOnHardware: silenceOnHardware ?? this.silenceOnHardware,
     );
   }
 
@@ -80,6 +88,7 @@ class AdhanSettings {
     'fajrVoice': fajrVoiceId,
     'reminders': remindersEnabled,
     'reminderMinutes': reminderMinutes,
+    'silenceOnHardware': silenceOnHardware,
   };
 
   /// Reads persisted settings, dropping unknown voice ids and invalid values.
@@ -121,6 +130,7 @@ class AdhanSettings {
       fajrVoiceId: fajrVoice?.id ?? kDefaultFajrVoiceId,
       remindersEnabled: json['reminders'] == true,
       reminderMinutes: minutes,
+      silenceOnHardware: json['silenceOnHardware'] != false,
     );
   }
 
@@ -132,7 +142,8 @@ class AdhanSettings {
       mapEquals(other.voices, voices) &&
       other.fajrVoiceId == fajrVoiceId &&
       other.remindersEnabled == remindersEnabled &&
-      other.reminderMinutes == reminderMinutes;
+      other.reminderMinutes == reminderMinutes &&
+      other.silenceOnHardware == silenceOnHardware;
 
   @override
   int get hashCode => Object.hash(
@@ -140,6 +151,7 @@ class AdhanSettings {
     fajrVoiceId,
     remindersEnabled,
     reminderMinutes,
+    silenceOnHardware,
     Object.hashAll(
       enabledPrayers.entries.map((e) => Object.hash(e.key, e.value)),
     ),

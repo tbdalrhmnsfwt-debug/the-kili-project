@@ -116,6 +116,12 @@ class NotificationService {
   /// The id of the immediately-posted test adhan.
   static const int adhanTestId = 3999;
 
+  /// The id of a "remind me in 10 minutes" snooze.
+  static const int adhanSnoozeId = 3997;
+
+  /// The action id carried by the "إيقاف الأذان" notification button.
+  static const String stopAdhanAction = 'stop_adhan';
+
   /// The id used by the "test notification in 10 seconds" action.
   static const int delayedTestId = 3998;
 
@@ -700,6 +706,40 @@ class NotificationService {
     }
   }
 
+  /// Schedules the same adhan again in [delay], for the "ذكّرني بعد ١٠ دقائق"
+  /// button on the full-screen player.
+  Future<bool> scheduleAdhanSnooze({
+    required String prayerName,
+    required String voiceId,
+    required String city,
+    Duration delay = const Duration(minutes: 10),
+  }) async {
+    await init();
+    if (!_initialized) return false;
+    final voice = adhanVoiceById(voiceId);
+    final when = DateTime.now().add(delay);
+    await cancelNotification(adhanSnoozeId);
+    final payload = jsonEncode(<String, Object?>{
+      'type': 'adhan',
+      'id': adhanSnoozeId,
+      'prayer': prayerName,
+      'voice': voice.id,
+      'time': when.toIso8601String(),
+      'city': city,
+      'snooze': true,
+    });
+    final outcome = await _scheduleDetailed(
+      id: adhanSnoozeId,
+      title: 'تذكير — حان وقت الصلاة',
+      body: 'ده التذكير اللي طلبته بعد ١٠ دقائق.',
+      when: when,
+      preferExact: await canScheduleExactNotifications(),
+      details: _adhanDetails(voice, 'حان وقت الصلاة. تقبل الله.'),
+      payload: payload,
+    );
+    return outcome != AdhanScheduleOutcome.failed;
+  }
+
   /// Posts a salat reminder right now, using the same channel the scheduler
   /// would use, so the user can check the phrase, chime and vibration.
   Future<bool> showTestSalat({
@@ -789,6 +829,14 @@ class NotificationService {
       // notification stays a normal heads-up card and tapping it opens the
       // player.  The test notification opts out of the full-screen launch.
       fullScreenIntent: fullScreen,
+      actions: const [
+        AndroidNotificationAction(
+          NotificationService.stopAdhanAction,
+          'إيقاف الأذان',
+          showsUserInterface: true,
+          cancelNotification: true,
+        ),
+      ],
       styleInformation: BigTextStyleInformation(body),
     );
   }
@@ -914,6 +962,12 @@ class NotificationService {
   /// an adhan to the full-screen playback screen.
   void Function(String? payload)? onTap;
 
+  /// Called when a notification action button is pressed, with the action id,
+  /// the notification id and the payload.  The adhan notification uses this to
+  /// stop the sound without opening the full-screen player.
+  void Function(String actionId, int? notificationId, String? payload)?
+  onAction;
+
   /// Removes one notification, e.g. the adhan once its full-screen player owns
   /// the audio.
   Future<void> cancelNotification(int id) async {
@@ -952,8 +1006,14 @@ class NotificationService {
     try {
       await _plugin.initialize(
         settings,
-        onDidReceiveNotificationResponse: (response) =>
-            onTap?.call(response.payload),
+        onDidReceiveNotificationResponse: (response) {
+          final actionId = response.actionId;
+          if (actionId != null && actionId.isNotEmpty) {
+            onAction?.call(actionId, response.id, response.payload);
+            return;
+          }
+          onTap?.call(response.payload);
+        },
       );
       _initialized = true;
     } catch (e) {
