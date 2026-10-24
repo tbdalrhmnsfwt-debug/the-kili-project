@@ -18,6 +18,7 @@ import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/tr_text.dart';
+import '../prayer/prayer_log.dart';
 
 /// Store key for the one-time hub introduction.
 const String kIslamicIntroStoreKey = 'islam_intro_seen';
@@ -78,7 +79,11 @@ class _IslamicHubScreenState extends ConsumerState<IslamicHubScreen> {
     );
   }
 
-  List<_HubTileData> _tiles(ZakerFeatureAccents accents, bool isDark) {
+  List<_HubTileData> _tiles(
+    ZakerFeatureAccents accents,
+    bool isDark,
+    int streak,
+  ) {
     Color ink(Color light, Color dark) => isDark ? dark : light;
 
     return [
@@ -133,7 +138,10 @@ class _IslamicHubScreenState extends ConsumerState<IslamicHubScreen> {
       ),
       _HubTileData(
         title: 'سجل الصلوات',
-        description: 'علّم كل صلاة وشوف سلسلتك',
+        description: streak > 0
+            ? 'سلسلتك ${_arabicNumber(streak)} '
+                  '${streak == 1 ? 'يوم' : 'أيام'} — كمّل النهارده'
+            : 'علّم كل صلاة وشوف سلسلتك',
         icon: HugeIcons.strokeRoundedTaskDone01,
         accent: accents.islamic,
         route: ZakerRoutes.prayerLog,
@@ -160,7 +168,8 @@ class _IslamicHubScreenState extends ConsumerState<IslamicHubScreen> {
     final theme = Theme.of(context);
     final appearance = ref.watch(appearanceProvider);
     final palette = ZakerTheme.paletteFor(appearance.themeStyle);
-    final tiles = _tiles(palette.accents, palette.isDark);
+    final streak = ref.watch(prayerLogProvider).streak();
+    final tiles = _tiles(palette.accents, palette.isDark, streak);
     final heroColors = palette.heroGradient;
 
     return Scaffold(
@@ -378,7 +387,7 @@ class _HubTile extends StatelessWidget {
                           child: const TrText(
                             'قريبًا',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -415,6 +424,15 @@ class _HubTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _arabicNumber(int value) {
+  const digits = '٠١٢٣٤٥٦٧٨٩';
+  return value
+      .toString()
+      .split('')
+      .map((digit) => digits[int.tryParse(digit) ?? 0])
+      .join();
 }
 
 class _IntroSheet extends StatelessWidget {

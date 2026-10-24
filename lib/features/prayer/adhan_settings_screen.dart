@@ -304,7 +304,7 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
                   color: theme.colorScheme.onSurfaceVariant.withValues(
                     alpha: 0.85,
                   ),
-                  fontSize: 10,
+                  fontSize: 12,
                   height: 1.6,
                 ),
               ),
@@ -386,7 +386,7 @@ class _MasterCard extends StatelessWidget {
                       : 'شغّل المفتاح عشان تسمع الأذان في وقته.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
-                    fontSize: 10.5,
+                    fontSize: 12,
                     height: 1.5,
                   ),
                 ),
@@ -576,7 +576,7 @@ class _StatusRow extends StatelessWidget {
                       subtitle,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 9.8,
+                        fontSize: 12,
                         height: 1.45,
                       ),
                     ),
@@ -595,7 +595,7 @@ class _StatusRow extends StatelessWidget {
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: color,
                     fontWeight: FontWeight.w800,
-                    fontSize: 9.5,
+                    fontSize: 12,
                   ),
                 ),
               ),
@@ -692,7 +692,7 @@ class _PrayerCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 9.8,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -737,7 +737,7 @@ class _PrayerCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 10.5,
+                            fontSize: 12,
                           ),
                         ),
                       ),
@@ -746,7 +746,7 @@ class _PrayerCard extends StatelessWidget {
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.w800,
-                          fontSize: 10,
+                          fontSize: 12,
                         ),
                       ),
                       Icon(
@@ -823,7 +823,7 @@ class _HardwareSilenceCard extends StatelessWidget {
                       'أزرار الصوت، وقفل الشاشة، وتغيير صوت المنبه من تطبيق تاني.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 10,
+                        fontSize: 12,
                         height: 1.55,
                       ),
                     ),
@@ -840,7 +840,7 @@ class _HardwareSilenceCard extends StatelessWidget {
             'الأذان؛ لو الزر مش بيسكت، استخدم زر الإيقاف في الشاشة.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
-              fontSize: 10,
+              fontSize: 12,
               height: 1.55,
             ),
           ),
@@ -909,7 +909,7 @@ class _ReminderCard extends StatelessWidget {
                       'إشعار عادي قبل الصلاة بدقايق — من غير صوت الأذان.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 9.8,
+                        fontSize: 12,
                       ),
                     ),
                   ],
@@ -977,7 +977,7 @@ class _MinuteChip extends StatelessWidget {
                   ? theme.colorScheme.onPrimary
                   : theme.colorScheme.primary,
               fontWeight: FontWeight.w800,
-              fontSize: 11,
+              fontSize: 12,
             ),
           ),
         ),
@@ -1039,7 +1039,7 @@ class _TestCard extends StatelessWidget {
             'حاجة شغالة.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
-              fontSize: 9.8,
+              fontSize: 12,
               height: 1.5,
             ),
           ),
@@ -1105,7 +1105,7 @@ class _CreditsTile extends StatelessWidget {
                       'بيانات الإسناد المطلوبة قانونيًا للتسجيلات.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 9.8,
+                        fontSize: 12,
                       ),
                     ),
                   ],

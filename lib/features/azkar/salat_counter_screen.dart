@@ -238,7 +238,7 @@ class _SalatCounterScreenState extends ConsumerState<SalatCounterScreen> {
                       const TrText(
                         'مرة النهارده',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -246,7 +246,7 @@ class _SalatCounterScreenState extends ConsumerState<SalatCounterScreen> {
                       const TrText(
                         'اضغط للعد',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -323,7 +323,7 @@ class _SalatCounterScreenState extends ConsumerState<SalatCounterScreen> {
                             : 'متوقفة — فعّلها واختار الفاصل والوقت والصوت.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 10,
+                          fontSize: 12,
                           height: 1.6,
                         ),
                       ),

@@ -310,7 +310,7 @@ class _AzkarSettingsScreenState extends ConsumerState<AzkarSettingsScreen>
                   ),
                   subtitle: const TrText(
                     'شغّله واختار الفاصل والوقت والصيغ.',
-                    style: TextStyle(fontSize: 10),
+                    style: TextStyle(fontSize: 12),
                   ),
                 ),
                 const _CardDivider(),
@@ -382,7 +382,7 @@ class _AzkarSettingsScreenState extends ConsumerState<AzkarSettingsScreen>
                           'لو النهاية قبل البداية، الفترة بتكمل بعد منتصف الليل.',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: muted,
-                            fontSize: 9,
+                            fontSize: 12,
                             height: 1.5,
                           ),
                         ),
@@ -419,7 +419,7 @@ class _AzkarSettingsScreenState extends ConsumerState<AzkarSettingsScreen>
                             'صوت الإشعار المباشر محتاج نسخة raw، وإلا الإشعار بيظهر نص وصامت.',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: muted,
-                              fontSize: 9,
+                              fontSize: 12,
                               height: 1.5,
                             ),
                           ),
@@ -482,7 +482,7 @@ class _AzkarSettingsScreenState extends ConsumerState<AzkarSettingsScreen>
                     const Expanded(
                       child: TrText(
                         'محتاجين موقعك عشان نحسب الفجر والعصر. اختاره من صفحة الصلاة.',
-                        style: TextStyle(fontSize: 10, height: 1.5),
+                        style: TextStyle(fontSize: 12, height: 1.5),
                       ),
                     ),
                     TextButton(
@@ -560,7 +560,7 @@ class _AzkarSettingsScreenState extends ConsumerState<AzkarSettingsScreen>
                   ),
                   subtitle: const TrText(
                     'إشعار كل جمعة في الوقت اللي تختاره.',
-                    style: TextStyle(fontSize: 10),
+                    style: TextStyle(fontSize: 12),
                   ),
                 ),
                 const _CardDivider(),
@@ -578,7 +578,7 @@ class _AzkarSettingsScreenState extends ConsumerState<AzkarSettingsScreen>
                     formatClockMinutes(
                       settings.kahfHour * 60 + settings.kahfMinute,
                     ),
-                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
                   ),
                   trailing: OutlinedButton(
                     onPressed: _pickKahfTime,
@@ -637,7 +637,7 @@ class _AzkarSettingsScreenState extends ConsumerState<AzkarSettingsScreen>
               ),
               subtitle: const TrText(
                 'مصادر الأصوات والملفات المرفقة.',
-                style: TextStyle(fontSize: 9),
+                style: TextStyle(fontSize: 12),
               ),
               trailing: const Icon(Icons.chevron_left_rounded, size: 20),
             ),
@@ -653,7 +653,7 @@ class _AzkarSettingsScreenState extends ConsumerState<AzkarSettingsScreen>
                   'التذكيرات بتتعاد جدولتها مع مواقيت الصلاة وبعد إعادة تشغيل الجهاز.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: muted,
-                    fontSize: 9,
+                    fontSize: 12,
                     height: 1.55,
                   ),
                 ),
@@ -729,7 +729,7 @@ class _ReadinessCard extends StatelessWidget {
               const Expanded(
                 child: TrText(
                   'الجدولة بتشتغل من غير إنترنت وبتتجدّد مع الفجر والعصر.',
-                  style: TextStyle(fontSize: 9, height: 1.45),
+                  style: TextStyle(fontSize: 12, height: 1.45),
                 ),
               ),
             ],
@@ -783,7 +783,7 @@ class _ReadinessRow extends StatelessWidget {
             title,
             style: theme.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.w700,
-              fontSize: 11,
+              fontSize: 12,
             ),
           ),
         ),
@@ -801,7 +801,7 @@ class _ReadinessRow extends StatelessWidget {
                 : problemText,
             style: TextStyle(
               color: color,
-              fontSize: 9,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -817,7 +817,7 @@ class _ReadinessRow extends StatelessWidget {
             ),
             child: const TrText(
               'إصلاح',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
             ),
           ),
         ],
@@ -866,7 +866,7 @@ class _AzkarPeriodCard extends StatelessWidget {
               enabled
                   ? '$subtitle — التذكير شغال'
                   : '$subtitle — التذكير متوقف',
-              style: const TextStyle(fontSize: 10),
+              style: const TextStyle(fontSize: 12),
             ),
           ),
           if (enabled) ...[
@@ -975,7 +975,7 @@ class _PhraseSetting extends StatelessWidget {
                 'الصوت',
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: muted,
-                  fontSize: 9,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1151,7 +1151,7 @@ class _FieldLabel extends StatelessWidget {
           label,
           style: theme.textTheme.labelSmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
-            fontSize: 9,
+            fontSize: 12,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -1186,7 +1186,7 @@ class _TimeButton extends StatelessWidget {
             label,
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
-              fontSize: 9,
+              fontSize: 12,
             ),
           ),
           const Spacer(),
@@ -1194,7 +1194,7 @@ class _TimeButton extends StatelessWidget {
             value,
             style: theme.textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.w800,
-              fontSize: 11,
+              fontSize: 12,
             ),
           ),
         ],

@@ -403,7 +403,7 @@ class _DayCell extends StatelessWidget {
                 Text(
                   '${math.min(count, total)}',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
                     color: count == 0
                         ? theme.colorScheme.onSurfaceVariant
@@ -414,16 +414,19 @@ class _DayCell extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        TrText(
-          _shortWeekday(date),
-          maxLines: 1,
-          style: TextStyle(
-            fontSize: 11,
-            height: 1.2,
-            fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-            color: isToday
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurfaceVariant,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: TrText(
+            _shortWeekday(date),
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.2,
+              fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
+              color: isToday
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],

@@ -338,6 +338,16 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen>
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      TrText(
+                        'ولو غيّرت توقيت الجهاز أو منطقتك، افتح التطبيق مرة '
+                        'عشان المواعيد والأذان يتظبطوا من جديد.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.7,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ),

@@ -869,7 +869,7 @@ class _PrimaryButton extends StatelessWidget {
                   size: 19,
                   color: enabled
                       ? foreground
-                      : foreground.withValues(alpha: 0.4),
+                      : foreground.withValues(alpha: 0.55),
                 ),
                 const SizedBox(width: 7),
                 Flexible(
@@ -880,7 +880,7 @@ class _PrimaryButton extends StatelessWidget {
                     style: TextStyle(
                       color: enabled
                           ? foreground
-                          : foreground.withValues(alpha: 0.4),
+                          : foreground.withValues(alpha: 0.55),
                       fontSize: 12.5,
                       fontWeight: FontWeight.w800,
                     ),
