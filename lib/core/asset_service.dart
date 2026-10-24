@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 
 import '../models/dictionary.dart';
 import '../models/manhaji.dart';
+import '../models/official_book.dart';
 
 /// Decoder for the `ZKB1` container used for packed book payloads.
 ///
@@ -157,6 +158,14 @@ class AssetService {
     return out;
   }
 
+  /// Loads the optional catalog of official textbook links.
+  Future<OfficialBookCatalog> loadOfficialBooks() async {
+    final raw = await _bundle.loadString('assets/data/official_books.json');
+    return OfficialBookCatalog.fromJson(
+      jsonDecode(raw) as Map<String, dynamic>,
+    );
+  }
+
   /// Loads and decodes a book payload, returning its content map.
   ///
   /// The app ships two representations: a packed `ZKB1` payload for every
@@ -220,8 +229,10 @@ class AssetService {
   /// Extracts the lesson list from a decoded book payload.
   List<Lesson> parseLessons(Map<String, dynamic> bookJson) {
     final figures =
-        (bookJson['l'] as Map<String, dynamic>?) ?? const <String, List<Figure>>{};
-    final keys = figures.keys.toList()..sort((a, b) {
+        (bookJson['l'] as Map<String, dynamic>?) ??
+        const <String, List<Figure>>{};
+    final keys = figures.keys.toList()
+      ..sort((a, b) {
         final na = int.tryParse(a);
         final nb = int.tryParse(b);
         if (na == null && nb == null) return a.compareTo(b);

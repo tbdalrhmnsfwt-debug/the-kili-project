@@ -141,10 +141,9 @@ class HomeScreen extends ConsumerWidget {
   /// The nearest task still ahead of us, or the most recent overdue one.
   static ScheduleEntry? _nextDeadline(List<ScheduleEntry> entries) {
     final now = DateTime.now();
-    final dated = entries
-        .where((e) => !e.done && e.dueAt != null)
-        .toList(growable: false)
-      ..sort((a, b) => a.dueAt!.compareTo(b.dueAt!));
+    final dated =
+        entries.where((e) => !e.done && e.dueAt != null).toList(growable: false)
+          ..sort((a, b) => a.dueAt!.compareTo(b.dueAt!));
     if (dated.isEmpty) return null;
     for (final entry in dated) {
       if (!entry.dueAt!.isBefore(now)) return entry;
@@ -580,8 +579,8 @@ class _ActionCards extends StatelessWidget {
       _ActionCard(
         icon: HugeIcons.strokeRoundedBookOpen01,
         accent: _Accents.teal,
-        title: 'موادك الدراسية',
-        subtitle: 'ملخصات ومراجعات',
+        title: 'المكتبة الدراسية',
+        subtitle: 'كل الكتب والمناهج',
         onTap: () => context.push(ZakerRoutes.courses),
       ),
       _ActionCard(
@@ -745,10 +744,7 @@ class _ActionCard extends StatelessWidget {
 
 /// The amber countdown and the green daily-advice banner.
 class _BannerRow extends StatelessWidget {
-  const _BannerRow({
-    required this.nextDeadline,
-    required this.onCountdown,
-  });
+  const _BannerRow({required this.nextDeadline, required this.onCountdown});
 
   final ScheduleEntry? nextDeadline;
   final VoidCallback onCountdown;
@@ -776,11 +772,7 @@ class _BannerRow extends StatelessWidget {
           );
         }
         return Column(
-          children: [
-            countdown,
-            const SizedBox(height: 12),
-            advice,
-          ],
+          children: [countdown, const SizedBox(height: 12), advice],
         );
       },
     );
@@ -839,8 +831,8 @@ class _CountdownBanner extends StatelessWidget {
     final dateLabel = due == null
         ? null
         : '${due.day} ${_months[due.month - 1]} · '
-            '${due.hour.toString().padLeft(2, '0')}:'
-            '${due.minute.toString().padLeft(2, '0')}';
+              '${due.hour.toString().padLeft(2, '0')}:'
+              '${due.minute.toString().padLeft(2, '0')}';
 
     return _Pressable3D(
       accent: _Accents.amber,
@@ -879,7 +871,9 @@ class _CountdownBanner extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TrText(
-                    entry == null ? 'أضف عد تنازلي لامتحاناتك' : 'العد التنازلي',
+                    entry == null
+                        ? 'أضف عد تنازلي لامتحاناتك'
+                        : 'العد التنازلي',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleSmall?.copyWith(
@@ -975,9 +969,8 @@ class _AdviceBanner extends StatelessWidget {
       accent: _Accents.green,
       depth: 4,
       radius: 20,
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const FocusScreen()),
-      ),
+      onTap: () => Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => const FocusScreen())),
       semanticLabel: 'نصيحة النهاردة',
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -1226,7 +1219,7 @@ class _LibrarySection extends StatelessWidget {
               title: 'موادك',
               icon: HugeIcons.strokeRoundedBookOpen01,
               badge: label,
-              actionLabel: 'كل المواد',
+              actionLabel: 'كل المكتبة',
               onAction: () => context.push(ZakerRoutes.courses),
             );
           },
@@ -1261,7 +1254,7 @@ class _SubjectGrid extends StatelessWidget {
         message: 'افتح أي مادة وابدأ المذاكرة.',
         action: FilledButton(
           onPressed: () => context.push(ZakerRoutes.courses),
-          child: const TrText('تصفح المواد'),
+          child: const TrText('افتح المكتبة'),
         ),
       );
     }
@@ -1285,7 +1278,7 @@ class _SubjectGrid extends StatelessWidget {
         message: 'جرّب صف دراسي تاني من «كل المواد».',
         action: FilledButton(
           onPressed: () => context.push(ZakerRoutes.courses),
-          child: const TrText('تصفح المواد'),
+          child: const TrText('افتح المكتبة'),
         ),
       );
     }
@@ -1297,8 +1290,8 @@ class _SubjectGrid extends StatelessWidget {
         final columns = constraints.maxWidth >= 900
             ? 4
             : constraints.maxWidth >= 600
-                ? 3
-                : 2;
+            ? 3
+            : 2;
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -1317,7 +1310,8 @@ class _SubjectGrid extends StatelessWidget {
               subject: entry.key,
               books: entry.value,
               accent: accent,
-              onTap: () => context.push(_subjectRoute(grade, entry.value.first)),
+              onTap: () =>
+                  context.push(_subjectRoute(grade, entry.value.first)),
             );
           },
         );
@@ -1468,8 +1462,8 @@ class _AllToolsSection extends StatelessWidget {
             final columns = constraints.maxWidth >= 980
                 ? 4
                 : constraints.maxWidth >= 620
-                    ? 3
-                    : 2;
+                ? 3
+                : 2;
             final tiles = _tiles(context);
             return GridView.builder(
               shrinkWrap: true,

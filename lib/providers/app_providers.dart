@@ -21,6 +21,7 @@ import '../models/games.dart';
 import '../models/leaderboard.dart';
 import '../models/manhaji.dart';
 import '../models/mistakes.dart';
+import '../models/official_book.dart';
 import '../models/notebook.dart';
 import '../models/planner.dart';
 import '../models/recall.dart';
@@ -115,12 +116,7 @@ final liveServiceProvider = Provider<LiveService>((ref) {
 
 /// Reads and decodes a persisted value, falling back when it is missing or
 /// corrupt.
-T _restore<T>(
-  Ref ref,
-  String key,
-  T Function(String raw) decode,
-  T fallback,
-) {
+T _restore<T>(Ref ref, String key, T Function(String raw) decode, T fallback) {
   final raw = ref.watch(localStoreProvider).getString(key);
   if (raw == null) return fallback;
   try {
@@ -174,6 +170,11 @@ final gradeProvider = FutureProvider.family<Grade, String>((ref, gradeId) {
   return ref.watch(assetServiceProvider).loadGrade(gradeId);
 });
 
+/// Optional links to the official textbook editions.
+final officialBooksProvider = FutureProvider<OfficialBookCatalog>((ref) async {
+  return ref.watch(assetServiceProvider).loadOfficialBooks();
+});
+
 /// Books for a grade, filtered by subject when [subject] is non-null.
 final booksProvider = FutureProvider.family<List<Book>, GradeFilter>((
   ref,
@@ -221,12 +222,7 @@ final selectedSubjectProvider = StateProvider<String?>((ref) => null);
 
 /// Lessons the student marked as read, keyed `gradeId/bookId/lessonNumber`.
 final readLessonsProvider = StateProvider<Set<String>>((ref) {
-  return _restore(
-    ref,
-    'read_lessons',
-    _decodeReadLessons,
-    const <String>{},
-  );
+  return _restore(ref, 'read_lessons', _decodeReadLessons, const <String>{});
 });
 
 Set<String> _decodeReadLessons(String raw) {
@@ -297,10 +293,7 @@ final quizQuestionsProvider = FutureProvider<List<ExamQuestion>>((ref) async {
       try {
         final json = await service.loadBook(book);
         final lessons = service.parseLessons(json);
-        final questions = generateClozeQuestions(
-          book: book,
-          lessons: lessons,
-        );
+        final questions = generateClozeQuestions(book: book, lessons: lessons);
         if (questions.isNotEmpty) return questions;
       } catch (_) {
         // Encrypted or unreadable book — move on to the next one.
@@ -405,10 +398,12 @@ final leaderboardProvider = StateProvider<LeaderboardWeek>((ref) {
   for (var i = 0; i < 7; i++) {
     focusSeconds += stats.minutesOn(start.add(Duration(days: i))) * 60;
   }
-  final weekResults = results.where((r) {
-    final at = r.finishedAt;
-    return at != null && !at.isBefore(start);
-  }).toList(growable: false);
+  final weekResults = results
+      .where((r) {
+        final at = r.finishedAt;
+        return at != null && !at.isBefore(start);
+      })
+      .toList(growable: false);
   final points = weekResults.fold<int>(0, (sum, r) => sum + r.score);
 
   final rows = <LeaderboardRow>[];
@@ -430,7 +425,9 @@ final leaderboardProvider = StateProvider<LeaderboardWeek>((ref) {
 
 /// Rows published by the shared backend, or an empty list when live sync is
 /// off, the account is a guest, or the network is unavailable.
-final liveLeaderboardProvider = FutureProvider<List<LeaderboardRow>>((ref) async {
+final liveLeaderboardProvider = FutureProvider<List<LeaderboardRow>>((
+  ref,
+) async {
   final config = ref.watch(liveConfigProvider);
   if (!LiveService.canSync(config)) return const <LeaderboardRow>[];
   final week = ref.watch(leaderboardProvider).weekStart;
@@ -473,7 +470,8 @@ final wordListsProvider = StateProvider<List<WordList>>((ref) {
 final challengesProvider = StateProvider<List<Challenge>>((ref) {
   final now = DateTime.now();
   final date = DateTime(now.year, now.month, now.day);
-  final key = '${now.year}-'
+  final key =
+      '${now.year}-'
       '${now.month.toString().padLeft(2, '0')}-'
       '${now.day.toString().padLeft(2, '0')}';
   return [
@@ -608,16 +606,17 @@ final weeklyReportProvider = Provider<WeeklyReport>((ref) {
     );
   }
 
-  final subjects = subjectMinutes.entries
-      .map(
-        (e) => WeekSubject(
-          subject: e.key,
-          focusMinutes: e.value,
-          points: e.value,
-        ),
-      )
-      .toList()
-    ..sort((a, b) => b.focusMinutes.compareTo(a.focusMinutes));
+  final subjects =
+      subjectMinutes.entries
+          .map(
+            (e) => WeekSubject(
+              subject: e.key,
+              focusMinutes: e.value,
+              points: e.value,
+            ),
+          )
+          .toList()
+        ..sort((a, b) => b.focusMinutes.compareTo(a.focusMinutes));
 
   return WeeklyReport(
     weekStart: start,

@@ -15,8 +15,8 @@ import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/tr_text.dart';
-import '../courses/course_list_screen.dart';
 import '../exam/exam_home_screen.dart';
+import '../library/study_library_screen.dart';
 import '../quran/quran_home_screen.dart';
 import 'home_screen.dart';
 
@@ -30,7 +30,7 @@ class _Tab {
 
 const List<_Tab> _tabs = [
   _Tab(icon: HugeIcons.strokeRoundedHome01, label: 'الرئيسية'),
-  _Tab(icon: HugeIcons.strokeRoundedBookOpen01, label: 'مكتبتي'),
+  _Tab(icon: HugeIcons.strokeRoundedBookOpen01, label: 'المكتبة الدراسية'),
   _Tab(icon: HugeIcons.strokeRoundedTaskDone01, label: 'الاختبار'),
   _Tab(icon: HugeIcons.strokeRoundedBook02, label: 'القرآن'),
 ];
@@ -105,7 +105,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     if (i == widget.initialIndex && widget.child != null) return widget.child!;
     return switch (i) {
       0 => const HomeScreen(),
-      1 => const CourseListScreen(),
+      1 => const StudyLibraryScreen(),
       2 => const ExamHomeScreen(),
       _ => const QuranHomeScreen(),
     };
@@ -136,10 +136,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
               child: Row(
                 children: [
                   _Sidebar(selected: _index, onSelect: _select),
-                  VerticalDivider(
-                    width: 1,
-                    color: theme.dividerTheme.color,
-                  ),
+                  VerticalDivider(width: 1, color: theme.dividerTheme.color),
                   Expanded(child: body),
                 ],
               ),
@@ -464,7 +461,9 @@ class _SidebarItem extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: selected ? Colors.white : theme.colorScheme.onSurface,
+                      color: selected
+                          ? Colors.white
+                          : theme.colorScheme.onSurface,
                       fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                     ),
                   ),
@@ -596,11 +595,12 @@ class _NavItem extends StatelessWidget {
               const SizedBox(height: 4),
               TrText(
                 label,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: ZakerTheme.fontBody,
-                  fontSize: 10,
+                  fontSize: 9.5,
                   height: 1.2,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                   color: selected

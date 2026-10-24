@@ -31,6 +31,9 @@ import '../features/home/home_screen.dart';
 import '../features/home/shell_screen.dart';
 import '../features/leaderboard/leaderboard_screen.dart';
 import '../features/lesson/book_lessons_screen.dart';
+import '../features/library/study_grade_screen.dart';
+import '../features/library/study_library_screen.dart';
+import '../features/library/study_subject_screen.dart';
 import '../features/mistakes/mistakes_screen.dart';
 import '../features/notebooks/notebooks_screen.dart';
 import '../features/planner/planner_screen.dart';
@@ -67,6 +70,7 @@ class ZakerRoutes {
 
   static const String home = '/';
   static const String courses = '/courses';
+  static const String library = '/library';
   static const String subjects = '/subjects';
   static const String exams = '/exams';
   static const String quiz = '/quiz';
@@ -122,6 +126,13 @@ class ZakerRoutes {
   /// Builds the path for a grade's book list.
   static String gradePath(String gradeId) => '$grade/$gradeId';
 
+  /// Builds the path for a grade inside the Study Library hierarchy.
+  static String libraryPath(String gradeId) => '$library/$gradeId';
+
+  /// Builds the path for a subject inside a grade's Study Library screen.
+  static String librarySubjectPath(String gradeId, String subject) =>
+      '$library/$gradeId/${Uri.encodeComponent(subject)}';
+
   /// Builds the path for a subject inside a grade and, when present, a track.
   static String subjectPath(String gradeId, String subjectId, {String? track}) {
     final base = '$subjects/$gradeId/$subjectId';
@@ -143,7 +154,19 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.courses,
       builder: (context, state) =>
-          const ShellScreen(initialIndex: 1, child: CourseListScreen()),
+          const ShellScreen(initialIndex: 1, child: StudyLibraryScreen()),
+    ),
+    GoRoute(
+      path: '${ZakerRoutes.library}/:gradeId',
+      builder: (context, state) =>
+          StudyGradeScreen(gradeId: state.pathParameters['gradeId'] ?? 'sec1'),
+    ),
+    GoRoute(
+      path: '${ZakerRoutes.library}/:gradeId/:subject',
+      builder: (context, state) => StudySubjectScreen(
+        gradeId: state.pathParameters['gradeId'] ?? 'sec1',
+        subject: state.pathParameters['subject'] ?? '',
+      ),
     ),
     GoRoute(
       path: ZakerRoutes.exams,
