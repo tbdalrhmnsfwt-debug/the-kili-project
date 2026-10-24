@@ -14,6 +14,7 @@ import '../../core/study_library.dart';
 import '../../core/theme.dart';
 import '../../models/manhaji.dart';
 import '../../providers/app_providers.dart';
+import '../../providers/official_library_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import '../home/shell_screen.dart';
@@ -101,6 +102,8 @@ class _LibraryBody extends StatelessWidget {
           books: totalBooks,
           lessons: totalLessons,
         ),
+        const SizedBox(height: ZakerSpacing.lg),
+        const _OfficialLibraryEntry(),
         const SizedBox(height: ZakerSpacing.xl),
         for (final stage in StudyStage.values) ..._stageSection(context, stage),
       ],
@@ -157,6 +160,86 @@ Color _stageColor(StudyStage stage) => switch (stage) {
 };
 
 /// The teal hero card at the top of the library.
+class _OfficialLibraryEntry extends ConsumerWidget {
+  const _OfficialLibraryEntry();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final catalog = ref.watch(officialBooksProvider).valueOrNull;
+    final view = ref.watch(officialLibraryControllerProvider).valueOrNull;
+    final theme = Theme.of(context);
+    final available = catalog?.books.where((book) => book.isPublished).length;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push(ZakerRoutes.official),
+        child: Container(
+          padding: const EdgeInsets.all(ZakerSpacing.md),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [
+                ZakerColors.primary.withValues(alpha: 0.13),
+                theme.colorScheme.surface,
+              ],
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: ZakerColors.primary.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(ZakerRadius.md),
+                ),
+                child: const Icon(
+                  Icons.verified_rounded,
+                  color: ZakerColors.primary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: ZakerSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const TrText(
+                      'المكتبة الرسمية ٢٠٢٦–٢٠٢٧',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    TrText(
+                      available == null
+                          ? 'بنقرا فهرس وزارة التربية والتعليم…'
+                          : '$available مصدر رسمي · '
+                                '${view?.downloadedCount ?? 0} منزّل · '
+                                '${view?.readyCount ?? 0} جاهز للمذاكرة',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    TrText(
+                      'الثانوي العام والبكالوريا المصرية، بروابط منشورة ومتحقق منها.',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_left_rounded, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _LibraryHero extends StatelessWidget {
   const _LibraryHero({
     required this.grades,
@@ -264,20 +347,20 @@ class _LibraryHero extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: ZakerSpacing.lg),
-                Row(
+                Wrap(
+                  spacing: ZakerSpacing.sm,
+                  runSpacing: ZakerSpacing.sm,
                   children: [
                     _GlassStat(
                       value: '$grades',
                       label: 'صف',
                       icon: Icons.school_outlined,
                     ),
-                    const SizedBox(width: ZakerSpacing.sm),
                     _GlassStat(
                       value: '$books',
                       label: 'كتاب',
                       icon: Icons.menu_book_outlined,
                     ),
-                    const SizedBox(width: ZakerSpacing.sm),
                     _GlassStat(
                       value: '$lessons',
                       label: 'درس',
@@ -332,7 +415,7 @@ class _GlassStat extends StatelessWidget {
           TrText(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.82),
+              color: Colors.white,
               fontSize: 10.5,
             ),
           ),
@@ -466,7 +549,10 @@ class _GradeCard extends StatelessWidget {
                       textDirection: TextDirection.ltr,
                       style: theme.textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: accent,
+                        color: readableTextColor(
+                          accent,
+                          theme.colorScheme.surface,
+                        ),
                         fontSize: 10,
                       ),
                     ),

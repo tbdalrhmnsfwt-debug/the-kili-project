@@ -19,9 +19,16 @@ class StudyTask {
     this.done = false,
     this.important = false,
     this.dueAt,
+    this.startAt,
     this.subject,
     this.lessonNumber,
     this.createdAt,
+    this.isReview = false,
+    this.sourceBookId = '',
+    this.sourceBookTitle = '',
+    this.sourceSectionId = '',
+    this.sourceSectionTitle = '',
+    this.sourcePage,
   });
 
   final String id;
@@ -32,10 +39,25 @@ class StudyTask {
   /// Marks the task as "المهم" (important) — surfaced by ZImportantWidget.
   final bool important;
 
+  /// The target date the work is due.
   final DateTime? dueAt;
+
+  /// When the planned session starts. Optional for manually-created tasks.
+  final DateTime? startAt;
+
   final String? subject;
   final int? lessonNumber;
   final DateTime? createdAt;
+
+  /// True when this task is a spaced review session, not a first read.
+  final bool isReview;
+
+  /// Provenance for tasks generated from an official extracted section.
+  final String sourceBookId;
+  final String sourceBookTitle;
+  final String sourceSectionId;
+  final String sourceSectionTitle;
+  final int? sourcePage;
 
   StudyTask copyWith({
     String? title,
@@ -43,8 +65,15 @@ class StudyTask {
     bool? done,
     bool? important,
     DateTime? dueAt,
+    DateTime? startAt,
     String? subject,
     int? lessonNumber,
+    bool? isReview,
+    String? sourceBookId,
+    String? sourceBookTitle,
+    String? sourceSectionId,
+    String? sourceSectionTitle,
+    int? sourcePage,
   }) {
     return StudyTask(
       id: id,
@@ -53,9 +82,16 @@ class StudyTask {
       done: done ?? this.done,
       important: important ?? this.important,
       dueAt: dueAt ?? this.dueAt,
+      startAt: startAt ?? this.startAt,
       subject: subject ?? this.subject,
       lessonNumber: lessonNumber ?? this.lessonNumber,
       createdAt: createdAt,
+      isReview: isReview ?? this.isReview,
+      sourceBookId: sourceBookId ?? this.sourceBookId,
+      sourceBookTitle: sourceBookTitle ?? this.sourceBookTitle,
+      sourceSectionId: sourceSectionId ?? this.sourceSectionId,
+      sourceSectionTitle: sourceSectionTitle ?? this.sourceSectionTitle,
+      sourcePage: sourcePage ?? this.sourcePage,
     );
   }
 
@@ -66,9 +102,16 @@ class StudyTask {
     'done': done,
     'important': important,
     if (dueAt != null) 'dueAt': dueAt!.toIso8601String(),
+    if (startAt != null) 'startAt': startAt!.toIso8601String(),
     if (subject != null) 'subject': subject,
     if (lessonNumber != null) 'lesson': lessonNumber,
     if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
+    if (isReview) 'isReview': true,
+    if (sourceBookId.isNotEmpty) 'sourceBookId': sourceBookId,
+    if (sourceBookTitle.isNotEmpty) 'sourceBookTitle': sourceBookTitle,
+    if (sourceSectionId.isNotEmpty) 'sourceSectionId': sourceSectionId,
+    if (sourceSectionTitle.isNotEmpty) 'sourceSectionTitle': sourceSectionTitle,
+    if (sourcePage != null) 'sourcePage': sourcePage,
   };
 
   factory StudyTask.fromJson(Map<String, dynamic> json) => StudyTask(
@@ -80,11 +123,20 @@ class StudyTask {
     dueAt: json['dueAt'] == null
         ? null
         : DateTime.tryParse(json['dueAt'] as String),
+    startAt: json['startAt'] == null
+        ? null
+        : DateTime.tryParse(json['startAt'] as String),
     subject: json['subject'] as String?,
     lessonNumber: (json['lesson'] as num?)?.toInt(),
     createdAt: json['createdAt'] == null
         ? null
         : DateTime.tryParse(json['createdAt'] as String),
+    isReview: json['isReview'] == true,
+    sourceBookId: json['sourceBookId'] as String? ?? '',
+    sourceBookTitle: json['sourceBookTitle'] as String? ?? '',
+    sourceSectionId: json['sourceSectionId'] as String? ?? '',
+    sourceSectionTitle: json['sourceSectionTitle'] as String? ?? '',
+    sourcePage: (json['sourcePage'] as num?)?.toInt(),
   );
 }
 

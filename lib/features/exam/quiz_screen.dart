@@ -10,7 +10,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/answer_grading.dart';
+import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/arena.dart';
 import '../../models/exam.dart';
@@ -57,35 +60,52 @@ class QuizScreen extends ConsumerWidget {
             ),
           );
         }
-        return _QuizRunner(questions: list);
+        return QuizRunner(questions: list);
       },
     );
   }
 }
 
-class _QuizRunner extends ConsumerStatefulWidget {
-  const _QuizRunner({required this.questions});
+/// A reusable question runner.
+///
+/// The exam screen uses it with the global question set; official-book
+/// sections use it with source-linked questions generated from a real page
+/// range.
+class QuizRunner extends ConsumerStatefulWidget {
+  const QuizRunner({
+    super.key,
+    required this.questions,
+    this.title = '',
+    this.recordResults = true,
+  });
 
   final List<ExamQuestion> questions;
+  final String title;
+
+  /// Whether the run contributes to challenge/game statistics.
+  final bool recordResults;
 
   @override
-  ConsumerState<_QuizRunner> createState() => _QuizRunnerState();
+  ConsumerState<QuizRunner> createState() => _QuizRunnerState();
 }
 
-class _QuizRunnerState extends ConsumerState<_QuizRunner> {
+class _QuizRunnerState extends ConsumerState<QuizRunner> {
   int _index = 0;
   final Map<String, AnswerResult> _results = {};
   bool _revealed = false;
   bool _saved = false;
   Timer? _timer;
   int? _secondsLeft;
+  late final TextEditingController _answerController;
 
   List<ExamQuestion> get _questions => widget.questions;
   ExamQuestion get _current => _questions[_index];
+  bool get _isWritten => _current.answerKind == AnswerKind.freeText;
 
   @override
   void initState() {
     super.initState();
+    _answerController = TextEditingController();
     final limit = ref.read(quizTimeLimitProvider);
     if (limit != null && limit > 0) {
       _secondsLeft = limit;
@@ -104,6 +124,7 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
   @override
   void dispose() {
     _timer?.cancel();
+    _answerController.dispose();
     super.dispose();
   }
 
@@ -175,6 +196,29 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
+          if (question.source == 'official_local' ||
+              question.source == 'official_ai')
+            Padding(
+              padding: const EdgeInsets.only(bottom: ZakerSpacing.sm),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _SourceChip(
+                    label: question.source == 'official_ai'
+                        ? 'سؤال بالذكاء الاصطناعي'
+                        : 'سؤال من الكتاب',
+                    icon: question.source == 'official_ai'
+                        ? Icons.auto_awesome_rounded
+                        : Icons.verified_outlined,
+                  ),
+                  _SourceChip(
+                    label: question.difficultyLabel,
+                    icon: Icons.speed_rounded,
+                  ),
+                ],
+              ),
+            ),
           TrText(
             question.prompt,
             style: theme.textTheme.titleMedium?.copyWith(
@@ -182,19 +226,69 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: ZakerSpacing.xl),
-          for (var i = 0; i < question.options.length; i++) ...[
-            _OptionTile(
-              label: question.options[i],
-              index: i,
-              state: _optionState(i),
-              onTap: _revealed ? null : () => _answer(i),
-            ),
+          if (question.citation.isNotEmpty) ...[
             const SizedBox(height: ZakerSpacing.sm),
+            Row(
+              children: [
+                Icon(
+                  Icons.menu_book_outlined,
+                  size: 16,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: TrText(
+                    question.citation,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                if (question.hasOfficialSource)
+                  TextButton(
+                    onPressed: () => context.push(
+                      ZakerRoutes.officialSectionPath(
+                        question.sourceBookId,
+                        question.sourceSectionId,
+                      ),
+                    ),
+                    child: const TrText('المصدر'),
+                  ),
+              ],
+            ),
           ],
+          const SizedBox(height: ZakerSpacing.xl),
+          if (_isWritten)
+            TextField(
+              controller: _answerController,
+              enabled: !_revealed,
+              minLines: 3,
+              maxLines: 7,
+              textAlignVertical: TextAlignVertical.top,
+              decoration: const InputDecoration(
+                labelText: 'اكتب إجابتك',
+                hintText: 'استخدم كلماتك، وبعدين شوف الإجابة النموذجية',
+                border: OutlineInputBorder(),
+                alignLabelWithHint: true,
+              ),
+            )
+          else
+            for (var i = 0; i < question.options.length; i++) ...[
+              _OptionTile(
+                label: question.options[i],
+                index: i,
+                state: _optionState(i),
+                onTap: _revealed ? null : () => _answer(i),
+              ),
+              const SizedBox(height: ZakerSpacing.sm),
+            ],
           if (_revealed) ...[
             const SizedBox(height: ZakerSpacing.md),
-            _FeedbackCard(result: _results[question.id]),
+            _FeedbackCard(
+              result: _results[question.id],
+              modelAnswer: _current.modelAnswer,
+              citation: _current.citation,
+            ),
           ],
         ],
       ),
@@ -209,6 +303,7 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
                     onPressed: () => setState(() {
                       _index--;
                       _revealed = false;
+                      _answerController.clear();
                     }),
                     child: const TrText('السابق'),
                   ),
@@ -217,13 +312,15 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
               Expanded(
                 flex: 2,
                 child: FilledButton(
-                  onPressed: _revealed ? _next : null,
+                  onPressed: _revealed
+                      ? _next
+                      : (_isWritten ? _submitWritten : null),
                   child: TrText(
                     _revealed
                         ? (_index == _questions.length - 1
                               ? 'شوف النتيجة'
                               : 'التالي')
-                        : 'اختار إجابة',
+                        : (_isWritten ? 'صحّح إجابتي' : 'اختار إجابة'),
                   ),
                 ),
               ),
@@ -250,7 +347,8 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
 
   void _answer(int index) {
     final correct = _current.correctIndex;
-    final isCorrect = correct == null || correct == index;
+    final hasValidAnswer = hasValidChoiceAnswer(_current);
+    final isCorrect = isChoiceAnswerCorrect(_current, index);
     if (ref.read(soundsEnabledProvider)) {
       SystemSound.play(
         isCorrect ? SystemSoundType.click : SystemSoundType.alert,
@@ -262,10 +360,38 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
         questionId: _current.id,
         isCorrect: isCorrect,
         givenAnswer: index.toString(),
-        correctAnswer: correct?.toString() ?? '',
+        correctAnswer: hasValidAnswer ? '$correct' : '',
         feedback: isCorrect
             ? 'برافو — إجابة صحيحة'
-            : 'الإجابة الصحيحة: ${_current.options[correct]}',
+            : hasValidAnswer
+            ? 'الإجابة الصحيحة: ${_current.options[correct!]}'
+            : 'مفيش إجابة صحيحة محفوظة للسؤال ده — راجع الصفحة المصدر.',
+      );
+    });
+    _recordMistake(_current, isCorrect: isCorrect);
+  }
+
+  void _submitWritten() {
+    final given = _answerController.text.trim();
+    if (given.isEmpty) return;
+    final isCorrect = gradeShortAnswer(given, _current);
+    final correctIndex = _current.correctIndex;
+    final optionAnswer = hasValidChoiceAnswer(_current)
+        ? _current.options[correctIndex!]
+        : '';
+    final model = _current.modelAnswer.isNotEmpty
+        ? _current.modelAnswer
+        : optionAnswer;
+    setState(() {
+      _revealed = true;
+      _results[_current.id] = AnswerResult(
+        questionId: _current.id,
+        isCorrect: isCorrect,
+        givenAnswer: given,
+        correctAnswer: model,
+        feedback: isCorrect
+            ? 'إجابتك قريبة من الإجابة النموذجية. راجع الصفحة المصدر للتأكيد.'
+            : 'الإجابة النموذجية من الكتاب: $model',
       );
     });
     _recordMistake(_current, isCorrect: isCorrect);
@@ -330,6 +456,7 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
     setState(() {
       _index++;
       _revealed = false;
+      _answerController.clear();
     });
   }
 
@@ -338,6 +465,9 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
     final correct = _results.values.where((r) => r.isCorrect).length;
     if (!_saved) {
       _saved = true;
+      if (!widget.recordResults) {
+        _timer?.cancel();
+      } else {
       final challenge = ref.read(activeChallengeProvider);
       final challengePoints = challenge == null
           ? correct * 10
@@ -387,6 +517,7 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
         ref.read(activeChallengeProvider.notifier).state = null;
       }
       ref.read(quizTimeLimitProvider.notifier).state = null;
+      }
     }
     showModalBottomSheet<void>(
       context: context,
@@ -517,9 +648,15 @@ class _OptionTile extends StatelessWidget {
 
 /// Shows the explanation after answering.
 class _FeedbackCard extends StatelessWidget {
-  const _FeedbackCard({required this.result});
+  const _FeedbackCard({
+    required this.result,
+    this.modelAnswer = '',
+    this.citation = '',
+  });
 
   final AnswerResult? result;
+  final String modelAnswer;
+  final String citation;
 
   @override
   Widget build(BuildContext context) {
@@ -543,7 +680,81 @@ class _FeedbackCard extends StatelessWidget {
           ),
           const SizedBox(width: ZakerSpacing.sm),
           Expanded(
-            child: TrText(r?.feedback ?? '', style: theme.textTheme.bodyMedium),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TrText(r?.feedback ?? '', style: theme.textTheme.bodyMedium),
+                if ((r?.isCorrect ?? true) &&
+                    modelAnswer.isNotEmpty &&
+                    r?.givenAnswer != modelAnswer) ...[
+                  const SizedBox(height: 6),
+                  TrText(
+                    'الإجابة النموذجية: $modelAnswer',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+                if (citation.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.menu_book_outlined,
+                        size: 14,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: TrText(
+                          citation,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SourceChip extends StatelessWidget {
+  const _SourceChip({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.16),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: theme.colorScheme.primary),
+          const SizedBox(width: 4),
+          TrText(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),

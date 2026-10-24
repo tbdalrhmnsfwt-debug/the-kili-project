@@ -36,6 +36,11 @@ import '../features/lesson/book_lessons_screen.dart';
 import '../features/library/study_grade_screen.dart';
 import '../features/library/study_library_screen.dart';
 import '../features/library/study_subject_screen.dart';
+import '../features/library/official_book_screen.dart';
+import '../features/library/official_flashcards_screen.dart';
+import '../features/library/official_library_screen.dart';
+import '../features/library/official_mind_map_screen.dart';
+import '../features/library/official_section_screen.dart';
 import '../features/mistakes/mistakes_screen.dart';
 import '../features/islamic/diagnostics_screen.dart';
 import '../features/islamic/islamic_hub_screen.dart';
@@ -132,6 +137,26 @@ class ZakerRoutes {
   static const String wallet = '/wallet';
   static const String achievements = '/achievements';
 
+  /// The official 2026–2027 Ministry library.
+  static const String official = '/official';
+  static const String officialBook = '/official/book';
+
+  /// Builds the path for one official book.
+  static String officialBookPath(String bookId) =>
+      '$officialBook/${Uri.encodeComponent(bookId)}';
+
+  /// Builds the path for an extracted lesson inside an official book.
+  static String officialSectionPath(String bookId, String sectionId) =>
+      '${officialBookPath(bookId)}/section/${Uri.encodeComponent(sectionId)}';
+
+  /// Builds the path for a lesson's interactive mind map.
+  static String officialMindMapPath(String bookId, String sectionId) =>
+      '${officialSectionPath(bookId, sectionId)}/mindmap';
+
+  /// Builds the path for a lesson's flashcard deck.
+  static String officialFlashcardsPath(String bookId, String sectionId) =>
+      '${officialSectionPath(bookId, sectionId)}/flashcards';
+
   /// Builds the path for a book's lesson list.
   static String lessonPath(Book book) => '$lesson/${book.grade}/${book.id}';
 
@@ -167,6 +192,37 @@ final GoRouter appRouter = GoRouter(
       path: ZakerRoutes.courses,
       builder: (context, state) =>
           const ShellScreen(initialIndex: 1, child: StudyLibraryScreen()),
+    ),
+    GoRoute(
+      path: ZakerRoutes.official,
+      builder: (context, state) => const OfficialLibraryScreen(),
+    ),
+    GoRoute(
+      path: '${ZakerRoutes.officialBook}/:bookId',
+      builder: (context, state) => OfficialBookScreen(
+        bookId: state.pathParameters['bookId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: '${ZakerRoutes.officialBook}/:bookId/section/:sectionId',
+      builder: (context, state) => OfficialSectionScreen(
+        bookId: state.pathParameters['bookId'] ?? '',
+        sectionId: state.pathParameters['sectionId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: '${ZakerRoutes.officialBook}/:bookId/section/:sectionId/mindmap',
+      builder: (context, state) => OfficialMindMapScreen(
+        bookId: state.pathParameters['bookId'] ?? '',
+        sectionId: state.pathParameters['sectionId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: '${ZakerRoutes.officialBook}/:bookId/section/:sectionId/flashcards',
+      builder: (context, state) => OfficialFlashcardsScreen(
+        bookId: state.pathParameters['bookId'] ?? '',
+        sectionId: state.pathParameters['sectionId'] ?? '',
+      ),
     ),
     GoRoute(
       path: '${ZakerRoutes.library}/:gradeId',

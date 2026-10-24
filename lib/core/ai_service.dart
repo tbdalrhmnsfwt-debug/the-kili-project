@@ -94,6 +94,41 @@ class AiService {
     return _cannedAnswer(question);
   }
 
+  /// Asks the cloud model to work only from [context].
+  ///
+  /// Unlike [ask], this returns `null` when the backend is unreachable or
+  /// declines: a grounded explanation must never silently fall back to a
+  /// canned answer that is not about the student's book.
+  Future<String?> askGrounded({
+    required String question,
+    required String context,
+    String? subject,
+    int? pageStart,
+    int? pageEnd,
+  }) async {
+    try {
+      final res = await _api.raw.post<Map<String, dynamic>>(
+        '/ai/ask',
+        data: {
+          'question': question,
+          'subject': subject,
+          'context': context,
+          if (pageStart != null) 'page_start': pageStart,
+          if (pageEnd != null) 'page_end': pageEnd,
+          'require_citations': true,
+          'history': const <Map<String, String>>[],
+        },
+      );
+      final answer = res.data?['answer'] as String?;
+      if (answer == null || answer.trim().isEmpty) return null;
+      _remoteAnswered = true;
+      return answer.trim();
+    } catch (e) {
+      debugPrint('AI grounded request failed: $e');
+      return null;
+    }
+  }
+
   /// The offline fallback reply.
   ///
   /// It deliberately echoes the app's own tone: short, encouraging, and

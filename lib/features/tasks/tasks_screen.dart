@@ -54,6 +54,11 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         title: const TrText('المهام'),
         actions: [
           IconButton(
+            tooltip: 'أجّل المهام المتأخرة يوم',
+            onPressed: _rescheduleOverdue,
+            icon: const Icon(Icons.update_rounded),
+          ),
+          IconButton(
             tooltip: 'مهمة جديدة',
             onPressed: _add,
             icon: const Icon(Icons.add_task_rounded),
@@ -165,13 +170,43 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
   Future<void> _add() => _edit(null);
 
+  /// Moves unfinished overdue tasks one day forward. Completed tasks keep
+  /// their original dates and their tick.
+  void _rescheduleOverdue() {
+    final schedule = ref.read(taskScheduleProvider);
+    final now = DateTime.now();
+    final overdue = schedule.entries
+        .where((entry) => entry.isOverdue(now))
+        .toList();
+    if (overdue.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: TrText('مفيش مهام متأخرة دلوقتي.')),
+      );
+      return;
+    }
+    var next = schedule;
+    for (final entry in overdue) {
+      next = next.replace(
+        entry.copyWith(dueAt: entry.dueAt!.add(const Duration(days: 1))),
+      );
+    }
+    ref.read(taskScheduleProvider.notifier).state = next;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: TrText(
+          '${overdue.length} مهمة اتأجلت يوم. المهام المكتملة ماتغيّرتش.',
+        ),
+      ),
+    );
+  }
+
   /// Opens the editor for a new task or an existing [entry].
   Future<void> _edit(ScheduleEntry? entry) async {
     final draft = await showDialog<_TaskDraft>(
       context: context,
       builder: (context) => _TaskEditor(entry: entry),
     );
-    if (draft == null) return;
+    if (draft == null || !mounted) return;
 
     final schedule = ref.read(taskScheduleProvider);
     final updated = entry == null
@@ -456,13 +491,20 @@ class _TaskTile extends StatelessWidget {
                                   : theme.colorScheme.primary,
                             ),
                             const SizedBox(width: 4),
-                            TrText(
-                              _formatDue(due, english: _isEnglish(context)),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: overdue
-                                    ? ZakerColors.danger
-                                    : theme.colorScheme.primary,
-                                fontWeight: FontWeight.w600,
+                            Flexible(
+                              child: TrText(
+                                _formatDue(due, english: _isEnglish(context)),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: overdue
+                                      ? readableTextColor(
+                                          ZakerColors.danger,
+                                          theme.colorScheme.surface,
+                                        )
+                                      : theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ],

@@ -31,6 +31,14 @@ class ExamQuestion {
     this.explanation = '',
     this.lessonNumber,
     this.source = 'local',
+    this.sourcePage,
+    this.sourceBookId = '',
+    this.sourceBookTitle = '',
+    this.sourceSectionId = '',
+    this.sourceSectionTitle = '',
+    this.sourcePageEnd,
+    this.modelAnswer = '',
+    this.difficulty = 'medium',
   });
 
   final String id;
@@ -51,6 +59,41 @@ class ExamQuestion {
   /// `local` for bundled banks, `ai` for model-generated.
   final String source;
 
+  /// Provenance for questions derived from an official PDF.
+  final int? sourcePage;
+  final int? sourcePageEnd;
+  final String sourceBookId;
+  final String sourceBookTitle;
+  final String sourceSectionId;
+  final String sourceSectionTitle;
+
+  /// The model answer for a short-answer/worked question, quoted from the
+  /// book. Used for keyword-overlap grading, never shown before the student
+  /// answers.
+  final String modelAnswer;
+
+  /// `easy`, `medium` or `hard`.
+  final String difficulty;
+
+  String get difficultyLabel => switch (difficulty) {
+    'easy' => 'سهل',
+    'hard' => 'متقدم',
+    _ => 'متوسط',
+  };
+
+  /// True when the question is backed by an official extracted passage.
+  bool get hasOfficialSource => sourceBookId.isNotEmpty && sourcePage != null;
+
+  /// The citation shown under the question and in the feedback card.
+  String get citation {
+    if (sourcePage == null) return '';
+    final page = sourcePageEnd != null && sourcePageEnd != sourcePage
+        ? 'صفحات $sourcePage–$sourcePageEnd'
+        : 'صفحة $sourcePage';
+    if (sourceBookTitle.isEmpty) return page;
+    return '$page · «$sourceBookTitle»';
+  }
+
   factory ExamQuestion.fromJson(Map<String, dynamic> json) {
     final kind = switch (json['kind'] as String? ??
         json['type'] as String? ??
@@ -69,6 +112,14 @@ class ExamQuestion {
       explanation: json['explanation'] as String? ?? '',
       lessonNumber: (json['lesson'] as num?)?.toInt(),
       source: json['source'] as String? ?? 'local',
+      sourcePage: (json['source_page'] as num?)?.toInt(),
+      sourcePageEnd: (json['source_page_end'] as num?)?.toInt(),
+      sourceBookId: json['source_book_id'] as String? ?? '',
+      sourceBookTitle: json['source_book_title'] as String? ?? '',
+      sourceSectionId: json['source_section_id'] as String? ?? '',
+      sourceSectionTitle: json['source_section_title'] as String? ?? '',
+      modelAnswer: json['model_answer'] as String? ?? '',
+      difficulty: json['difficulty'] as String? ?? 'medium',
     );
   }
 
@@ -81,6 +132,14 @@ class ExamQuestion {
     if (explanation.isNotEmpty) 'explanation': explanation,
     if (lessonNumber != null) 'lesson': lessonNumber,
     'source': source,
+    if (sourcePage != null) 'source_page': sourcePage,
+    if (sourcePageEnd != null) 'source_page_end': sourcePageEnd,
+    if (sourceBookId.isNotEmpty) 'source_book_id': sourceBookId,
+    if (sourceBookTitle.isNotEmpty) 'source_book_title': sourceBookTitle,
+    if (sourceSectionId.isNotEmpty) 'source_section_id': sourceSectionId,
+    if (sourceSectionTitle.isNotEmpty) 'source_section_title': sourceSectionTitle,
+    if (modelAnswer.isNotEmpty) 'model_answer': modelAnswer,
+    'difficulty': difficulty,
   };
 
   /// Builds a question from a lesson figure's narrative text.

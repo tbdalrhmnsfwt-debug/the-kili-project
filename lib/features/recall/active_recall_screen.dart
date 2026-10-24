@@ -10,8 +10,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/recall_card_builder.dart';
+import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/recall.dart';
 import '../../providers/app_providers.dart';
@@ -29,19 +31,22 @@ class ActiveRecallScreen extends ConsumerStatefulWidget {
 class _ActiveRecallScreenState extends ConsumerState<ActiveRecallScreen> {
   int _index = 0;
   bool _revealed = false;
-  bool? _lastCorrect;
+  ReviewGrade? _lastGrade;
 
   @override
   Widget build(BuildContext context) {
     final queue = ref.watch(reviewQueueProvider);
     final due = queue.due();
+    final current = due.isEmpty ? null : due[_index.clamp(0, due.length - 1)];
+    final sourceBook = current?.bookId;
+    final sourceSection = current?.sourceSectionId ?? '';
 
     return Scaffold(
       appBar: AppBar(
         title: const TrText('استرجاع نشط'),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(left: ZakerSpacing.lg),
+            padding: const EdgeInsetsDirectional.only(end: ZakerSpacing.lg),
             child: Center(
               child: StatChip(
                 value: '${queue.total}',
@@ -61,14 +66,25 @@ class _ActiveRecallScreenState extends ConsumerState<ActiveRecallScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(ZakerSpacing.lg),
                     child: _Card(
-                      card: due[_index.clamp(0, due.length - 1)],
+                      card: current!,
                       revealed: _revealed,
                       onReveal: () => setState(() => _revealed = true),
+                      onOpenSource:
+                          sourceBook != null &&
+                              sourceBook.isNotEmpty &&
+                              sourceSection.isNotEmpty
+                          ? () => context.push(
+                              ZakerRoutes.officialSectionPath(
+                                sourceBook,
+                                sourceSection,
+                              ),
+                            )
+                          : null,
                     ),
                   ),
                 ),
                 if (_revealed)
-                  _GradingBar(onGrade: _grade, lastCorrect: _lastCorrect)
+                  _GradingBar(onGrade: _grade, lastGrade: _lastGrade)
                 else
                   Padding(
                     padding: const EdgeInsets.all(ZakerSpacing.lg),
@@ -84,13 +100,13 @@ class _ActiveRecallScreenState extends ConsumerState<ActiveRecallScreen> {
     );
   }
 
-  void _grade(bool correct) {
+  void _grade(ReviewGrade grade) {
     final queue = ref.read(reviewQueueProvider);
     final due = queue.due();
     if (due.isEmpty) return;
     final card = due[_index.clamp(0, due.length - 1)];
 
-    final updated = card.reviewed(wasCorrect: correct);
+    final updated = card.graded(grade);
     final cards = [
       for (final c in queue.cards)
         if (c.id == updated.id) updated else c,
@@ -99,7 +115,7 @@ class _ActiveRecallScreenState extends ConsumerState<ActiveRecallScreen> {
     setState(() {
       ref.read(reviewQueueProvider.notifier).state = ReviewQueue(cards: cards);
       _revealed = false;
-      _lastCorrect = correct;
+      _lastGrade = grade;
       final nextDue = ref.read(reviewQueueProvider).due();
       if (_index >= nextDue.length) _index = 0;
     });
@@ -167,11 +183,13 @@ class _Card extends StatelessWidget {
     required this.card,
     required this.revealed,
     required this.onReveal,
+    this.onOpenSource,
   });
 
   final RecallCard card;
   final bool revealed;
   final VoidCallback onReveal;
+  final VoidCallback? onOpenSource;
 
   @override
   Widget build(BuildContext context) {
@@ -243,6 +261,44 @@ class _Card extends StatelessWidget {
                   ),
                 ),
               ],
+              if (card.sourcePage != null) ...[
+                const SizedBox(height: ZakerSpacing.sm),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.menu_book_outlined,
+                      size: 14,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: TrText(
+                        card.sourceBookTitle.isEmpty
+                            ? 'صفحة ${card.sourcePage}'
+                            : 'صفحة ${card.sourcePage} · ${card.sourceBookTitle}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    if (onOpenSource != null) ...[
+                      const SizedBox(width: 4),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                        ),
+                        onPressed: onOpenSource,
+                        child: const TrText('افتح الدرس'),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ] else ...[
               const SizedBox(height: ZakerSpacing.xl),
               TrText(
@@ -263,12 +319,12 @@ class _Card extends StatelessWidget {
   }
 }
 
-/// The "صح / خطأ" grading bar.
+/// The three-way rating bar shared with the official flashcard screen.
 class _GradingBar extends StatelessWidget {
-  const _GradingBar({required this.onGrade, this.lastCorrect});
+  const _GradingBar({required this.onGrade, this.lastGrade});
 
-  final ValueChanged<bool> onGrade;
-  final bool? lastCorrect;
+  final ValueChanged<ReviewGrade> onGrade;
+  final ReviewGrade? lastGrade;
 
   @override
   Widget build(BuildContext context) {
@@ -277,13 +333,17 @@ class _GradingBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: ZakerSpacing.lg),
       child: Column(
         children: [
-          if (lastCorrect != null)
+          if (lastGrade != null)
             Padding(
               padding: const EdgeInsets.only(bottom: ZakerSpacing.sm),
               child: TrText(
-                lastCorrect! ? 'مظبوط 👌' : 'الإجابة الصح فوق',
+                switch (lastGrade!) {
+                  ReviewGrade.knew => 'تمام 👌 هترجع في موعد أبعد',
+                  ReviewGrade.difficult => 'هترجع بكره عشان تثبت',
+                  ReviewGrade.again => 'هترجع بعد شوية — الإجابة فوق',
+                },
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: lastCorrect!
+                  color: lastGrade == ReviewGrade.knew
                       ? ZakerColors.success
                       : theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
@@ -293,23 +353,62 @@ class _GradingBar extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => onGrade(false),
-                  icon: const Icon(Icons.close_rounded),
-                  label: const TrText('غلط'),
+                child: OutlinedButton(
+                  onPressed: () => onGrade(ReviewGrade.again),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: ZakerColors.danger,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.replay_rounded, size: 18),
+                      SizedBox(height: 2),
+                      TrText('راجعها', style: TextStyle(fontSize: 11)),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(width: ZakerSpacing.md),
+              const SizedBox(width: 6),
               Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => onGrade(true),
-                  icon: const Icon(Icons.check_rounded),
-                  label: const TrText('صح'),
+                child: OutlinedButton(
+                  onPressed: () => onGrade(ReviewGrade.difficult),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: readableTextColor(
+                      ZakerColors.accent,
+                      theme.colorScheme.surface,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.sentiment_dissatisfied_outlined, size: 18),
+                      SizedBox(height: 2),
+                      TrText('صعبة', style: TextStyle(fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => onGrade(ReviewGrade.knew),
                   style: FilledButton.styleFrom(
-                    backgroundColor: ZakerColors.success,
+                    backgroundColor: readableTextColor(
+                      ZakerColors.success,
+                      Colors.white,
+                    ),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_rounded, size: 18),
+                      SizedBox(height: 2),
+                      TrText('عرفتها', style: TextStyle(fontSize: 11)),
+                    ],
                   ),
                 ),
               ),

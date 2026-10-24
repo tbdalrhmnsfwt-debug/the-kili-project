@@ -78,6 +78,18 @@ class CardFace {
   );
 }
 
+/// How the student rated a flashcard after revealing the answer.
+enum ReviewGrade {
+  /// «عرفتها» — correct, continue the expanding interval ladder.
+  knew,
+
+  /// «راجعها» — missed it; show it again shortly.
+  again,
+
+  /// «صعبة» — remembered with effort; keep the streak but repeat tomorrow.
+  difficult,
+}
+
 /// A single recall card.
 class RecallCard {
   const RecallCard({
@@ -94,6 +106,9 @@ class RecallCard {
     this.reviews = 0,
     this.correctReviews = 0,
     this.dueAt,
+    this.sourcePage,
+    this.sourceSectionId = '',
+    this.sourceBookTitle = '',
   });
 
   final String id;
@@ -127,6 +142,16 @@ class RecallCard {
   /// When the card becomes eligible for review again.
   final DateTime? dueAt;
 
+  /// 1-based page in the official PDF this card was generated from, when the
+  /// card came from an extracted official book. Bundled-library cards leave
+  /// this `null`.
+  final int? sourcePage;
+
+  /// The extracted section id and book title, so the card can link back to
+  /// the exact passage instead of only the book.
+  final String sourceSectionId;
+  final String sourceBookTitle;
+
   int get remainingReviews => reviews - correctReviews;
 
   /// Accuracy in the range 0..1.
@@ -143,11 +168,27 @@ class RecallCard {
   ///
   /// The intervals follow a simple expanding ladder (1, 3, 7, 14, 30 days)
   /// keyed off the number of consecutive successes.
-  RecallCard reviewed({required bool wasCorrect, DateTime? now}) {
+  RecallCard reviewed({required bool wasCorrect, DateTime? now}) =>
+      graded(wasCorrect ? ReviewGrade.knew : ReviewGrade.again, now: now);
+
+  /// Applies a three-way outcome from the flashcard screen.
+  ///
+  /// «راجعها» comes back in ten minutes; «صعبة» keeps the current streak but
+  /// returns tomorrow. Completed reviews are always counted.
+  RecallCard graded(ReviewGrade grade, {DateTime? now}) {
     final reference = now ?? DateTime.now();
-    final streak = wasCorrect ? correctReviews + 1 : 0;
+    final streak = grade == ReviewGrade.knew
+        ? correctReviews + 1
+        : grade == ReviewGrade.difficult
+        ? correctReviews
+        : 0;
     const ladder = [1, 3, 7, 14, 30];
-    final days = ladder[streak.clamp(0, ladder.length - 1)];
+    final days = ladder[(streak - 1).clamp(0, ladder.length - 1)];
+    final due = switch (grade) {
+      ReviewGrade.knew => reference.add(Duration(days: days)),
+      ReviewGrade.difficult => reference.add(const Duration(days: 1)),
+      ReviewGrade.again => reference.add(const Duration(minutes: 10)),
+    };
     return RecallCard(
       id: id,
       kind: kind,
@@ -161,7 +202,10 @@ class RecallCard {
       createdAt: createdAt,
       reviews: reviews + 1,
       correctReviews: streak,
-      dueAt: reference.add(Duration(days: days)),
+      dueAt: due,
+      sourcePage: sourcePage,
+      sourceSectionId: sourceSectionId,
+      sourceBookTitle: sourceBookTitle,
     );
   }
 
@@ -181,6 +225,9 @@ class RecallCard {
     reviews: reviews,
     correctReviews: correctReviews,
     dueAt: dueAt ?? this.dueAt,
+    sourcePage: sourcePage,
+    sourceSectionId: sourceSectionId,
+    sourceBookTitle: sourceBookTitle,
   );
 
   Map<String, dynamic> toJson() => {
@@ -197,6 +244,9 @@ class RecallCard {
     'reviews': reviews,
     'correctReviews': correctReviews,
     if (dueAt != null) 'dueAt': dueAt!.toIso8601String(),
+    if (sourcePage != null) 'sourcePage': sourcePage,
+    if (sourceSectionId.isNotEmpty) 'sourceSectionId': sourceSectionId,
+    if (sourceBookTitle.isNotEmpty) 'sourceBookTitle': sourceBookTitle,
   };
 
   factory RecallCard.fromJson(Map<String, dynamic> json) => RecallCard(
@@ -224,6 +274,9 @@ class RecallCard {
     dueAt: json['dueAt'] == null
         ? null
         : DateTime.tryParse(json['dueAt'] as String),
+    sourcePage: (json['sourcePage'] as num?)?.toInt(),
+    sourceSectionId: json['sourceSectionId'] as String? ?? '',
+    sourceBookTitle: json['sourceBookTitle'] as String? ?? '',
   );
 }
 
@@ -246,6 +299,22 @@ class ReviewQueue {
     final attempts = reviewed.fold<int>(0, (s, c) => s + c.reviews);
     return attempts == 0 ? 0 : total / attempts;
   }
+
+  /// Adds cards, skipping ids that already exist. Returns how many were new.
+  int addAll(Iterable<RecallCard> incoming) {
+    final known = cards.map((card) => card.id).toSet();
+    var added = 0;
+    for (final card in incoming) {
+      if (card.id.isEmpty || !known.add(card.id)) continue;
+      cards.add(card);
+      added++;
+    }
+    return added;
+  }
+
+  /// Cards generated from one official section.
+  List<RecallCard> forSection(String sectionId) =>
+      cards.where((card) => card.sourceSectionId == sectionId).toList();
 
   /// The cards ready to be shown, oldest due first.
   List<RecallCard> due([DateTime? now]) {

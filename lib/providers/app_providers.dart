@@ -233,6 +233,14 @@ Set<String> _decodeReadLessons(String raw) {
 
 String _encodeReadLessons(Set<String> value) => jsonEncode(value.toList());
 
+/// Whether OCR may run on pages of official books that have no text layer.
+///
+/// OCR is only attempted for Arabic/English books, because those are the only
+/// Tesseract data files bundled with the app.
+final officialOcrEnabledProvider = StateProvider<bool>((ref) {
+  return _restoreBool(ref, 'official_ocr', true);
+});
+
 /// Whether study reminders are enabled in settings.
 final notificationsEnabledProvider = StateProvider<bool>((ref) {
   return _restoreBool(ref, 'notifications', true);
@@ -707,4 +715,5 @@ final persistenceProvider = Provider<void>((ref) {
   saveBool(notificationsEnabledProvider, 'notifications');
   saveBool(soundsEnabledProvider, 'sounds');
   saveBool(liveEnabledProvider, 'live_enabled');
+  saveBool(officialOcrEnabledProvider, 'official_ocr');
 });

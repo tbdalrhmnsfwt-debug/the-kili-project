@@ -32,6 +32,10 @@ dependencies:
   shared_preferences: ^2.2.3
   path_provider: ^2.1.4
 
+  # Official book pipeline: SHA-256 verification and filesystem paths
+  crypto: ^3.0.3
+  path: ^1.9.0
+
   # UI
   flutter_markdown: ^0.7.3+1
   shadcn_ui: ^0.57.3

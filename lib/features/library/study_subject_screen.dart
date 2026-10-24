@@ -5,7 +5,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/router.dart';
 import '../../core/study_library.dart';
@@ -169,8 +168,8 @@ class _SubjectHeader extends StatelessWidget {
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
           colors: [
-            visual.color,
-            visual.color.withValues(alpha: 0.78),
+            Color.lerp(visual.color, Colors.black, 0.3)!,
+            visual.color.withValues(alpha: 0.85),
             const Color(0xFF115E59),
           ],
         ),
@@ -215,7 +214,7 @@ class _SubjectHeader extends StatelessWidget {
                     TrText(
                       '$books كتاب · $lessons درس',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.85),
+                        color: Colors.white.withValues(alpha: 0.95),
                       ),
                     ),
                   ],
@@ -320,23 +319,6 @@ class _OfficialBookTile extends StatelessWidget {
 
   final OfficialBook book;
 
-  Future<void> _open(BuildContext context) async {
-    var ok = false;
-    try {
-      ok = await launchUrl(
-        Uri.parse(book.url),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (_) {
-      ok = false;
-    }
-    if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: TrText('مش قادرين نفتح الرابط على الجهاز ده.')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -344,15 +326,27 @@ class _OfficialBookTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: ZakerSpacing.sm),
       child: ListTile(
         leading: Icon(
-          Icons.picture_as_pdf_outlined,
-          color: theme.colorScheme.primary,
+          book.isPublished
+              ? Icons.picture_as_pdf_outlined
+              : Icons.lock_clock_outlined,
+          color: book.isPublished
+              ? theme.colorScheme.primary
+              : ZakerColors.accent,
         ),
         title: TrText(book.title),
-        subtitle: book.source.trim().isEmpty
-            ? null
-            : TrText(book.source, maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: const Icon(Icons.open_in_new_rounded, size: 18),
-        onTap: () => _open(context),
+        subtitle: TrText(
+          '${book.resourceKind.label} · ${book.status.label}'
+          '${book.term == BookTerm.first ? '' : ' · ${book.term.label}'}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Icon(
+          book.isPublished
+              ? Icons.chevron_left_rounded
+              : Icons.info_outline_rounded,
+          size: 18,
+        ),
+        onTap: () => context.push(ZakerRoutes.officialBookPath(book.id)),
       ),
     );
   }

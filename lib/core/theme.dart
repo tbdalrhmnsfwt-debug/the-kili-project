@@ -41,6 +41,33 @@ class ZakerColors {
   static const Color surfaceDark = Color(0xFF0F172A);
 }
 
+/// WCAG relative contrast ratio between two opaque colours.
+double contrastRatio(Color foreground, Color background) {
+  final first = foreground.computeLuminance();
+  final second = background.computeLuminance();
+  final lighter = first > second ? first : second;
+  final darker = first > second ? second : first;
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/// Adjusts an accent until it reaches the 4.5:1 contrast that small text
+/// needs against [background].
+///
+/// The app uses raw brand accents for icons and fills, but the same shades are
+/// too light for 9–11px labels on the light theme. This darkens (or lightens
+/// on dark surfaces) only the text copy, keeping the palette recognisable.
+Color readableTextColor(Color color, Color background) {
+  if (contrastRatio(color, background) >= 4.5) return color;
+  final darkBackground = background.computeLuminance() < 0.5;
+  final toward = darkBackground ? Colors.white : Colors.black;
+  var adjusted = color;
+  for (var step = 1; step <= 10; step++) {
+    adjusted = Color.lerp(color, toward, step / 10)!;
+    if (contrastRatio(adjusted, background) >= 4.5) return adjusted;
+  }
+  return toward;
+}
+
 /// The app's spacing scale (4pt grid).
 class ZakerSpacing {
   const ZakerSpacing._();

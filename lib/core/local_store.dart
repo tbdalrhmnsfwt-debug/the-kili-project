@@ -13,8 +13,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'key_value_store.dart';
+
 /// A thin, failure-tolerant wrapper around [SharedPreferences].
-class LocalStore {
+class LocalStore implements KeyValueStore {
   LocalStore._(this._prefs);
 
   /// A store that keeps nothing, used when the platform store is missing.
@@ -40,6 +42,7 @@ class LocalStore {
   bool get isAvailable => _prefs != null;
 
   /// Reads a raw string, or `null` when it was never written.
+  @override
   String? getString(String key) => _prefs?.getString('$keyPrefix$key');
 
   /// Reads a boolean, or `null` when it was never written.
@@ -55,6 +58,7 @@ class LocalStore {
   }
 
   /// Writes a raw string. Failures are logged, never thrown.
+  @override
   Future<void> setString(String key, String value) async {
     try {
       await _prefs?.setString('$keyPrefix$key', value);
