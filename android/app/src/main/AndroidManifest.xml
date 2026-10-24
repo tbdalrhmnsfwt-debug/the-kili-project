@@ -21,6 +21,14 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!--
+      Adhan alarms are the app's core prayer-time feature, so it also asks for
+      the exact-alarm permission that Android 13+ grants to alarm apps.  The
+      scheduler still falls back to an inexact alarm if Android refuses.
+    -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- The settings screen offers to exempt the app from Doze. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- Camera + microphone: lecture capture, whiteboard photos, TTS/ASR. -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -136,6 +144,26 @@
         <service
             android:name="flutter.overlay.window.flutter_overlay_window.OverlayService"
             android:exported="false" />
+
+        <!--
+          Adhan notifications (flutter_local_notifications).  The plugin only
+          declares these receivers in its own manifest for some versions, so
+          they are declared here explicitly: the first fires a scheduled alarm,
+          the second re-registers the alarms after a reboot or an app update.
+        -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
 
         <!-- Home-screen widgets (Glance). -->
         <receiver

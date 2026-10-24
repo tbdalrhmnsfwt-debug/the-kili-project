@@ -1,6 +1,14 @@
 package com.zaker.zaker_ai
 
+import android.content.Context
+import android.content.Intent
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.PowerManager
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -13,6 +21,10 @@ import io.flutter.plugin.common.MethodChannel
  * the plugins and are not part of the replica.
  */
 class MainActivity : FlutterActivity() {
+
+    /** Plays one of the bundled `res/raw` adhan files for the voice picker. */
+    private var previewPlayer: MediaPlayer? = null
+    private val previewHandler = Handler(Looper.getMainLooper())
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -52,6 +64,39 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        // Battery-optimisation state, the app's settings page and the in-app
+        // adhan preview used by the prayer notification settings.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ADHAN_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "isIgnoringBatteryOptimizations" ->
+                        result.success(isIgnoringBatteryOptimizations())
+                    "requestIgnoreBatteryOptimizations" -> {
+                        val intent = Intent(
+                            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                            Uri.parse("package:$packageName")
+                        )
+                        result.success(startSafely(intent))
+                    }
+                    "openAppSettings" -> {
+                        val intent = Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:$packageName")
+                        )
+                        result.success(startSafely(intent))
+                    }
+                    "playPreview" -> {
+                        val name = call.argument<String>("name")
+                        result.success(playPreview(name))
+                    }
+                    "stopPreview" -> {
+                        stopPreview()
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,8 +105,77 @@ class MainActivity : FlutterActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
+    override fun onPause() {
+        super.onPause()
+        // A preview must not keep playing while the app is in the background.
+        stopPreview()
+    }
+
+    override fun onDestroy() {
+        stopPreview()
+        super.onDestroy()
+    }
+
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+        return power.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    private fun startSafely(intent: Intent): Boolean {
+        return try {
+            startActivity(intent)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Plays `res/raw/<name>.mp3` for the voice picker.  Playback stops on
+     * completion, after [PREVIEW_TIMEOUT_MS], or when another preview starts.
+     */
+    private fun playPreview(name: String?): Boolean {
+        if (name.isNullOrBlank()) return false
+        val id = resources.getIdentifier(name, "raw", packageName)
+        if (id == 0) return false
+
+        stopPreview()
+        val player = try {
+            MediaPlayer.create(this, id)
+        } catch (e: Exception) {
+            null
+        } ?: return false
+
+        previewPlayer = player
+        player.setOnCompletionListener { stopPreview() }
+        player.start()
+        previewHandler.postDelayed({
+            if (previewPlayer === player) stopPreview()
+        }, PREVIEW_TIMEOUT_MS)
+        return true
+    }
+
+    private fun stopPreview() {
+        previewHandler.removeCallbacksAndMessages(null)
+        val player = previewPlayer ?: return
+        previewPlayer = null
+        try {
+            if (player.isPlaying) player.stop()
+        } catch (_: IllegalStateException) {
+            // Already stopped or released; releasing below is still safe.
+        } finally {
+            player.release()
+        }
+    }
+
     companion object {
         /** Channel used by Dart to drive the AI-job notification. */
         const val AI_JOBS_CHANNEL = "zaker/ai_jobs"
+
+        /** Channel for battery settings and the adhan preview player. */
+        const val ADHAN_CHANNEL = "zaker/adhan"
+
+        /** Longest preview, in milliseconds. */
+        private const val PREVIEW_TIMEOUT_MS = 20_000L
     }
 }
