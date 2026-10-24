@@ -202,19 +202,36 @@ class _AzkarSettingsScreenState extends ConsumerState<AzkarSettingsScreen>
     }
     if (!await _ensureNotifications()) return;
     final phrase = phrases.first;
-    final sent = await NotificationService.instance.showTestSalat(
+    final sound = settings.soundFor(phrase.id);
+    // Play the chosen sound now, in the app, so the user hears it even when
+    // the notification is about to be tested separately.
+    await AdhanPlatform.stopPreview();
+    if (sound == SalatSoundMode.chime) {
+      await AdhanPlatform.playPreview(
+        kSalatChimeResource,
+        assetPath: kSalatChimeAsset,
+      );
+    } else if (sound == SalatSoundMode.voice) {
+      final asset = SalatAudioCatalog.instance.customAssetFor(phrase.id);
+      if (asset != null) {
+        await AdhanPlatform.playPreview('', assetPath: asset);
+      }
+    }
+    final outcome = await NotificationService.instance.scheduleTestSalat(
       phrase: phrase,
-      sound: settings.soundFor(phrase.id),
+      sound: sound,
       vibration: settings.salatVibration,
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: TrText(
-          sent
-              ? 'بعتنا التذكير — شوف الإشعار فوق.'
-              : 'مش قادرين نبعت الإشعار دلوقتي. جرّب تاني.',
+          outcome == AdhanScheduleOutcome.failed
+              ? 'مش قادرين نجدول الإشعار دلوقتي. جرّب تاني.'
+              : 'شغّلنا الصوت دلوقتي — والإشعار هيوصل بعد ٥ ثواني. '
+                    'اقفل التطبيق واستنى.',
         ),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -969,37 +986,12 @@ class _PhraseSetting extends StatelessWidget {
                   runSpacing: 5,
                   children: [
                     for (final mode in SalatSoundMode.values)
-                      Tooltip(
-                        message: mode == SalatSoundMode.voice && !hasRecording
-                            ? 'مفيش تسجيل مرفق للصيغة دي'
-                            : switch (mode) {
-                                SalatSoundMode.voice => 'تشغيل التسجيل',
-                                SalatSoundMode.chime => 'نغمة قصيرة',
-                                SalatSoundMode.silent => 'من غير صوت',
-                              },
-                        child: ChoiceChip(
-                          selected: sound == mode,
-                          onSelected:
-                              mode == SalatSoundMode.voice && !hasRecording
-                              ? null
-                              : (_) => onSound(mode),
-                          showCheckmark: false,
-                          label: Text(
-                            switch (mode) {
-                              SalatSoundMode.voice => 'صوت',
-                              SalatSoundMode.chime => 'نغمة',
-                              SalatSoundMode.silent => 'صامت',
-                            },
-                            style: const TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                        ),
+                      _SoundChip(
+                        mode: mode,
+                        selected: sound == mode,
+                        enabled: mode != SalatSoundMode.voice || hasRecording,
+                        theme: theme,
+                        onTap: () => onSound(mode),
                       ),
                   ],
                 ),
@@ -1016,6 +1008,86 @@ class _PhraseSetting extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One sound choice for a salat phrase.
+///
+/// The chip carries its own colours instead of relying on the ambient chip
+/// theme, so the unselected labels keep at least 4.5:1 contrast in every one
+/// of the four appearance themes.  The label is 12sp, the app's minimum.
+class _SoundChip extends StatelessWidget {
+  const _SoundChip({
+    required this.mode,
+    required this.selected,
+    required this.enabled,
+    required this.theme,
+    required this.onTap,
+  });
+
+  final SalatSoundMode mode;
+  final bool selected;
+  final bool enabled;
+  final ThemeData theme;
+  final VoidCallback onTap;
+
+  String get _label => switch (mode) {
+    SalatSoundMode.voice => 'صوت',
+    SalatSoundMode.chime => 'نغمة',
+    SalatSoundMode.silent => 'صامت',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = theme.colorScheme.primary;
+    final dark = theme.brightness == Brightness.dark;
+    final labelColor = !enabled
+        ? theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)
+        : selected
+        ? primary
+        : theme.colorScheme.onSurface;
+    return Tooltip(
+      message: !enabled
+          ? 'مفيش تسجيل مرفق للصيغة دي'
+          : switch (mode) {
+              SalatSoundMode.voice => 'تشغيل التسجيل',
+              SalatSoundMode.chime => 'نغمة قصيرة',
+              SalatSoundMode.silent => 'من غير صوت',
+            },
+      child: Semantics(
+        button: true,
+        selected: selected,
+        enabled: enabled,
+        label: _label,
+        child: ChoiceChip(
+          selected: selected,
+          onSelected: enabled ? (_) => onTap() : null,
+          showCheckmark: false,
+          selectedColor: primary.withValues(alpha: dark ? 0.30 : 0.14),
+          backgroundColor: theme.colorScheme.surface.withValues(
+            alpha: dark ? 0.35 : 0.92,
+          ),
+          side: BorderSide(
+            color: selected
+                ? primary.withValues(alpha: 0.6)
+                : theme.colorScheme.outline.withValues(alpha: 0.5),
+          ),
+          shape: const StadiumBorder(),
+          label: Text(
+            _label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: labelColor,
+            ),
+          ),
+          labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          visualDensity: VisualDensity.compact,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
       ),
     );
   }
@@ -1049,7 +1121,7 @@ class _ChipGroup<T> extends StatelessWidget {
             visualDensity: VisualDensity.compact,
             padding: const EdgeInsets.symmetric(horizontal: 7),
             labelStyle: const TextStyle(
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
           ),

@@ -191,8 +191,8 @@ class _SalatCounterScreenState extends ConsumerState<SalatCounterScreen> {
                 'مفيش تسجيل صوتي مرفق للصيغة دي، فالتذكير بيشتغل بالكلام أو النغمة.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 9,
-                  height: 1.5,
+                  fontSize: 12,
+                  height: 1.6,
                 ),
               ),
             )
@@ -205,8 +205,8 @@ class _SalatCounterScreenState extends ConsumerState<SalatCounterScreen> {
                 'يتضاف كـ raw resource في أندرويد.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 9,
-                  height: 1.5,
+                  fontSize: 12,
+                  height: 1.6,
                 ),
               ),
             ),
@@ -324,7 +324,7 @@ class _SalatCounterScreenState extends ConsumerState<SalatCounterScreen> {
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                           fontSize: 10,
-                          height: 1.5,
+                          height: 1.6,
                         ),
                       ),
                     ],
@@ -428,7 +428,7 @@ class _PhraseCard extends StatelessWidget {
                       },
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: muted,
-                        fontSize: 9,
+                        fontSize: 12,
                       ),
                     ),
                     if (hasRecording) ...[
@@ -446,7 +446,7 @@ class _PhraseCard extends StatelessWidget {
                         'تسجيل متاح',
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: ZakerColors.success,
-                          fontSize: 9,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
                       ),

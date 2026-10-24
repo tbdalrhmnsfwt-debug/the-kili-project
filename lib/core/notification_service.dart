@@ -740,6 +740,33 @@ class NotificationService {
     return outcome != AdhanScheduleOutcome.failed;
   }
 
+  /// Schedules a salat reminder [delay] from now, so the user can leave the
+  /// app and confirm the notification really arrives.
+  Future<AdhanScheduleOutcome> scheduleTestSalat({
+    required SalatPhrase phrase,
+    required SalatSoundMode sound,
+    required bool vibration,
+    Duration delay = const Duration(seconds: 5),
+  }) async {
+    await init();
+    if (!_initialized) return AdhanScheduleOutcome.failed;
+    await ensureSalatChannels();
+    await cancelNotification(salatTestId);
+    return _scheduleDetailed(
+      id: salatTestId,
+      title: 'الصلاة على النبي ﷺ',
+      body: phrase.text,
+      when: DateTime.now().add(delay),
+      preferExact: false,
+      details: _salatDetails(phrase, sound, vibration),
+      payload: jsonEncode(<String, Object?>{
+        'type': 'salat',
+        'phrase': phrase.id,
+        'test': true,
+      }),
+    );
+  }
+
   /// Posts a salat reminder right now, using the same channel the scheduler
   /// would use, so the user can check the phrase, chime and vibration.
   Future<bool> showTestSalat({
