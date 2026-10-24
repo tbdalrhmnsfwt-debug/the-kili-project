@@ -4,7 +4,7 @@ publish_to: "none"
 version: 1.1.0+86
 
 environment:
-  sdk: ">=3.4.0 <4.0.0"
+  sdk: ">=3.5.0 <4.0.0"
 
 # Dependency set limited to the packages the application actually imports,
 # plus the plugins whose Android components the manifest or the Kotlin sources
@@ -53,6 +53,12 @@ dependencies:
   home_widget: ^0.7.0
   flutter_local_notifications: ^17.2.3
   timezone: ^0.9.4
+
+  # Prayer times + location
+  adhan_dart: ^2.0.1
+  geolocator: ^14.1.2
+  geocoding: ^5.0.0
+  hijri: ^3.0.1
 
   # Misc
   logger: ^2.4.0
