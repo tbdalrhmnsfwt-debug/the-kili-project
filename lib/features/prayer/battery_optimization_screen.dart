@@ -87,11 +87,11 @@ class _BatteryOptimizationScreenState extends State<BatteryOptimizationScreen>
                   onRequest: _requestExemption,
                 ),
               const SizedBox(height: 18),
-              _SectionLabel(title: 'إزاي تعملها بنفسك'),
+              const _SectionLabel(title: 'إزاي تعملها بنفسك'),
               const SizedBox(height: 8),
               _StepsCard(),
               const SizedBox(height: 18),
-              _SectionLabel(title: 'لو موبايلك من شركة معينة'),
+              const _SectionLabel(title: 'لو موبايلك من شركة معينة'),
               const SizedBox(height: 8),
               _OemCard(),
               const SizedBox(height: 18),
@@ -228,7 +228,7 @@ class _ExemptCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = ZakerColors.success;
+    const color = ZakerColors.success;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -279,7 +279,7 @@ class _RequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = ZakerColors.accent;
+    const color = ZakerColors.accent;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -350,8 +350,8 @@ class _StepsCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
       ),
-      child: Column(
-        children: const [
+      child: const Column(
+        children: [
           _Step(
             number: '١',
             text: 'افتح إعدادات الموبايل ← التطبيقات ← ذاكرلي.',
@@ -431,9 +431,9 @@ class _OemCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           TrText(
             'شوية شركات بتحط «قايم التطبيقات» أو مدير طاقة من عندها، وده '
             'بيوقف التطبيق حتى لو استثنيته من تحسين البطارية. لو عندك '

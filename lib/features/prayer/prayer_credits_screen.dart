@@ -44,7 +44,7 @@ class PrayerCreditsScreen extends StatelessWidget {
             children: [
               _IntroCard(),
               const SizedBox(height: 18),
-              _SectionLabel(title: 'الأصوات المرفقة'),
+              const _SectionLabel(title: 'الأصوات المرفقة'),
               const SizedBox(height: 8),
               for (final voice in kAdhanVoices) ...[
                 _VoiceLicenseCard(
@@ -55,7 +55,7 @@ class PrayerCreditsScreen extends StatelessWidget {
                 const SizedBox(height: 8),
               ],
               const SizedBox(height: 10),
-              _SectionLabel(title: 'ملاحظات'),
+              const _SectionLabel(title: 'ملاحظات'),
               const SizedBox(height: 8),
               _NotesCard(),
               const SizedBox(height: 14),
@@ -367,9 +367,9 @@ class _NotesCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           _Note(
             text:
                 'الملفات اتضغطت بصيغة MP3 أحادية القناة (40 kbps) بعد '
