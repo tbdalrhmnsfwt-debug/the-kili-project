@@ -191,7 +191,7 @@ class _DateHeader extends StatelessWidget {
                       formatGregorianDate(day.date),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 10.5,
+                        fontSize: 12,
                       ),
                     ),
                   ],
@@ -222,7 +222,7 @@ class _DateHeader extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w700,
-                          fontSize: 11.5,
+                          fontSize: 12,
                         ),
                       ),
                     ),
@@ -235,7 +235,7 @@ class _DateHeader extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 10,
+                            fontSize: 12,
                           ),
                         ),
                       ),
@@ -367,7 +367,7 @@ class _MethodCard extends StatelessWidget {
                           'طريقة الحساب',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 10,
+                            fontSize: 12,
                           ),
                         ),
                         const SizedBox(height: 1),
@@ -404,7 +404,7 @@ class _MethodCard extends StatelessWidget {
                     'مذهب العصر',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 10.5,
+                      fontSize: 12,
                     ),
                   ),
                   const Spacer(),
@@ -413,7 +413,7 @@ class _MethodCard extends StatelessWidget {
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.w800,
-                      fontSize: 11,
+                      fontSize: 12,
                     ),
                   ),
                   const SizedBox(width: 2),
@@ -476,7 +476,7 @@ class _LocationCard extends StatelessWidget {
                       'الموقع',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 10,
+                        fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 1),
@@ -496,7 +496,7 @@ class _LocationCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 9.5,
+                        fontSize: 12,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
@@ -509,7 +509,7 @@ class _LocationCard extends StatelessWidget {
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.primary,
                   fontWeight: FontWeight.w800,
-                  fontSize: 11,
+                  fontSize: 12,
                 ),
               ),
               Icon(
@@ -547,7 +547,7 @@ class _Disclaimer extends StatelessWidget {
             'اتبع مواقيت المسجد عند الاختلاف.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
-              fontSize: 10,
+              fontSize: 12,
               height: 1.6,
             ),
           ),
@@ -702,7 +702,7 @@ class _NoLocationView extends StatelessWidget {
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.primary,
                               fontWeight: FontWeight.w700,
-                              fontSize: 10,
+                              fontSize: 12,
                             ),
                           ),
                         ),
@@ -742,7 +742,7 @@ class _InfoLine extends StatelessWidget {
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
-              fontSize: 10.5,
+              fontSize: 12,
               height: 1.5,
             ),
           ),
