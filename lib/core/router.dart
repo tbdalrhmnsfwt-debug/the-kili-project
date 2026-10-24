@@ -37,6 +37,7 @@ import '../features/library/study_grade_screen.dart';
 import '../features/library/study_library_screen.dart';
 import '../features/library/study_subject_screen.dart';
 import '../features/mistakes/mistakes_screen.dart';
+import '../features/islamic/islamic_hub_screen.dart';
 import '../features/notebooks/notebooks_screen.dart';
 import '../features/planner/planner_screen.dart';
 import '../features/prayer/adhan_playback_screen.dart';
@@ -110,6 +111,7 @@ class ZakerRoutes {
   static const String calculator = '/calculator';
   static const String irab = '/irab';
   static const String prayer = '/prayer';
+  static const String islamicHub = '/islam';
   static const String qibla = '/prayer/qibla';
   static const String adhanPlayback = '/prayer/adhan';
   static const String prayerNotifications = '/prayer/notifications';
@@ -345,6 +347,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.irab,
       builder: (context, state) => const IrabScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.islamicHub,
+      builder: (context, state) => const IslamicHubScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.prayer,

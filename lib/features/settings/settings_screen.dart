@@ -64,12 +64,6 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => _showReminders(context),
           ),
           _Tile(
-            icon: Icons.auto_awesome_rounded,
-            title: 'الأذكار والتنبيهات',
-            subtitle: 'الصلاة على النبي وأذكار الصباح والمساء والكهف',
-            onTap: () => context.push(ZakerRoutes.azkar),
-          ),
-          _Tile(
             icon: Icons.palette_outlined,
             title: 'تغيير الشكل',
             subtitle: 'الثيم وألوان التطبيق',

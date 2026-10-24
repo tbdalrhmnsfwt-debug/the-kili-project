@@ -117,6 +117,8 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
                 _ActionCards(streakDays: stats.streakDays),
+                const SizedBox(height: 12),
+                const _IslamicHubCard(),
                 const SizedBox(height: 22),
                 const PrayerHomeSection(),
                 const SizedBox(height: 22),
@@ -665,6 +667,15 @@ class _ActionCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
+              width: 30,
+              height: 3.5,
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: BorderRadius.circular(ZakerRadius.pill),
+              ),
+            ),
+            SizedBox(height: compact ? 9 : 11),
+            Container(
               width: compact ? 46 : 54,
               height: compact ? 46 : 54,
               decoration: BoxDecoration(
@@ -734,6 +745,129 @@ class _ActionCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------- islamic hub card
+
+/// The single home entry to the Islamics hub.
+class _IslamicHubCard extends StatelessWidget {
+  const _IslamicHubCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final accent =
+        theme.extension<ZakerFeatureAccents>()?.islamic ??
+        theme.colorScheme.primary;
+    final surface = theme.cardTheme.color ?? theme.colorScheme.surface;
+    final muted = theme.colorScheme.onSurfaceVariant;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push(ZakerRoutes.islamicHub),
+        borderRadius: BorderRadius.circular(ZakerRadius.lg),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(
+            horizontal: ZakerSpacing.md,
+            vertical: ZakerSpacing.md,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: AlignmentDirectional.topStart,
+              end: AlignmentDirectional.bottomEnd,
+              colors: [
+                Color.alphaBlend(
+                  accent.withValues(alpha: isDark ? 0.22 : 0.10),
+                  surface,
+                ),
+                surface,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(ZakerRadius.lg),
+            border: Border.all(color: _hairline(context, accent)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [
+                      accent.withValues(alpha: isDark ? 0.30 : 0.18),
+                      accent.withValues(alpha: 0.08),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(ZakerRadius.md),
+                  border: Border.all(color: accent.withValues(alpha: 0.24)),
+                ),
+                child: Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedMosque01,
+                    size: 22,
+                    color: accent,
+                  ),
+                ),
+              ),
+              const SizedBox(width: ZakerSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const TrText(
+                      'الإسلاميات',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    TrText(
+                      'المواقيت · الأذان · القبلة · الأذكار · الحفظ',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, height: 1.4, color: muted),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: ZakerSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(ZakerRadius.pill),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TrText(
+                      'افتح',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: accent,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(Icons.chevron_left_rounded, size: 16, color: accent),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1084,12 +1218,6 @@ class _DailyTools extends StatelessWidget {
             label: 'مراجعات',
             accent: _Accents.sky,
             onTap: () => context.push(ZakerRoutes.recall),
-          ),
-          (
-            icon: HugeIcons.strokeRoundedBook02,
-            label: 'حفظ القرآن',
-            accent: _Accents.teal,
-            onTap: () => context.push(ZakerRoutes.hifz),
           ),
         ];
 
@@ -1900,6 +2028,7 @@ class _Pressable3DState extends State<_Pressable3D> {
           onTapCancel: () => setState(() => _pressed = false),
           child: Stack(
             clipBehavior: Clip.none,
+            fit: StackFit.passthrough,
             children: [
               Positioned.fill(
                 top: depth,
