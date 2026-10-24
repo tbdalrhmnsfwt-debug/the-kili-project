@@ -552,7 +552,7 @@ class _GlassStat extends StatelessWidget {
             label,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.82),
-              fontSize: 10.5,
+              fontSize: 12,
             ),
           ),
         ],
@@ -696,7 +696,7 @@ class _ToolGrid extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
-                              fontSize: 9.5,
+                              fontSize: 12,
                             ),
                           ),
                         ],
@@ -788,7 +788,7 @@ class _BookCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 10.5,
+                            fontSize: 12,
                           ),
                         ),
                       ),
@@ -885,7 +885,7 @@ class _Meta extends StatelessWidget {
           text,
           style: theme.textTheme.labelSmall?.copyWith(
             color: tint,
-            fontSize: 10,
+            fontSize: 12,
           ),
         ),
       ],

@@ -508,7 +508,7 @@ class _HeroPrayerBlock extends StatelessWidget {
                   'غدًا',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -602,7 +602,7 @@ class _HeroPrayerBlock extends StatelessWidget {
               textDirection: TextDirection.ltr,
               style: const TextStyle(
                 color: _meta,
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 fontFeatures: [FontFeature.tabularFigures()],
               ),
@@ -613,7 +613,7 @@ class _HeroPrayerBlock extends StatelessWidget {
               textDirection: TextDirection.ltr,
               style: const TextStyle(
                 color: _meta,
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 fontFeatures: [FontFeature.tabularFigures()],
               ),
@@ -653,7 +653,7 @@ class _HeroPill extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -896,7 +896,7 @@ class _HeroStat extends StatelessWidget {
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -1798,7 +1798,7 @@ class _ToolTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: theme.textTheme.labelSmall?.copyWith(
-                fontSize: 11,
+                fontSize: 12,
                 height: 1.3,
                 fontWeight: FontWeight.w700,
               ),

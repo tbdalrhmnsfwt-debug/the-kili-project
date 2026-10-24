@@ -262,11 +262,15 @@ class ZakerGlassIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tint = theme.brightness == Brightness.dark
+        ? Color.lerp(accent, Colors.white, 0.32)!
+        : accent;
     return _GlassTile(
-      accent: accent,
+      accent: tint,
       size: size,
       radius: radius,
-      child: HugeIcon(icon: icon, size: iconSize, color: accent),
+      child: HugeIcon(icon: icon, size: iconSize, color: tint),
     );
   }
 }
@@ -291,11 +295,15 @@ class ZakerGlassGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tint = theme.brightness == Brightness.dark
+        ? Color.lerp(accent, Colors.white, 0.32)!
+        : accent;
     return _GlassTile(
-      accent: accent,
+      accent: tint,
       size: size,
       radius: radius,
-      child: Icon(icon, size: iconSize, color: accent),
+      child: Icon(icon, size: iconSize, color: tint),
     );
   }
 }
