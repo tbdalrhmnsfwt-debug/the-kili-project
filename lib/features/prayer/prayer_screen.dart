@@ -116,6 +116,8 @@ class PrayerScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 10),
                     const _AdhanCard(),
+                    const SizedBox(height: 10),
+                    const _QiblaCard(),
                     const SizedBox(height: 16),
                     const _Disclaimer(),
                   ],
@@ -617,6 +619,90 @@ class _AdhanCard extends ConsumerWidget {
               const SizedBox(width: 8),
               TrText(
                 'إعداد',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                ),
+              ),
+              Icon(
+                Icons.chevron_left_rounded,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QiblaCard extends StatelessWidget {
+  const _QiblaCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => context.push(ZakerRoutes.qibla),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: theme.dividerTheme.color ?? Colors.black12,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedKaaba01,
+                    size: 19,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TrText(
+                      'اتجاه القبلة',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 10,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    TrText(
+                      'بوصلة حية ومسار الكعبة على الكرة الأرضية',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              TrText(
+                'افتح',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.primary,
                   fontWeight: FontWeight.w800,

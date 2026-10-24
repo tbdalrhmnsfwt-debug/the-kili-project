@@ -31,6 +31,7 @@ import '../features/prayer/adhan_settings_screen.dart';
 import '../features/prayer/battery_optimization_screen.dart';
 import '../features/prayer/prayer_credits_screen.dart';
 import '../features/prayer/prayer_screen.dart';
+import '../features/prayer/qibla_screen.dart';
 import '../features/quran/quran_home_screen.dart';
 import '../features/quran/tasbih_screen.dart';
 import '../features/question_bank/question_bank_screen.dart';
@@ -91,6 +92,7 @@ class ZakerRoutes {
   static const String calculator = '/calculator';
   static const String irab = '/irab';
   static const String prayer = '/prayer';
+  static const String qibla = '/prayer/qibla';
   static const String adhanPlayback = '/prayer/adhan';
   static const String prayerNotifications = '/prayer/notifications';
   static const String prayerBattery = '/prayer/battery';
@@ -286,6 +288,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.prayer,
       builder: (context, state) => const PrayerScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.qibla,
+      builder: (context, state) => const QiblaScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.adhanPlayback,
