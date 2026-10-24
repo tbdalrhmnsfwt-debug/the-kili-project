@@ -2,8 +2,10 @@ package com.zaker.zaker_ai
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -88,10 +90,23 @@ class MainActivity : FlutterActivity() {
                     }
                     "playPreview" -> {
                         val name = call.argument<String>("name")
-                        result.success(playPreview(name))
+                        val asset = call.argument<String>("asset")
+                        result.success(playPreview(name, asset))
                     }
                     "stopPreview" -> {
                         stopPreview()
+                        result.success(null)
+                    }
+                    "startAdhanPlayback" -> {
+                        val name = call.argument<String>("name")
+                        val asset = call.argument<String>("asset")
+                        val title = call.argument<String>("title")
+                            ?: getString(R.string.adhan_playing_title)
+                        AdhanPlaybackService.start(this, name, asset, title)
+                        result.success(true)
+                    }
+                    "stopAdhanPlayback" -> {
+                        AdhanPlaybackService.stop(this)
                         result.success(null)
                     }
                     else -> result.notImplemented()
@@ -103,6 +118,27 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         // Keep the screen on while a focus session or a recording is running.
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        showOverLockScreenIfAdhan(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        showOverLockScreenIfAdhan(intent)
+    }
+
+    /**
+     * A full-screen adhan has to appear over the lock screen and turn the
+     * display on.  Every other launch clears those flags again, so an ordinary
+     * notification or the launcher behaves normally.
+     */
+    private fun showOverLockScreenIfAdhan(intent: Intent?) {
+        val payload = intent?.getStringExtra("payload")
+        val isAdhan = payload != null && payload.contains("\"type\":\"adhan\"")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(isAdhan)
+            setTurnScreenOn(isAdhan)
+        }
     }
 
     override fun onPause() {
@@ -131,17 +167,48 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
-     * Plays `res/raw/<name>.mp3` for the voice picker.  Playback stops on
-     * completion, after [PREVIEW_TIMEOUT_MS], or when another preview starts.
+     * Opens a raw resource, or a Flutter asset for a user-added recording.
+     * Raw resources win when both exist, which is the documented way to make
+     * an added Egyptian file usable as a notification sound as well.
      */
-    private fun playPreview(name: String?): Boolean {
-        if (name.isNullOrBlank()) return false
-        val id = resources.getIdentifier(name, "raw", packageName)
-        if (id == 0) return false
+    private fun createPreviewPlayer(name: String?, asset: String?): MediaPlayer? {
+        if (!name.isNullOrBlank()) {
+            val id = resources.getIdentifier(name, "raw", packageName)
+            if (id != 0) return MediaPlayer.create(this, id)
+        }
+        if (asset.isNullOrBlank()) return null
+
+        val path = if (asset.startsWith("assets/")) {
+            "flutter_assets/$asset"
+        } else {
+            "flutter_assets/assets/$asset"
+        }
+        val descriptor = assets.openFd(path)
+        val player = MediaPlayer()
+        player.setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+        )
+        descriptor.use {
+            player.setDataSource(it.fileDescriptor, it.startOffset, it.length)
+        }
+        player.prepare()
+        return player
+    }
+
+    /**
+     * Plays `res/raw/<name>.mp3`, or the Flutter [asset] for a user-added
+     * recording, for the voice picker.  Playback stops on completion, after
+     * [PREVIEW_TIMEOUT_MS], or when another preview starts.
+     */
+    private fun playPreview(name: String?, asset: String?): Boolean {
+        if (name.isNullOrBlank() && asset.isNullOrBlank()) return false
 
         stopPreview()
         val player = try {
-            MediaPlayer.create(this, id)
+            createPreviewPlayer(name, asset)
         } catch (e: Exception) {
             null
         } ?: return false

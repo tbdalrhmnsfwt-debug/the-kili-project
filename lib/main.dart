@@ -10,32 +10,44 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
 
+import 'core/adhan_voices.dart';
 import 'core/local_store.dart';
 import 'core/localization.dart';
 import 'core/notification_service.dart';
 import 'core/router.dart';
 import 'core/shad_theme.dart';
 import 'core/theme.dart';
+import 'features/prayer/adhan_launch.dart';
 import 'features/prayer/adhan_sync_host.dart';
 import 'providers/app_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Detect any user-added `assets/adhan/egyptian_*.mp3` recording before the
+  // first frame, so the picker and the persisted voice ids agree from the
+  // start.
+  await AdhanVoiceCatalog.instance.load();
   final store = await LocalStore.open();
-  // Tapping a reminder opens its screen.
-  NotificationService.instance.onTap = (payload) {
-    if (payload == 'tasks') appRouter.go(ZakerRoutes.tasks);
-    if (payload == 'prayer') appRouter.go(ZakerRoutes.prayer);
-  };
+  // Tapping a reminder opens its screen; tapping an adhan opens the
+  // full-screen player.
+  NotificationService.instance.onTap = handleNotificationPayload;
   // Register the notification channel early so an already-scheduled reminder
   // can be shown right after a reboot, before the first frame.
   await NotificationService.instance.init();
+  // A locked phone launches the app from the adhan's full-screen intent; the
+  // payload has to be read before the router is built.
+  final launchPayload = await NotificationService.instance.launchPayload();
   runApp(
     ProviderScope(
       overrides: [localStoreProvider.overrideWithValue(store)],
       child: const ZakerlyApp(),
     ),
   );
+  if (launchPayload != null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      handleNotificationPayload(launchPayload);
+    });
+  }
 }
 
 /// Root widget.

@@ -98,15 +98,20 @@ class NotificationService {
           description: 'أصوات الأذان المرفقة مع التطبيق، من غير إنترنت.',
         ),
       );
-      for (final voice in kAdhanVoices) {
+      for (final voice in AdhanVoiceCatalog.instance.voices) {
         await android.createNotificationChannel(
           AndroidNotificationChannel(
             voice.channelId,
             'أذان — ${voice.title}',
             description: 'صوت الأذان: ${voice.title}',
             importance: Importance.max,
-            playSound: true,
-            sound: RawResourceAndroidNotificationSound(voice.resource),
+            // A recording the user added under assets/adhan has no raw
+            // resource, so its notification is silent; the full-screen player
+            // still plays it from the asset bundle.
+            playSound: !voice.isCustom,
+            sound: voice.isCustom
+                ? null
+                : RawResourceAndroidNotificationSound(voice.resource),
             enableVibration: true,
             showBadge: false,
             audioAttributesUsage: AudioAttributesUsage.alarm,
@@ -198,6 +203,7 @@ class NotificationService {
     required DateTime when,
     required AdhanVoice voice,
     required bool preferExact,
+    required String payload,
   }) {
     return _schedulePrayer(
       id: id,
@@ -206,6 +212,7 @@ class NotificationService {
       when: when,
       preferExact: preferExact,
       details: _adhanDetails(voice, body),
+      payload: payload,
     );
   }
 
@@ -234,6 +241,7 @@ class NotificationService {
     required DateTime when,
     required bool preferExact,
     required AndroidNotificationDetails details,
+    String payload = 'prayer',
   }) async {
     await init();
     if (!_initialized) return AdhanScheduleOutcome.failed;
@@ -251,7 +259,7 @@ class NotificationService {
         androidScheduleMode: mode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        payload: 'prayer',
+        payload: payload,
       );
     }
 
@@ -299,7 +307,7 @@ class NotificationService {
         title,
         body,
         NotificationDetails(
-          android: _adhanDetails(voice, body),
+          android: _adhanDetails(voice, body, fullScreen: false),
           iOS: const DarwinNotificationDetails(),
         ),
         payload: 'prayer',
@@ -311,20 +319,33 @@ class NotificationService {
     }
   }
 
-  AndroidNotificationDetails _adhanDetails(AdhanVoice voice, String body) {
+  AndroidNotificationDetails _adhanDetails(
+    AdhanVoice voice,
+    String body, {
+    bool fullScreen = true,
+  }) {
     return AndroidNotificationDetails(
       voice.channelId,
       'أذان — ${voice.title}',
       channelDescription: 'صوت الأذان: ${voice.title}',
       importance: Importance.max,
       priority: Priority.high,
-      sound: RawResourceAndroidNotificationSound(voice.resource),
-      playSound: true,
+      sound: voice.isCustom
+          ? null
+          : RawResourceAndroidNotificationSound(voice.resource),
+      playSound: !voice.isCustom,
       enableVibration: true,
       category: AndroidNotificationCategory.alarm,
       audioAttributesUsage: AudioAttributesUsage.alarm,
       visibility: NotificationVisibility.public,
       channelShowBadge: false,
+      // While the phone is locked and Android allows full-screen intents,
+      // it shows the full-screen adhan (mosque illustration, prayer name,
+      // city and the stop button) instead of a heads-up notification.  When
+      // the screen is already on, or the OS withholds that permission, the
+      // notification stays a normal heads-up card and tapping it opens the
+      // player.  The test notification opts out of the full-screen launch.
+      fullScreenIntent: fullScreen,
       styleInformation: BigTextStyleInformation(body),
     );
   }
@@ -345,8 +366,37 @@ class NotificationService {
 
   /// Called with the notification payload when the user taps a notification.
   ///
-  /// The app sets this in `main` to route task reminders to the task list.
+  /// The app sets this in `main` to route task reminders to the task list and
+  /// an adhan to the full-screen playback screen.
   void Function(String? payload)? onTap;
+
+  /// Removes one notification, e.g. the adhan once its full-screen player owns
+  /// the audio.
+  Future<void> cancelNotification(int id) async {
+    await init();
+    if (!_initialized) return;
+    try {
+      await _plugin.cancel(id);
+    } catch (e) {
+      debugPrint('notifications: could not cancel $id ($e)');
+    }
+  }
+
+  /// The payload of the notification that launched the app, if any.
+  ///
+  /// Used on a cold start from a locked-phone full-screen adhan.
+  Future<String?> launchPayload() async {
+    await init();
+    if (!_initialized) return null;
+    try {
+      final details = await _plugin.getNotificationAppLaunchDetails();
+      if (details == null || !details.didNotificationLaunchApp) return null;
+      return details.notificationResponse?.payload;
+    } catch (e) {
+      debugPrint('notifications: could not read the launch payload ($e)');
+      return null;
+    }
+  }
 
   /// Prepares the plugin once per process.
   Future<void> init() async {

@@ -26,6 +26,7 @@ import '../features/lesson/book_lessons_screen.dart';
 import '../features/mistakes/mistakes_screen.dart';
 import '../features/notebooks/notebooks_screen.dart';
 import '../features/planner/planner_screen.dart';
+import '../features/prayer/adhan_playback_screen.dart';
 import '../features/prayer/adhan_settings_screen.dart';
 import '../features/prayer/battery_optimization_screen.dart';
 import '../features/prayer/prayer_credits_screen.dart';
@@ -90,6 +91,7 @@ class ZakerRoutes {
   static const String calculator = '/calculator';
   static const String irab = '/irab';
   static const String prayer = '/prayer';
+  static const String adhanPlayback = '/prayer/adhan';
   static const String prayerNotifications = '/prayer/notifications';
   static const String prayerBattery = '/prayer/battery';
   static const String prayerCredits = '/prayer/credits';
@@ -103,11 +105,7 @@ class ZakerRoutes {
   static String gradePath(String gradeId) => '$grade/$gradeId';
 
   /// Builds the path for a subject inside a grade and, when present, a track.
-  static String subjectPath(
-    String gradeId,
-    String subjectId, {
-    String? track,
-  }) {
+  static String subjectPath(String gradeId, String subjectId, {String? track}) {
     final base = '$subjects/$gradeId/$subjectId';
     return track == null || track.isEmpty
         ? base
@@ -288,6 +286,19 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.prayer,
       builder: (context, state) => const PrayerScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.adhanPlayback,
+      builder: (context, state) {
+        final query = state.uri.queryParameters;
+        return AdhanPlaybackScreen(
+          prayerName: query['prayer'] ?? 'dhuhr',
+          time: DateTime.tryParse(query['time'] ?? ''),
+          city: query['city'] ?? '',
+          voiceId: query['voice'],
+          notificationId: int.tryParse(query['id'] ?? ''),
+        );
+      },
     ),
     GoRoute(
       path: ZakerRoutes.prayerNotifications,

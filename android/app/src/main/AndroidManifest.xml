@@ -27,6 +27,8 @@
       scheduler still falls back to an inexact alarm if Android refuses.
     -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- The adhan opens full-screen over the lock screen (alarm-app use). -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!-- The settings screen offers to exempt the app from Doze. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
@@ -139,6 +141,12 @@
             android:name="com.zaker.zaker_ai.LectureRecordService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- Foreground service that plays the full-screen adhan. -->
+        <service
+            android:name="com.zaker.zaker_ai.AdhanPlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!-- The focus-timer system overlay. -->
         <service

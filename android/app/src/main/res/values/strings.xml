@@ -5,4 +5,10 @@
     <string name="ai_job_channel_name">مهام الذكاء الاصطناعي</string>
     <string name="recording_channel_name">تسجيل المحاضرات</string>
     <string name="recording_title">جاري تسجيل المحاضرة</string>
+
+    <!-- Full-screen adhan player. -->
+    <string name="adhan_playing_title">الأذان شغال</string>
+    <string name="adhan_playing_channel">تشغيل الأذان</string>
+    <string name="adhan_playing_text">اضغط «إيقاف الأذان» لإسكات الصوت.</string>
+    <string name="adhan_stop">إيقاف الأذان</string>
 </resources>

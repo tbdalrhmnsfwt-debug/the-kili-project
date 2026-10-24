@@ -12,6 +12,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:adhan_dart/adhan_dart.dart';
 import 'package:flutter/foundation.dart';
@@ -141,17 +142,25 @@ class PrayerAdhanScheduler {
         final voice = adhanVoiceById(settings.voiceIdFor(prayer));
 
         if (prayerTime.isAfter(now.add(const Duration(seconds: 5)))) {
+          final id = NotificationService.adhanNotificationId(
+            dayOffset,
+            prayer.index,
+          );
           final outcome = await NotificationService.instance
               .schedulePrayerAdhan(
-                id: NotificationService.adhanNotificationId(
-                  dayOffset,
-                  prayer.index,
-                ),
+                id: id,
                 title: 'حان وقت ${prayer.invocation}',
                 body: _adhanBody(prayer),
                 when: prayerTime,
                 voice: voice,
                 preferExact: useExact,
+                payload: _adhanPayload(
+                  id: id,
+                  prayer: prayer,
+                  when: prayerTime,
+                  location: location,
+                  voice: voice,
+                ),
               );
           switch (outcome) {
             case AdhanScheduleOutcome.exact:
@@ -223,5 +232,25 @@ class PrayerAdhanScheduler {
       return 'حان الآن وقت صلاة الفجر. الصلاة خير من النوم.';
     }
     return 'حان الآن وقت ${prayer.invocation}. تقبل الله.';
+  }
+
+  /// The JSON payload travels with the notification, so the full-screen
+  /// player knows which prayer, recording, time and city to show even after
+  /// the app process was killed.
+  String _adhanPayload({
+    required int id,
+    required PrayerName prayer,
+    required DateTime when,
+    required PrayerLocation location,
+    required AdhanVoice voice,
+  }) {
+    return jsonEncode(<String, Object?>{
+      'type': 'adhan',
+      'id': id,
+      'prayer': prayer.name,
+      'voice': voice.id,
+      'time': when.toIso8601String(),
+      'city': location.displayName,
+    });
   }
 }
