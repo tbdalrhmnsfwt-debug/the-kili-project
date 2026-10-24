@@ -16,14 +16,16 @@ import 'core/notification_service.dart';
 import 'core/router.dart';
 import 'core/shad_theme.dart';
 import 'core/theme.dart';
+import 'features/prayer/adhan_sync_host.dart';
 import 'providers/app_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = await LocalStore.open();
-  // Tapping a reminder opens the task list.
+  // Tapping a reminder opens its screen.
   NotificationService.instance.onTap = (payload) {
     if (payload == 'tasks') appRouter.go(ZakerRoutes.tasks);
+    if (payload == 'prayer') appRouter.go(ZakerRoutes.prayer);
   };
   // Register the notification channel early so an already-scheduled reminder
   // can be shown right after a reboot, before the first frame.
@@ -47,40 +49,46 @@ class ZakerlyApp extends ConsumerWidget {
     ref.watch(persistenceProvider);
     ref.watch(authBootstrapProvider);
 
-    return MaterialApp.router(
-      onGenerateTitle: (context) =>
-          Localizations.of<AppLocalizations>(context, AppLocalizations)
-              ?.t('ذاكرلي') ??
-          'ذاكرلي',
-      debugShowCheckedModeBanner: false,
-      theme: ZakerTheme.light(),
-      darkTheme: ZakerTheme.dark(),
-      themeMode: ThemeMode.system,
-      routerConfig: appRouter,
-      locale: ref.watch(localeProvider),
-      supportedLocales: const [Locale('ar'), Locale('en')],
-      localizationsDelegates: const [
-        AppLocalizationsDelegate(),
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      builder: (context, child) {
-        // The app is Arabic-first: force RTL for the Arabic locale.
-        final locale = Localizations.localeOf(context);
-        // shadcn_ui components read their colours and typography from a
-        // ShadTheme; provide one that mirrors the active Material theme.
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return Directionality(
-          textDirection: locale.languageCode == 'ar'
-              ? TextDirection.rtl
-              : TextDirection.ltr,
-          child: ShadTheme(
-            data: isDark ? ZakerShadTheme.dark() : ZakerShadTheme.light(),
-            child: child ?? const SizedBox.shrink(),
-          ),
-        );
-      },
+    // The adhan host lives above the router: it reschedules the rolling
+    // notification window on start, resume, midnight and settings changes.
+    return AdhanSyncHost(
+      child: MaterialApp.router(
+        onGenerateTitle: (context) =>
+            Localizations.of<AppLocalizations>(
+              context,
+              AppLocalizations,
+            )?.t('ذاكرلي') ??
+            'ذاكرلي',
+        debugShowCheckedModeBanner: false,
+        theme: ZakerTheme.light(),
+        darkTheme: ZakerTheme.dark(),
+        themeMode: ThemeMode.system,
+        routerConfig: appRouter,
+        locale: ref.watch(localeProvider),
+        supportedLocales: const [Locale('ar'), Locale('en')],
+        localizationsDelegates: const [
+          AppLocalizationsDelegate(),
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        builder: (context, child) {
+          // The app is Arabic-first: force RTL for the Arabic locale.
+          final locale = Localizations.localeOf(context);
+          // shadcn_ui components read their colours and typography from a
+          // ShadTheme; provide one that mirrors the active Material theme.
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return Directionality(
+            textDirection: locale.languageCode == 'ar'
+                ? TextDirection.rtl
+                : TextDirection.ltr,
+            child: ShadTheme(
+              data: isDark ? ZakerShadTheme.dark() : ZakerShadTheme.light(),
+              child: child ?? const SizedBox.shrink(),
+            ),
+          );
+        },
+      ),
     );
   }
 }

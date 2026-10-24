@@ -1,9 +1,12 @@
-/// Study reminders delivered by the operating system.
+/// Reminders and prayer notifications delivered by the operating system.
 ///
 /// The original app schedules its reminders with `flutter_local_notifications`
 /// and the `AlarmManager` receivers that package registers. This service keeps
-/// the same contract: one repeating daily reminder, scheduled even when the
-/// app is closed, and cancelled as soon as the user turns reminders off.
+/// the same contract for study reminders: one repeating daily reminder,
+/// scheduled even when the app is closed, and cancelled as soon as the user
+/// turns reminders off.  It also schedules the adhan: one notification per
+/// prayer per day, each through the notification channel of the chosen
+/// recording, plus an optional reminder ahead of the adhan.
 ///
 /// Every platform call is wrapped: when the plugin is unavailable (widget
 /// tests, a stripped build, a denied permission) the app keeps working and the
@@ -11,8 +14,24 @@
 library;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
+
+import 'adhan_voices.dart';
+
+/// How a prayer notification ended up being scheduled.
+enum AdhanScheduleOutcome {
+  /// Scheduled with `exactAllowWhileIdle`.
+  exact,
+
+  /// Scheduled with `inexactAllowWhileIdle`, because Android did not allow an
+  /// exact alarm.  It still fires, but the system may delay it.
+  inexact,
+
+  /// The platform call failed; nothing was scheduled.
+  failed,
+}
 
 /// Wrapper around the platform notification scheduler.
 class NotificationService {
@@ -29,10 +48,300 @@ class NotificationService {
   static const String _channelDescription =
       'منبه يومي بيشجعك تبدأ جلسة مذاكرة قصيرة.';
 
+  // ---------------------------------------------------------- adhan channels
+
+  static const String _prayerReminderChannelId = 'zaker_prayer_reminders';
+  static const String _prayerReminderChannelName = 'تنبيهات الصلاة';
+  static const String _prayerReminderChannelDescription =
+      'تنبيه بييجي قبل الأذان بدقايق، بصوت إشعار عادي.';
+
+  static const int _adhanIdBase = 4000;
+  static const int _reminderIdBase = 5000;
+
+  /// The id of the immediately-posted test adhan.
+  static const int adhanTestId = 3999;
+
+  /// A stable id for one prayer on one of the next days.  Separating the days
+  /// lets the app keep a rolling window of exact alarms scheduled.
+  static int adhanNotificationId(int dayOffset, int prayerIndex) =>
+      _adhanIdBase + dayOffset * 10 + prayerIndex;
+
+  /// A stable id for the reminder that precedes one prayer.
+  static int prayerReminderNotificationId(int dayOffset, int prayerIndex) =>
+      _reminderIdBase + dayOffset * 10 + prayerIndex;
+
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+
+  AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
+
+  /// Creates one channel per bundled voice plus the reminder channel.
+  ///
+  /// A channel's sound is immutable after creation, so every voice needs its
+  /// own channel and choosing a voice means choosing a channel.  Calling this
+  /// repeatedly is harmless: Android ignores an identical channel.
+  Future<void> ensureAdhanChannels() async {
+    await init();
+    if (!_initialized) return;
+    final android = _android;
+    if (android == null) return;
+    try {
+      await android.createNotificationChannelGroup(
+        const AndroidNotificationChannelGroup(
+          'zaker_adhan',
+          'أذان الصلاة',
+          description: 'أصوات الأذان المرفقة مع التطبيق، من غير إنترنت.',
+        ),
+      );
+      for (final voice in kAdhanVoices) {
+        await android.createNotificationChannel(
+          AndroidNotificationChannel(
+            voice.channelId,
+            'أذان — ${voice.title}',
+            description: 'صوت الأذان: ${voice.title}',
+            importance: Importance.max,
+            playSound: true,
+            sound: RawResourceAndroidNotificationSound(voice.resource),
+            enableVibration: true,
+            showBadge: false,
+            audioAttributesUsage: AudioAttributesUsage.alarm,
+          ),
+        );
+      }
+      await android.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _prayerReminderChannelId,
+          _prayerReminderChannelName,
+          description: _prayerReminderChannelDescription,
+          importance: Importance.high,
+          playSound: true,
+          enableVibration: true,
+          showBadge: false,
+        ),
+      );
+    } catch (e) {
+      debugPrint('notifications: could not create adhan channels ($e)');
+    }
+  }
+
+  /// Whether the user allows notifications at all.  This does not prompt.
+  Future<bool> areNotificationsEnabled() async {
+    await init();
+    if (!_initialized) return false;
+    try {
+      final android = _android;
+      if (android == null) return true;
+      return await android.areNotificationsEnabled() ?? false;
+    } catch (e) {
+      debugPrint('notifications: could not read the permission ($e)');
+      return false;
+    }
+  }
+
+  /// Whether Android will accept `exactAllowWhileIdle` alarms.
+  Future<bool> canScheduleExactNotifications() async {
+    await init();
+    if (!_initialized) return false;
+    try {
+      final android = _android;
+      if (android == null) return true;
+      return await android.canScheduleExactNotifications() ?? false;
+    } catch (e) {
+      debugPrint('notifications: could not read the exact-alarm state ($e)');
+      return false;
+    }
+  }
+
+  /// Opens the system screen where the user can grant exact alarms.
+  Future<bool> requestExactAlarmsPermission() async {
+    await init();
+    if (!_initialized) return false;
+    try {
+      return await _android?.requestExactAlarmsPermission() ?? false;
+    } catch (e) {
+      debugPrint('notifications: exact-alarm request failed ($e)');
+      return false;
+    }
+  }
+
+  /// Cancels every adhan and prayer reminder, leaving study/task reminders
+  /// untouched.
+  Future<void> cancelPrayerNotifications() async {
+    await init();
+    if (!_initialized) return;
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      for (final request in pending) {
+        final id = request.id;
+        if (id == adhanTestId ||
+            (id >= _adhanIdBase && id < _adhanIdBase + 1000) ||
+            (id >= _reminderIdBase && id < _reminderIdBase + 1000)) {
+          await _plugin.cancel(id);
+        }
+      }
+    } catch (e) {
+      debugPrint('notifications: could not cancel prayer schedules ($e)');
+    }
+  }
+
+  /// Schedules one adhan notification, falling back to an inexact alarm when
+  /// Android refuses the exact one.
+  Future<AdhanScheduleOutcome> schedulePrayerAdhan({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    required AdhanVoice voice,
+    required bool preferExact,
+  }) {
+    return _schedulePrayer(
+      id: id,
+      title: title,
+      body: body,
+      when: when,
+      preferExact: preferExact,
+      details: _adhanDetails(voice, body),
+    );
+  }
+
+  /// Schedules the optional "N minutes before" reminder.
+  Future<AdhanScheduleOutcome> schedulePrayerReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    required bool preferExact,
+  }) {
+    return _schedulePrayer(
+      id: id,
+      title: title,
+      body: body,
+      when: when,
+      preferExact: preferExact,
+      details: _reminderDetails(body),
+    );
+  }
+
+  Future<AdhanScheduleOutcome> _schedulePrayer({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    required bool preferExact,
+    required AndroidNotificationDetails details,
+  }) async {
+    await init();
+    if (!_initialized) return AdhanScheduleOutcome.failed;
+
+    Future<void> schedule(AndroidScheduleMode mode) {
+      return _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tz.TZDateTime.from(when, tz.local),
+        NotificationDetails(
+          android: details,
+          iOS: const DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: mode,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'prayer',
+      );
+    }
+
+    try {
+      await schedule(
+        preferExact
+            ? AndroidScheduleMode.exactAllowWhileIdle
+            : AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+      return preferExact
+          ? AdhanScheduleOutcome.exact
+          : AdhanScheduleOutcome.inexact;
+    } on PlatformException catch (error) {
+      if (preferExact && error.code == 'exact_alarms_not_permitted') {
+        try {
+          await schedule(AndroidScheduleMode.inexactAllowWhileIdle);
+          return AdhanScheduleOutcome.inexact;
+        } catch (fallbackError) {
+          debugPrint('notifications: inexact fallback failed ($fallbackError)');
+          return AdhanScheduleOutcome.failed;
+        }
+      }
+      debugPrint(
+        'notifications: could not schedule prayer notification ($error)',
+      );
+      return AdhanScheduleOutcome.failed;
+    } catch (e) {
+      debugPrint('notifications: could not schedule prayer notification ($e)');
+      return AdhanScheduleOutcome.failed;
+    }
+  }
+
+  /// Posts an adhan right now, with [voice]'s channel, for testing.
+  Future<bool> showTestAdhan(
+    AdhanVoice voice, {
+    String title = 'اختبار الأذان',
+    String body = 'كده شكل إشعار الأذان — الصوت شغال من غير إنترنت.',
+  }) async {
+    await init();
+    if (!_initialized) return false;
+    try {
+      await ensureAdhanChannels();
+      await _plugin.show(
+        adhanTestId,
+        title,
+        body,
+        NotificationDetails(
+          android: _adhanDetails(voice, body),
+          iOS: const DarwinNotificationDetails(),
+        ),
+        payload: 'prayer',
+      );
+      return true;
+    } catch (e) {
+      debugPrint('notifications: could not show the test adhan ($e)');
+      return false;
+    }
+  }
+
+  AndroidNotificationDetails _adhanDetails(AdhanVoice voice, String body) {
+    return AndroidNotificationDetails(
+      voice.channelId,
+      'أذان — ${voice.title}',
+      channelDescription: 'صوت الأذان: ${voice.title}',
+      importance: Importance.max,
+      priority: Priority.high,
+      sound: RawResourceAndroidNotificationSound(voice.resource),
+      playSound: true,
+      enableVibration: true,
+      category: AndroidNotificationCategory.alarm,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      visibility: NotificationVisibility.public,
+      channelShowBadge: false,
+      styleInformation: BigTextStyleInformation(body),
+    );
+  }
+
+  AndroidNotificationDetails _reminderDetails(String body) {
+    return AndroidNotificationDetails(
+      _prayerReminderChannelId,
+      _prayerReminderChannelName,
+      channelDescription: _prayerReminderChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      channelShowBadge: false,
+      styleInformation: BigTextStyleInformation(body),
+    );
+  }
 
   /// Called with the notification payload when the user taps a notification.
   ///
@@ -78,7 +387,11 @@ class NotificationService {
             IOSFlutterLocalNotificationsPlugin
           >();
       if (ios != null) {
-        return await ios.requestPermissions(alert: true, badge: true, sound: true) ??
+        return await ios.requestPermissions(
+              alert: true,
+              badge: true,
+              sound: true,
+            ) ??
             false;
       }
       return true;
