@@ -17,6 +17,7 @@ import '../../models/ai.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
+import '../../widgets/zaker_visuals.dart';
 
 /// The chat screen.
 class ChatScreen extends ConsumerStatefulWidget {
@@ -225,11 +226,7 @@ class _ChatIntro extends StatelessWidget {
       padding: const EdgeInsets.all(ZakerSpacing.lg),
       children: [
         const SizedBox(height: ZakerSpacing.xl),
-        Icon(
-          Icons.smart_toy_rounded,
-          size: 64,
-          color: theme.colorScheme.primary,
-        ),
+        const Center(child: AuroraAssistantMark(size: 84, radius: 26)),
         const SizedBox(height: ZakerSpacing.lg),
         TrText(
           subject == null ? 'اسأل أي حاجة' : 'اسأل عن $subject',

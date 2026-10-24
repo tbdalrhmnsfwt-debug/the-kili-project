@@ -14,6 +14,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -32,6 +33,7 @@ import '../../models/schedule.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
+import '../../widgets/zaker_visuals.dart';
 import '../focus/focus_screen.dart';
 import '../prayer/location_flow.dart';
 import '../prayer/prayer_models.dart';
@@ -773,14 +775,7 @@ class _HeroPrayerLoading extends StatelessWidget {
       ),
       child: const Row(
         children: [
-          SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          ),
+          ZakerSkeleton(width: 16, height: 16, radius: 8),
           SizedBox(width: 10),
           TrText(
             'بنحسب مواقيت النهاردة…',
@@ -1076,7 +1071,7 @@ class _ActionCards extends StatelessWidget {
   Widget build(BuildContext context) {
     final cards = <Widget>[
       _ActionCard(
-        icon: HugeIcons.strokeRoundedRobot01,
+        aurora: true,
         accent: _Accents.purple,
         title: 'المساعد الذكي',
         subtitle: 'أسأل عن أي حاجة',
@@ -1121,18 +1116,22 @@ class _ActionCards extends StatelessWidget {
 
 class _ActionCard extends StatelessWidget {
   const _ActionCard({
-    required this.icon,
+    this.icon,
     required this.accent,
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.aurora = false,
   });
 
-  final List<List<dynamic>> icon;
+  final List<List<dynamic>>? icon;
   final Color accent;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+
+  /// The assistant card uses the animated aurora mark instead of a glyph.
+  final bool aurora;
 
   @override
   Widget build(BuildContext context) {
@@ -1179,29 +1178,19 @@ class _ActionCard extends StatelessWidget {
               ),
             ),
             SizedBox(height: compact ? 9 : 11),
-            Container(
-              width: compact ? 46 : 54,
-              height: compact ? 46 : 54,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    accent.withValues(alpha: 0.24),
-                    accent.withValues(alpha: 0.10),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(compact ? 15 : 18),
-                border: Border.all(color: accent.withValues(alpha: 0.22)),
+            if (aurora)
+              AuroraAssistantMark(
+                size: compact ? 46 : 54,
+                radius: compact ? 15 : 18,
+              )
+            else
+              ZakerGlassIcon(
+                icon: icon!,
+                accent: accent,
+                size: compact ? 46 : 54,
+                iconSize: compact ? 24 : 28,
+                radius: compact ? 15 : 18,
               ),
-              child: Center(
-                child: HugeIcon(
-                  icon: icon,
-                  size: compact ? 24 : 28,
-                  color: accent,
-                ),
-              ),
-            ),
             SizedBox(height: compact ? 10 : 12),
             TrText(
               title,
@@ -1795,16 +1784,12 @@ class _ToolTile extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Center(
-                child: HugeIcon(icon: icon, size: 21, color: accent),
-              ),
+            ZakerGlassIcon(
+              icon: icon,
+              accent: accent,
+              size: 36,
+              iconSize: 21,
+              radius: 11,
             ),
             const SizedBox(height: 8),
             TrText(
@@ -2129,12 +2114,6 @@ class _AllToolsSection extends StatelessWidget {
     final tiles =
         <({String title, IconData icon, String? subtitle, VoidCallback onTap})>[
           (
-            title: 'معلم AI',
-            icon: Icons.smart_toy_rounded,
-            subtitle: 'اسأل واشرح',
-            onTap: () => context.push(ZakerRoutes.chat),
-          ),
-          (
             title: 'امتحان',
             icon: Icons.fact_check_rounded,
             subtitle: 'اختبار بالدرجات',
@@ -2295,12 +2274,20 @@ class _AllToolsSection extends StatelessWidget {
         ];
 
     return [
+      FeatureTile(
+        title: 'معلم AI',
+        subtitle: 'اسأل واشرح',
+        icon: Icons.auto_awesome_rounded,
+        art: const AuroraAssistantMark(size: 38, radius: ZakerRadius.sm),
+        color: _subjectAccents[0],
+        onTap: () => context.push(ZakerRoutes.chat),
+      ),
       for (var i = 0; i < tiles.length; i++)
         FeatureTile(
           title: tiles[i].title,
           subtitle: tiles[i].subtitle,
           icon: tiles[i].icon,
-          color: _subjectAccents[i % _subjectAccents.length],
+          color: _subjectAccents[(i + 1) % _subjectAccents.length],
           onTap: tiles[i].onTap,
         ),
     ];
@@ -2527,6 +2514,7 @@ class _Pressable3DState extends State<_Pressable3D> {
           onTapDown: (_) => setState(() => _pressed = true),
           onTapUp: (_) {
             setState(() => _pressed = false);
+            HapticFeedback.selectionClick();
             widget.onTap();
           },
           onTapCancel: () => setState(() => _pressed = false),
@@ -2546,7 +2534,11 @@ class _Pressable3DState extends State<_Pressable3D> {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 100),
                 curve: Curves.easeOut,
-                transform: Matrix4.translationValues(0, offset + lift, 0),
+                transform: Matrix4.diagonal3Values(
+                  _pressed ? 0.97 : 1.0,
+                  _pressed ? 0.97 : 1.0,
+                  1,
+                )..setTranslationRaw(0.0, offset + lift, 0.0),
                 child: Container(
                   margin: EdgeInsets.only(bottom: depth),
                   child: widget.child,

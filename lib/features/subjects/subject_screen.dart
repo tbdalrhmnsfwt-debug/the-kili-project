@@ -21,6 +21,7 @@ import '../../models/manhaji.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
+import '../../widgets/zaker_visuals.dart';
 import '../tools/pdf_viewer_screen.dart';
 
 /// The subject screen.
@@ -167,12 +168,13 @@ class _SubjectScreenState extends ConsumerState<SubjectScreen> {
           EmptyState(
             icon: subject.icon,
             title: 'محتوى ${subject.title} هيتضاف قريب',
-            message: subject.note ??
+            message:
+                subject.note ??
                 'المكتبة مش فيها كتاب للمادة دي لسه. تقدر تسأل المعلم الذكي '
                     'أو تراجع مادة قريبة منها.',
             action: FilledButton.icon(
               onPressed: () => _openChat(context, curriculum, subject),
-              icon: const Icon(Icons.smart_toy_outlined),
+              icon: const AuroraAssistantMark(size: 20, radius: 6),
               label: const TrText('اسأل المعلم الذكي'),
             ),
           )
@@ -235,7 +237,9 @@ class _SubjectScreenState extends ConsumerState<SubjectScreen> {
     final query = Uri.encodeQueryComponent(
       '${subject.title} ${curriculum.label} شرح',
     );
-    final uri = Uri.parse('https://www.youtube.com/results?search_query=$query');
+    final uri = Uri.parse(
+      'https://www.youtube.com/results?search_query=$query',
+    );
     var opened = false;
     try {
       opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -244,9 +248,7 @@ class _SubjectScreenState extends ConsumerState<SubjectScreen> {
     }
     if (!opened && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: TrText('مش قادرين نفتح يوتيوب على الجهاز ده.'),
-        ),
+        const SnackBar(content: TrText('مش قادرين نفتح يوتيوب على الجهاز ده.')),
       );
     }
   }
@@ -276,9 +278,7 @@ class _SubjectScreenState extends ConsumerState<SubjectScreen> {
                 child: CircularProgressIndicator(strokeWidth: 3),
               ),
               const SizedBox(width: ZakerSpacing.lg),
-              Expanded(
-                child: TrText('بنجهز أسئلة من كتب ${subject.title}…'),
-              ),
+              Expanded(child: TrText('بنجهز أسئلة من كتب ${subject.title}…')),
             ],
           ),
         ),

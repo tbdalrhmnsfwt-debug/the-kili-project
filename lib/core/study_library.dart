@@ -202,7 +202,7 @@ const _slate = Color(0xFF475569);
     'المواطنة وحقوق الإنسان' => (icon: Icons.gavel_rounded, color: _teal),
     'تكنولوجيا المعلومات' => (icon: Icons.computer_rounded, color: _slate),
     'البرمجة والذكاء الاصطناعي' => (
-      icon: Icons.smart_toy_rounded,
+      icon: Icons.code_rounded,
       color: _violet,
     ),
     'إدارة الأعمال' => (icon: Icons.business_center_rounded, color: _amber),

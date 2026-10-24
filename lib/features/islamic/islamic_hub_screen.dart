@@ -18,6 +18,7 @@ import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/tr_text.dart';
+import '../../widgets/zaker_visuals.dart';
 import '../prayer/prayer_log.dart';
 
 /// Store key for the one-time hub introduction.
@@ -333,90 +334,82 @@ class _HubTile extends StatelessWidget {
       button: true,
       enabled: enabled,
       label: '${data.title} — ${data.description}',
-      child: Opacity(
-        opacity: enabled ? 1 : 0.6,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: ZakerRadius.card,
-            child: Ink(
-              padding: const EdgeInsets.all(ZakerSpacing.md),
-              decoration: BoxDecoration(
-                color: theme.cardTheme.color,
-                borderRadius: ZakerRadius.card,
-                border: Border.all(color: data.accent.withValues(alpha: 0.24)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: data.accent.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(ZakerRadius.md),
-                          border: Border.all(
-                            color: data.accent.withValues(alpha: 0.22),
-                          ),
+      child: ZakerPressScale(
+        child: Opacity(
+          opacity: enabled ? 1 : 0.6,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: ZakerRadius.card,
+              child: Ink(
+                padding: const EdgeInsets.all(ZakerSpacing.md),
+                decoration: BoxDecoration(
+                  color: theme.cardTheme.color,
+                  borderRadius: ZakerRadius.card,
+                  border: Border.all(
+                    color: data.accent.withValues(alpha: 0.24),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        ZakerGlassIcon(
+                          icon: data.icon,
+                          accent: data.accent,
+                          size: 42,
+                          iconSize: 22,
                         ),
-                        child: Center(
-                          child: HugeIcon(
-                            icon: data.icon,
-                            size: 21,
-                            color: data.accent,
+                        const Spacer(),
+                        if (!enabled)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(
+                                ZakerRadius.pill,
+                              ),
+                            ),
+                            child: const TrText(
+                              'قريبًا',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
-                        ),
+                      ],
+                    ),
+                    const SizedBox(height: ZakerSpacing.md),
+                    TrText(
+                      data.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        height: 1.4,
                       ),
-                      const Spacer(),
-                      if (!enabled)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(
-                              ZakerRadius.pill,
-                            ),
-                          ),
-                          child: const TrText(
-                            'قريبًا',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: ZakerSpacing.md),
-                  TrText(
-                    data.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      height: 1.4,
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  TrText(
-                    data.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.5,
-                      color: theme.colorScheme.onSurfaceVariant,
+                    const SizedBox(height: 2),
+                    TrText(
+                      data.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.5,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

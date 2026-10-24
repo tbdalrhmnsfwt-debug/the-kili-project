@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -16,6 +17,7 @@ import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
+import '../../widgets/zaker_visuals.dart';
 import '../prayer/adhan_providers.dart';
 import '../prayer/prayer_models.dart';
 
@@ -200,7 +202,7 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen>
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const _DiagnosticsSkeleton()
           : ListView(
               padding: const EdgeInsets.fromLTRB(
                 ZakerSpacing.lg,
@@ -362,6 +364,38 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen>
     final day = when.day.toString().padLeft(2, '0');
     final month = when.month.toString().padLeft(2, '0');
     return '${next.title} — $day/$month ${formatClockTime(when)}';
+  }
+}
+
+class _DiagnosticsSkeleton extends StatelessWidget {
+  const _DiagnosticsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        ZakerSpacing.lg,
+        ZakerSpacing.sm,
+        ZakerSpacing.lg,
+        ZakerSpacing.xxl,
+      ),
+      children: [
+        const ZakerSkeleton(height: 86, radius: ZakerRadius.lg),
+        const SizedBox(height: ZakerSpacing.lg),
+        const ZakerSkeleton(width: 110, height: 14),
+        const SizedBox(height: ZakerSpacing.sm),
+        for (var index = 0; index < 6; index++) ...[
+          const ZakerSkeleton(height: 66, radius: ZakerRadius.md),
+          const SizedBox(height: ZakerSpacing.sm),
+        ],
+        const SizedBox(height: ZakerSpacing.sm),
+        const ZakerSkeleton(width: 80, height: 14),
+        const SizedBox(height: ZakerSpacing.sm),
+        const ZakerSkeleton(height: 64, radius: ZakerRadius.md),
+        const SizedBox(height: ZakerSpacing.sm),
+        const ZakerSkeleton(height: 64, radius: ZakerRadius.md),
+      ],
+    );
   }
 }
 
@@ -535,75 +569,74 @@ class _TestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.only(bottom: ZakerSpacing.sm),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        borderRadius: ZakerRadius.card,
-        border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: busy ? null : onTap,
+    return ZakerPressScale(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: ZakerSpacing.sm),
+        decoration: BoxDecoration(
+          color: theme.cardTheme.color,
           borderRadius: ZakerRadius.card,
-          child: Padding(
-            padding: const EdgeInsets.all(ZakerSpacing.md),
-            child: Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(ZakerRadius.md),
+          border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: busy
+                ? null
+                : () {
+                    HapticFeedback.selectionClick();
+                    onTap();
+                  },
+            borderRadius: ZakerRadius.card,
+            child: Padding(
+              padding: const EdgeInsets.all(ZakerSpacing.md),
+              child: Row(
+                children: [
+                  ZakerGlassIcon(
+                    icon: icon,
+                    accent: theme.colorScheme.primary,
+                    size: 38,
+                    iconSize: 19,
                   ),
-                  child: Center(
-                    child: busy
-                        ? SizedBox(
-                            width: 17,
-                            height: 17,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: theme.colorScheme.primary,
-                            ),
-                          )
-                        : HugeIcon(
-                            icon: icon,
-                            size: 19,
-                            color: theme.colorScheme.primary,
+                  const SizedBox(width: ZakerSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TrText(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
                           ),
-                  ),
-                ),
-                const SizedBox(width: ZakerSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TrText(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      TrText(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          height: 1.5,
-                          color: theme.colorScheme.onSurfaceVariant,
+                        const SizedBox(height: 2),
+                        TrText(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.5,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Icon(
-                  Icons.chevron_left_rounded,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ],
+                  if (busy)
+                    SizedBox(
+                      width: 17,
+                      height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: theme.colorScheme.primary,
+                      ),
+                    )
+                  else
+                    Icon(
+                      Icons.chevron_left_rounded,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                ],
+              ),
             ),
           ),
         ),

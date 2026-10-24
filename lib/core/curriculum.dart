@@ -424,7 +424,7 @@ const _grade11Subjects = <CurriculumSubject>[
     id: 'programming',
     title: 'البرمجة والذكاء الاصطناعي',
     assetSubjects: ['البرمجة والذكاء الاصطناعي'],
-    icon: Icons.smart_toy_rounded,
+    icon: Icons.code_rounded,
     color: _violet,
     subtitle: 'Programming & AI',
     tracks: [_bacEngineering],

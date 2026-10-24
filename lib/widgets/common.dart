@@ -2,9 +2,11 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/theme.dart';
 import 'tr_text.dart';
+import 'zaker_visuals.dart';
 
 /// A titled section with an optional trailing action.
 class SectionHeader extends StatelessWidget {
@@ -57,6 +59,7 @@ class FeatureTile extends StatelessWidget {
     this.subtitle,
     this.onTap,
     this.color,
+    this.art,
   });
 
   final String title;
@@ -65,58 +68,68 @@ class FeatureTile extends StatelessWidget {
   final VoidCallback? onTap;
   final Color? color;
 
+  /// Replaces the glyph tile with a custom mark, such as the aurora icon.
+  final Widget? art;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = color ?? theme.colorScheme.primary;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(ZakerRadius.md),
-        child: Container(
-          padding: const EdgeInsets.all(ZakerSpacing.md),
-          decoration: BoxDecoration(
-            color: theme.cardTheme.color,
-            borderRadius: ZakerRadius.card,
-            border: Border.all(
-              color: theme.dividerTheme.color ?? Colors.black12,
+    return ZakerPressScale(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap == null
+              ? null
+              : () {
+                  HapticFeedback.selectionClick();
+                  onTap!();
+                },
+          borderRadius: BorderRadius.circular(ZakerRadius.md),
+          child: Container(
+            padding: const EdgeInsets.all(ZakerSpacing.md),
+            decoration: BoxDecoration(
+              color: theme.cardTheme.color,
+              borderRadius: ZakerRadius.card,
+              border: Border.all(
+                color: theme.dividerTheme.color ?? Colors.black12,
+              ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(ZakerSpacing.sm),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(ZakerRadius.sm),
-                ),
-                child: Icon(icon, color: accent, size: 22),
-              ),
-              const SizedBox(height: ZakerSpacing.sm),
-              TrText(
-                title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                art ??
+                    ZakerGlassGlyph(
+                      icon: icon,
+                      accent: accent,
+                      size: 38,
+                      iconSize: 22,
+                      radius: ZakerRadius.sm,
+                    ),
+                const SizedBox(height: ZakerSpacing.sm),
                 TrText(
-                  subtitle!,
+                  title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  TrText(
+                    subtitle!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -282,19 +295,26 @@ class LoadingBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(ZakerSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(strokeWidth: 2.5),
-            if (label != null) ...[
-              const SizedBox(height: ZakerSpacing.md),
-              TrText(label!, style: Theme.of(context).textTheme.bodySmall),
-            ],
+    return Padding(
+      padding: const EdgeInsets.all(ZakerSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const ZakerSkeleton(height: 16),
+          const SizedBox(height: ZakerSpacing.sm),
+          const ZakerSkeleton(height: 12),
+          const SizedBox(height: ZakerSpacing.sm),
+          const ZakerSkeleton(height: 12),
+          if (label != null) ...[
+            const SizedBox(height: ZakerSpacing.md),
+            TrText(
+              label!,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

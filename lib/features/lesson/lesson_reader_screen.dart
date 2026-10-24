@@ -17,6 +17,7 @@ import '../../widgets/common.dart';
 import '../ai/chat_screen.dart';
 import '../exam/quiz_screen.dart';
 import '../../widgets/tr_text.dart';
+import '../../widgets/zaker_visuals.dart';
 
 /// Displays a single lesson.
 class LessonReaderScreen extends ConsumerWidget {
@@ -44,7 +45,7 @@ class LessonReaderScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'اسأل معلم AI',
-            icon: const Icon(Icons.smart_toy_outlined),
+            icon: const AuroraAssistantMark(size: 22, radius: 7),
             onPressed: () => _askAi(context),
           ),
           IconButton(
@@ -132,9 +133,8 @@ class LessonReaderScreen extends ConsumerWidget {
         subject: book.subject,
         startedAt: DateTime.now(),
       );
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const QuizScreen()),
-      );
+      await Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => const QuizScreen()));
       if (context.mounted) {
         ref.read(examSessionProvider.notifier).state = null;
       }
@@ -174,9 +174,8 @@ class LessonReaderScreen extends ConsumerWidget {
             children: [
               TrText(
                 'ملخص $_title',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: ZakerSpacing.md),
               if (points.isEmpty)
