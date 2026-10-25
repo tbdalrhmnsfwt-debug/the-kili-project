@@ -1,15 +1,10 @@
-import 'dart:io';
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zaker_ai/core/auth_service.dart';
-import 'package:zaker_ai/core/batches/batch_code_service.dart';
-import 'package:zaker_ai/core/batches/batch_file_store.dart';
+import 'package:zaker_ai/core/batches/batch_failure.dart';
+import 'package:zaker_ai/core/batches/batch_repository.dart';
 import 'package:zaker_ai/core/batches/batch_store.dart';
-import 'package:zaker_ai/core/batches/local_batch_repository.dart';
-import 'package:zaker_ai/core/key_value_store.dart';
 import 'package:zaker_ai/core/local_store.dart';
 import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/features/batches/batches_screen.dart';
@@ -17,72 +12,112 @@ import 'package:zaker_ai/models/batch.dart';
 import 'package:zaker_ai/providers/app_providers.dart';
 import 'package:zaker_ai/providers/batch_providers.dart';
 
-class _MemoryStore implements KeyValueStore {
-  final Map<String, String> values = {};
+/// An in-memory command surface, so widget tests never touch real file I/O
+/// inside the fake-async zone.
+class _FakeRepository implements BatchRepository {
+  _FakeRepository(this.items);
+
+  List<BatchSummary> items;
+  final List<String> deleted = [];
 
   @override
-  String? getString(String key) => values[key];
+  Future<List<BatchSummary>> listBatches(String uid) async => [...items];
 
   @override
-  Future<void> setString(String key, String value) async {
-    values[key] = value;
+  Future<void> deleteBatch(String uid, String batchId) async {
+    deleted.add(batchId);
+    items = [
+      for (final item in items)
+        if (item.batchId != batchId) item,
+    ];
   }
-}
-
-class _SequenceRandom implements Random {
-  _SequenceRandom(this.values);
-
-  final List<int> values;
-  int _index = 0;
 
   @override
-  bool nextBool() => false;
+  Future<int> storageUsed(String uid, String batchId) async => 0;
 
   @override
-  double nextDouble() => 0;
+  Future<Batch> createBatch({
+    required String uid,
+    required String displayName,
+    required String name,
+    required List<String> subjects,
+  }) =>
+      throw UnimplementedError();
 
   @override
-  int nextInt(int max) {
-    final value = values[_index % values.length];
-    _index++;
-    return value % max;
-  }
+  Future<Batch> updateSettings(
+    String uid,
+    String batchId,
+    BatchSettings settings,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<BatchSubject> addSubject(String uid, String batchId, String name) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> renameSubject(
+    String uid,
+    String batchId,
+    String subjectId,
+    String name,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteSubject(String uid, String batchId, String subjectId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<InviteCodeState> rotateCode(String uid, String batchId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<InviteCodeState> revokeCode(String uid, String batchId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<BatchSnapshot> loadBatch(String uid, String batchId) =>
+      throw UnimplementedError();
 }
 
 void main() {
   const uid = 'guest-test';
-  late Directory root;
-  late BatchFileStore files;
-  late _MemoryStore store;
-  late LocalBatchRepository repository;
 
-  setUp(() async {
-    root = await Directory.systemTemp.createTemp('zaker_batches_ui_');
-    files = BatchFileStore(root: root);
-    store = _MemoryStore();
-    repository = LocalBatchRepository(
-      files: files,
-      store: store,
-      codes: BatchCodeService(random: _SequenceRandom([1])),
+  Batch batch({int subjectCount = 2}) {
+    final createdAt = DateTime.utc(2026, 10, 25, 8);
+    return Batch(
+      id: 'batch-1',
+      name: 'دفعة تالتة ثانوي',
+      ownerUid: uid,
+      createdAt: createdAt,
+      lastActivityAt: createdAt,
+      settings: const BatchSettings(),
+      subjects: [
+        for (var i = 0; i < subjectCount; i++)
+          BatchSubject(
+            id: 'subject-$i',
+            name: i == 0 ? 'رياضيات' : 'فيزياء',
+            order: i,
+            createdAt: createdAt,
+          ),
+      ],
+      codeState: InviteCodeState(code: '00000001', createdAt: createdAt),
     );
-  });
+  }
 
-  tearDown(() async {
-    if (await root.exists()) await root.delete(recursive: true);
-  });
-
-  Future<Batch> createBatch() => repository.createBatch(
-        uid: uid,
-        displayName: 'طالب',
-        name: 'دفعة تالتة ثانوي',
-        subjects: const ['رياضيات', 'فيزياء'],
+  BatchSummary summary({int subjectCount = 2}) => BatchSummary(
+        batchId: 'batch-1',
+        batch: batch(subjectCount: subjectCount),
+        resourceCount: 0,
       );
 
-  Widget app({double textScale = 1}) {
+  Widget app(_FakeRepository repository, {double textScale = 1}) {
     return ProviderScope(
       overrides: [
         localStoreProvider.overrideWithValue(LocalStore.memory()),
-        batchRootDirProvider.overrideWithValue(root),
+        batchRepositoryProvider.overrideWithValue(repository),
         authUserProvider.overrideWith(
           (ref) => const AuthUser(uid: uid, displayName: 'طالب'),
         ),
@@ -105,7 +140,7 @@ void main() {
   }
 
   testWidgets('shows the honest empty state', (tester) async {
-    await tester.pumpWidget(app());
+    await tester.pumpWidget(app(_FakeRepository([])));
     await tester.pumpAndSettle();
 
     expect(find.text('مفيش دفعات على الجهاز'), findsOneWidget);
@@ -116,8 +151,7 @@ void main() {
   });
 
   testWidgets('lists a batch with its subjects and owner code', (tester) async {
-    await createBatch();
-    await tester.pumpWidget(app());
+    await tester.pumpWidget(app(_FakeRepository([summary()])));
     await tester.pumpAndSettle();
 
     expect(find.text('دفعة تالتة ثانوي'), findsOneWidget);
@@ -128,8 +162,8 @@ void main() {
   });
 
   testWidgets('deletes after an explicit confirmation', (tester) async {
-    final batch = await createBatch();
-    await tester.pumpWidget(app());
+    final repository = _FakeRepository([summary()]);
+    await tester.pumpWidget(app(repository));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('حذف الدفعة'));
@@ -141,12 +175,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('مفيش دفعات على الجهاز'), findsOneWidget);
-    expect(await files.batchDir(uid, batch.id).exists(), isFalse);
+    expect(repository.deleted, ['batch-1']);
   });
 
   testWidgets('cancelling the dialog keeps the batch', (tester) async {
-    await createBatch();
-    await tester.pumpWidget(app());
+    final repository = _FakeRepository([summary()]);
+    await tester.pumpWidget(app(repository));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('حذف الدفعة'));
@@ -155,16 +189,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('دفعة تالتة ثانوي'), findsOneWidget);
+    expect(repository.deleted, isEmpty);
   });
 
   testWidgets('renders an unavailable batch with a delete path', (
     tester,
   ) async {
-    final batch = await createBatch();
-    final batchStore = BatchStore(directory: files.batchDir(uid, batch.id));
-    await batchStore.batchFile.writeAsString('{broken');
+    final repository = _FakeRepository([
+      const BatchSummary(
+        batchId: 'broken-1',
+        failure: BatchFailure(
+          BatchFailureCode.corruptStore,
+          detail: 'batch document unreadable',
+        ),
+      ),
+    ]);
 
-    await tester.pumpWidget(app());
+    await tester.pumpWidget(app(repository));
     await tester.pumpAndSettle();
 
     expect(find.text('دفعة مش متاحة'), findsOneWidget);
@@ -177,8 +218,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await createBatch();
-    await tester.pumpWidget(app(textScale: 1.5));
+    await tester.pumpWidget(app(_FakeRepository([summary()]), textScale: 1.5));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
