@@ -155,7 +155,8 @@ void main() {
         _part(id: 'b', nextReviewAt: DateTime(2026, 10, 25)),
       );
       expect(state.parts.length, 2);
-      expect(state.nextDue(now)?.id, 'b');
+      // Neither part has come due yet, so there is nothing to review today.
+      expect(state.nextDue(now), isNull);
 
       state = state.upsertPart(
         _part(id: 'a', nextReviewAt: DateTime(2026, 10, 24)),

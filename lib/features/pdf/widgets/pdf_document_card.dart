@@ -49,16 +49,19 @@ Future<void> renamePdfDocument(
   PdfDocumentEntry entry,
 ) async {
   final controller = ref.read(pdfLibraryControllerProvider.notifier);
-  final field = TextEditingController(text: entry.displayName);
+  // Captured as it changes: a controller disposed when `showDialog` returns
+  // is still read by the field while the dialog animates out.
+  var typed = entry.displayName;
   final name = await showDialog<String>(
     context: context,
     builder: (context) => AlertDialog(
       title: const TrText('إعادة تسمية'),
-      content: TextField(
-        controller: field,
+      content: TextFormField(
+        initialValue: typed,
         autofocus: true,
         decoration: const InputDecoration(hintText: 'اسم الملف'),
-        onSubmitted: (value) {
+        onChanged: (value) => typed = value,
+        onFieldSubmitted: (value) {
           final trimmed = value.trim();
           if (trimmed.isEmpty) return;
           Navigator.of(context).pop(trimmed);
@@ -71,7 +74,7 @@ Future<void> renamePdfDocument(
         ),
         TextButton(
           onPressed: () {
-            final trimmed = field.text.trim();
+            final trimmed = typed.trim();
             if (trimmed.isEmpty) return;
             Navigator.of(context).pop(trimmed);
           },
@@ -80,7 +83,6 @@ Future<void> renamePdfDocument(
       ],
     ),
   );
-  field.dispose();
   if (name == null) return;
   await controller.rename(entry.id, name);
 }

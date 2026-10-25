@@ -83,7 +83,10 @@ void main() {
   ) async {
     const long =
         'مذكرة المراجعة النهائية لمادة الفيزياء للصف الثالث الثانوي الفصل الدراسي الأول';
-    await controller.import([source('محاضرة.pdf'), source('$long.pdf')]);
+    // Real file I/O has to run outside the widget test's fake async zone.
+    await tester.runAsync(
+      () => controller.import([source('محاضرة.pdf'), source('$long.pdf')]),
+    );
 
     await pump(tester, const PdfLibraryScreen());
 
@@ -96,7 +99,7 @@ void main() {
   testWidgets('deleting asks first and cancelling keeps the entry', (
     tester,
   ) async {
-    await controller.import([source('تقرير.pdf')]);
+    await tester.runAsync(() => controller.import([source('تقرير.pdf')]));
 
     await pump(tester, const PdfLibraryScreen());
     await tester.tap(find.byTooltip('خيارات').first);
@@ -116,10 +119,10 @@ void main() {
   testWidgets('a file deleted outside the app is shown as unavailable', (
     tester,
   ) async {
-    final entry = (await controller.import([source('تقرير.pdf')]))
-        .imported
-        .single;
-    await store.baseFile(entry.id).delete();
+    final entry = (await tester.runAsync(
+      () => controller.import([source('تقرير.pdf')]),
+    ))!.imported.single;
+    await tester.runAsync(() => store.baseFile(entry.id).delete());
 
     await pump(tester, const PdfLibraryScreen());
 
@@ -136,7 +139,7 @@ void main() {
     expect(find.text('ملفاتي'), findsNothing);
     expect(find.text('عرض الكل'), findsNothing);
 
-    await controller.import([source('تقرير.pdf')]);
+    await tester.runAsync(() => controller.import([source('تقرير.pdf')]));
     await pump(tester, const PdfToolsScreen());
 
     expect(find.text('ملفاتي'), findsOneWidget);

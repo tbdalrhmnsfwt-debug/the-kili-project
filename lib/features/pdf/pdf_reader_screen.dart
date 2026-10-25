@@ -202,8 +202,11 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   }
 
   Future<String?> _askPassword({required bool wrong}) async {
-    final field = TextEditingController();
-    final password = await showDialog<String>(
+    // The text is captured as it changes rather than held in a controller:
+    // a controller disposed when `showDialog` returns is still being read by
+    // the field while the dialog's exit animation rebuilds it.
+    var typed = '';
+    return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: const TrText('الملف محمي بكلمة سر'),
@@ -217,13 +220,13 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
                   : 'اكتب كلمة سر الملف عشان نعرضه على الجهاز.',
             ),
             const SizedBox(height: ZakerSpacing.md),
-            TextField(
-              controller: field,
+            TextFormField(
               autofocus: true,
               obscureText: true,
               textDirection: TextDirection.ltr,
               textInputAction: TextInputAction.done,
-              onSubmitted: (value) => Navigator.of(context).pop(value),
+              onChanged: (value) => typed = value,
+              onFieldSubmitted: (value) => Navigator.of(context).pop(value),
               decoration: const InputDecoration(hintText: 'كلمة السر'),
             ),
           ],
@@ -234,14 +237,12 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
             child: const TrText('إلغاء'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(field.text),
+            onPressed: () => Navigator.of(context).pop(typed),
             child: const TrText('فتح'),
           ),
         ],
       ),
     );
-    field.dispose();
-    return password;
   }
 
   /// Decides which file this reader should open.
@@ -305,16 +306,19 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   }
 
   Future<void> _jumpToPage(int pageCount) async {
-    final field = TextEditingController(text: '${_page + 1}');
+    // See [_askPassword]: the typed text is captured as it changes so nothing
+    // has to be disposed while the dialog is still animating out.
+    var typed = '${_page + 1}';
     final target = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
         title: const TrText('روح لصفحة'),
-        content: TextField(
-          controller: field,
+        content: TextFormField(
+          initialValue: typed,
           autofocus: true,
           keyboardType: TextInputType.number,
-          onSubmitted: (value) =>
+          onChanged: (value) => typed = value,
+          onFieldSubmitted: (value) =>
               Navigator.of(context).pop(int.tryParse(value.trim())),
           decoration: InputDecoration(hintText: '1 — $pageCount'),
         ),
@@ -325,13 +329,12 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
           ),
           FilledButton(
             onPressed: () =>
-                Navigator.of(context).pop(int.tryParse(field.text.trim())),
+                Navigator.of(context).pop(int.tryParse(typed.trim())),
             child: const TrText('انتقال'),
           ),
         ],
       ),
     );
-    field.dispose();
     if (target == null || !mounted) return;
     setState(() => _page = target.clamp(1, pageCount) - 1);
     _scheduleMarkOpened();
@@ -482,7 +485,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
         ),
       );
     }
-    if (_loading || _handle == null) {
+    if (_loading) {
       return const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -492,6 +495,16 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
             TrText('بنفتح الملف…'),
           ],
         ),
+      );
+    }
+    if (_handle == null) {
+      // No handle and no failure: the password prompt is open. A still
+      // placeholder keeps the page calm underneath instead of a spinner that
+      // would turn forever behind the dialog.
+      return const EmptyState(
+        icon: Icons.lock_outline_rounded,
+        title: 'الملف مقفول',
+        message: 'اكتب كلمة السر عشان نفتح الملف على الجهاز.',
       );
     }
     return GestureDetector(

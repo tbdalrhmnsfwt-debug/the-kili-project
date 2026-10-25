@@ -62,7 +62,10 @@ void main() {
 
       expect(plan.sections, 2);
       expect(plan.studyDays, 1);
-      final study = plan.tasks.where((task) => !task.isReview).toList();
+      // Quizzes are not reviews either, so select the study sessions by id.
+      final study = plan.tasks
+          .where((task) => task.id.endsWith(':study'))
+          .toList();
       expect(study, hasLength(2));
       expect(study.first.id, 'official:math-sec1-term1:s1:study');
       expect(study.first.title, contains('الدرس 1'));
@@ -230,10 +233,7 @@ void main() {
         StudyTask(id: 'future', title: 'بكرة', dueAt: DateTime(2026, 10, 30)),
       ];
 
-      final moved = OfficialStudyPlanBuilder.rescheduleOverdue(
-        tasks,
-        now: now,
-      );
+      final moved = OfficialStudyPlanBuilder.rescheduleOverdue(tasks, now: now);
       final byId = {for (final task in moved) task.id: task};
       expect(byId['late']!.dueAt, DateTime(2026, 10, 25, 21));
       expect(byId['late']!.startAt, DateTime(2026, 10, 25, 16));
