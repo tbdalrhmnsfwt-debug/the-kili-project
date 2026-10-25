@@ -13,6 +13,7 @@ import 'dart:convert';
 import '../lib/core/key_value_store.dart';
 import '../lib/core/pdf/pdf_library_index.dart';
 import '../lib/core/pdf/pdf_library_repository.dart';
+import '../lib/core/pdf/pdf_page_geometry.dart';
 import '../lib/models/pdf_document.dart';
 
 var _checks = 0;
@@ -65,6 +66,7 @@ Future<void> main() async {
   _models();
   _index();
   await _repository();
+  _geometry();
 
   if (_failures.isEmpty) {
     // ignore: avoid_print
@@ -187,6 +189,114 @@ void _index() {
   final pruned = index.pruneMissing((e) => e.id != 'a');
   check(pruned.entries.length == 2, 'pruneMissing drops missing files');
   check(pruned.entries.every((e) => e.id != 'a'), 'the dropped id is gone');
+}
+
+void _geometry() {
+  const geometry = PdfPageGeometry(widthPoints: 600, heightPoints: 800);
+  checkClose(
+    geometry.fitScale(400),
+    2 / 3,
+    'fit scale fills the viewport width',
+  );
+  checkClose(
+    geometry.displayWidth(fitScale: 2 / 3, zoom: 1),
+    400,
+    'zoom 1 is fit-width',
+  );
+  checkClose(
+    geometry.displayWidth(fitScale: 2 / 3, zoom: 5),
+    2000,
+    'zoom 5 is 500% of fit-width',
+  );
+  checkClose(
+    geometry.displayHeight(fitScale: 2 / 3, zoom: 5),
+    800 * (2 / 3) * 5,
+    'display height follows the same scale',
+  );
+
+  final zoomed = geometry.visibleSource(
+    scrollX: 0,
+    scrollY: 0,
+    viewportWidth: 400,
+    viewportHeight: 600,
+    fitScale: 2 / 3,
+    zoom: 5,
+    margin: 0,
+  );
+  checkClose(zoomed.left, 0, 'a fresh zoom starts at the page edge');
+  checkClose(zoomed.top, 0, 'a fresh zoom starts at the top');
+  checkClose(zoomed.width, 0.2, 'a 5x zoom sees a fifth of the width');
+  checkClose(zoomed.height, 0.225, 'the visible height follows the viewport');
+
+  final padded = geometry.visibleSource(
+    scrollX: 0,
+    scrollY: 0,
+    viewportWidth: 400,
+    viewportHeight: 600,
+    fitScale: 2 / 3,
+    zoom: 5,
+  );
+  checkClose(padded.left, 0, 'the prefetch margin clamps at the page edge');
+  checkClose(padded.top, 0, 'the prefetch margin clamps at the page top');
+  checkClose(padded.right, 0.35, 'the prefetch margin widens the tile');
+  checkClose(padded.bottom, 0.375, 'the prefetch margin deepens the tile');
+
+  final atEnd = geometry.visibleSource(
+    scrollX: 99999,
+    scrollY: 0,
+    viewportWidth: 400,
+    viewportHeight: 600,
+    fitScale: 2 / 3,
+    zoom: 5,
+    margin: 0,
+  );
+  checkClose(atEnd.left, 0.8, 'scrolling past the end pins the left edge');
+  checkClose(atEnd.right, 1, 'the tile never runs past the right edge');
+
+  for (var zoom = 1.0; zoom <= 5.0; zoom += 0.5) {
+    for (final scroll in [-500.0, 0.0, 333.0, 99999.0]) {
+      final rect = geometry.visibleSource(
+        scrollX: scroll,
+        scrollY: scroll,
+        viewportWidth: 400,
+        viewportHeight: 600,
+        fitScale: 2 / 3,
+        zoom: zoom,
+      );
+      check(
+        rect.left >= 0 &&
+            rect.top >= 0 &&
+            rect.right <= 1 &&
+            rect.bottom <= 1 &&
+            rect.width >= 0 &&
+            rect.height >= 0,
+        'tile source stays inside the page at $zoom x ($scroll)',
+      );
+    }
+  }
+
+  const rect = NormalizedRect(0.1, 0.2, 0.3, 0.4);
+  final identity = PdfPageGeometry.unrotateSource(rect, 0);
+  checkClose(identity.left, 0.1, 'no rotation keeps the left edge');
+  checkClose(identity.width, 0.3, 'no rotation keeps the width');
+
+  final once = PdfPageGeometry.unrotateSource(rect, 1);
+  checkClose(once.left, 0.2, 'a quarter turn moves the left edge');
+  checkClose(once.top, 0.6, 'a quarter turn moves the top edge');
+  checkClose(once.width, 0.4, 'a quarter turn swaps the width');
+  checkClose(once.height, 0.3, 'a quarter turn swaps the height');
+
+  final twice = PdfPageGeometry.unrotateSource(rect, 2);
+  checkClose(twice.left, 0.6, 'a half turn mirrors the left edge');
+  checkClose(twice.top, 0.4, 'a half turn mirrors the top edge');
+
+  final thrice = PdfPageGeometry.unrotateSource(rect, 3);
+  checkClose(thrice.left, 0.4, 'three quarters turn the left edge');
+  checkClose(thrice.top, 0.1, 'three quarters turn the top edge');
+
+  final negative = PdfPageGeometry.unrotateSource(rect, -1);
+  checkClose(negative.left, thrice.left, 'negative turns wrap to three');
+  checkClose(negative.top, thrice.top, 'negative turns wrap the top edge');
 }
 
 Future<void> _repository() async {
