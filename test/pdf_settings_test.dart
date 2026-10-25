@@ -67,7 +67,19 @@ void main() {
   late Directory root;
   late Directory cache;
   late PdfLibraryStore store;
+  late PdfLibraryRepository repository;
   late PdfLibraryController controller;
+
+  /// A fresh controller per provider scope: a `pumpWidget` that replaces the
+  /// scope disposes the notifier it was given, and the next scope cannot use
+  /// it again. Both read the same catalog, so persistence is still tested.
+  PdfLibraryController newController() => PdfLibraryController(
+    store: store,
+    repository: repository,
+    probe: (file) async => const PdfProbeResult(pageCount: 10),
+    thumbnailer: (base, thumb) async {},
+    newId: () => 'doc',
+  );
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -75,13 +87,8 @@ void main() {
     cache = Directory.systemTemp.createTempSync('zaker_pdf_settings_cache_');
     store = PdfLibraryStore(rootDir: root, cacheDir: cache);
     await store.ensureReady();
-    controller = PdfLibraryController(
-      store: store,
-      repository: PdfLibraryRepository(MemoryStore()),
-      probe: (file) async => const PdfProbeResult(pageCount: 10),
-      thumbnailer: (base, thumb) async {},
-      newId: () => 'doc',
-    );
+    repository = PdfLibraryRepository(MemoryStore());
+    controller = newController();
     await controller.import([
       PdfImportSource(
         name: 'lecture.pdf',
@@ -106,7 +113,7 @@ void main() {
         overrides: [
           pdfRenderChannelProvider.overrideWithValue(channel),
           pdfLibraryStoreProvider.overrideWithValue(store),
-          pdfLibraryControllerProvider.overrideWith((ref) => controller),
+          pdfLibraryControllerProvider.overrideWith((ref) => newController()),
         ],
         child: MaterialApp(theme: ZakerTheme.light(), home: home),
       ),
