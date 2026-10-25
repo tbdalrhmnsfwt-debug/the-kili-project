@@ -15,9 +15,9 @@ library;
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -26,11 +26,13 @@ import '../../core/pdf/pdf_render_channel.dart';
 import '../../core/pdf/pdf_text_map.dart';
 import '../../core/theme.dart';
 import '../../models/pdf_document.dart';
+import '../../models/pdf_settings.dart';
 import '../../providers/pdf_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import 'widgets/pdf_reader_viewport.dart';
 import 'widgets/pdf_search_sheet.dart';
+import 'widgets/pdf_settings_sheet.dart';
 
 /// What the reader is allowed to do. Annotate and sign arrive with Plan 2.
 enum PdfReaderMode { read }
@@ -77,8 +79,6 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   Timer? _markTimer;
   bool _loading = true;
   bool _chromeVisible = true;
-  bool _vertical = true;
-  bool _nightMode = false;
   int _quarterTurns = 0;
   int _page = 0;
   int _attempts = 0;
@@ -377,14 +377,16 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   Widget build(BuildContext context) {
     // Favourite state lives in the library index; rebuild when it changes.
     ref.watch(pdfLibraryControllerProvider);
+    final settings = ref.watch(pdfSettingsProvider);
     final entry = _entry;
     final handle = _handle;
+    final vertical = settings.scrollMode == PdfScrollMode.vertical;
     final title =
         entry?.displayName ?? widget.title ?? widget.fileName ?? 'قارئ PDF';
     return Scaffold(
       body: Stack(
         children: [
-          Positioned.fill(child: _body(context)),
+          Positioned.fill(child: _body(context, settings)),
           if (_chromeVisible && handle != null)
             Positioned(
               top: 0,
@@ -419,12 +421,21 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
               right: ZakerSpacing.md,
               bottom: 88,
               child: _ReaderControls(
-                vertical: _vertical,
-                nightMode: _nightMode,
-                onMode: () => setState(() => _vertical = !_vertical),
+                vertical: vertical,
+                nightMode: settings.nightMode,
+                onMode: () => ref
+                    .read(pdfSettingsProvider.notifier)
+                    .setScrollMode(
+                      vertical
+                          ? PdfScrollMode.horizontal
+                          : PdfScrollMode.vertical,
+                    ),
                 onRotate: () =>
                     setState(() => _quarterTurns = (_quarterTurns + 1) % 4),
-                onNight: () => setState(() => _nightMode = !_nightMode),
+                onNight: () => ref
+                    .read(pdfSettingsProvider.notifier)
+                    .setNightMode(!settings.nightMode),
+                onSettings: () => showPdfSettingsSheet(context),
               ),
             ),
         ],
@@ -432,7 +443,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     );
   }
 
-  Widget _body(BuildContext context) {
+  Widget _body(BuildContext context, PdfReaderSettings settings) {
     final theme = Theme.of(context);
     if (_failure != null) {
       return EmptyState(
@@ -481,10 +492,11 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
           onPageChanged: (page) {
             if (page == _page) return;
             setState(() => _page = page);
+            if (settings.haptics) HapticFeedback.lightImpact();
             _scheduleMarkOpened();
           },
-          vertical: _vertical,
-          nightMode: _nightMode,
+          vertical: settings.scrollMode == PdfScrollMode.vertical,
+          nightMode: settings.nightMode,
           quarterTurns: _quarterTurns,
           highlights: _highlights,
           highlightPage: _highlightPage,
@@ -574,6 +586,7 @@ class _ReaderControls extends StatelessWidget {
     required this.onMode,
     required this.onRotate,
     required this.onNight,
+    required this.onSettings,
   });
 
   final bool vertical;
@@ -581,6 +594,7 @@ class _ReaderControls extends StatelessWidget {
   final VoidCallback onMode;
   final VoidCallback onRotate;
   final VoidCallback onNight;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -613,6 +627,11 @@ class _ReaderControls extends StatelessWidget {
               nightMode ? Icons.dark_mode_rounded : Icons.dark_mode_outlined,
               color: nightMode ? ZakerColors.accent : null,
             ),
+          ),
+          IconButton(
+            tooltip: 'إعدادات القراءة',
+            onPressed: onSettings,
+            icon: const Icon(Icons.tune_rounded),
           ),
         ],
       ),

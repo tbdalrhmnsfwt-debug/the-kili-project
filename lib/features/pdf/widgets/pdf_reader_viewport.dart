@@ -115,6 +115,10 @@ class _PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   void initState() {
     super.initState();
     _verticalScroll.addListener(_onVerticalScroll);
+    // Opening at a saved page should show that page, not the first one.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _jumpToPage(widget.initialPage);
+    });
   }
 
   @override
