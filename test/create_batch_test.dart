@@ -12,6 +12,7 @@ import 'package:zaker_ai/features/batches/create_batch_screen.dart';
 import 'package:zaker_ai/models/batch.dart';
 import 'package:zaker_ai/models/batch_chat.dart';
 import 'package:zaker_ai/models/batch_resource.dart';
+import 'package:zaker_ai/models/batch_schedule.dart';
 import 'package:zaker_ai/providers/app_providers.dart';
 import 'package:zaker_ai/providers/batch_providers.dart';
 
@@ -200,6 +201,34 @@ class _FakeRepository implements BatchRepository {
 
   @override
   Future<InviteCodeState> revokeCode(String uid, String batchId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<TimetableDraft>> loadSchedules(String uid, String batchId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<TimetableDraft> saveScheduleDraft(
+    String uid,
+    String batchId,
+    TimetableDraft draft,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<TimetableDraft> publishScheduleDraft(
+    String uid,
+    String batchId,
+    String draftId,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteScheduleDraft(
+    String uid,
+    String batchId,
+    String draftId,
+  ) =>
       throw UnimplementedError();
 }
 

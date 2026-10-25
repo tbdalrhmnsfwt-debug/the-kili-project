@@ -8,6 +8,7 @@ library;
 import '../../models/batch.dart';
 import '../../models/batch_chat.dart';
 import '../../models/batch_resource.dart';
+import '../../models/batch_schedule.dart';
 import 'batch_failure.dart';
 import 'batch_store.dart';
 
@@ -124,6 +125,31 @@ abstract interface class BatchRepository {
     String batchId,
     String resourceId,
     bool starred,
+  );
+
+  /// Every timetable draft and published timetable the reader may see.
+  Future<List<TimetableDraft>> loadSchedules(String uid, String batchId);
+
+  /// Inserts or replaces one draft. New drafts need import rights; changes to
+  /// an existing draft need edit rights.
+  Future<TimetableDraft> saveScheduleDraft(
+    String uid,
+    String batchId,
+    TimetableDraft draft,
+  );
+
+  /// Publishes a draft after requiring every row to be complete.
+  Future<TimetableDraft> publishScheduleDraft(
+    String uid,
+    String batchId,
+    String draftId,
+  );
+
+  /// Removes a draft and then its private photo.
+  Future<void> deleteScheduleDraft(
+    String uid,
+    String batchId,
+    String draftId,
   );
 
   /// The newest chat messages older than [before].

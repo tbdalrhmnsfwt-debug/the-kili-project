@@ -7,6 +7,7 @@ import 'dart:io';
 import '../../models/batch.dart';
 import '../../models/batch_chat.dart';
 import '../../models/batch_resource.dart';
+import '../../models/batch_schedule.dart';
 import '../key_value_store.dart';
 import 'batch_access.dart';
 import 'batch_code_service.dart';
@@ -18,6 +19,7 @@ import 'batch_resource_paths.dart';
 import 'batch_store.dart';
 import 'chat_store.dart';
 import 'document_store.dart';
+import 'schedule_paths.dart';
 
 class LocalBatchRepository implements BatchRepository {
   LocalBatchRepository({
@@ -527,6 +529,186 @@ class LocalBatchRepository implements BatchRepository {
     return updatedResource;
   }
 
+  // --------------------------------------------------------------- schedules
+
+  static const int maxScheduleEntries = 100;
+  static const int maxScheduleWarnings = 20;
+  static const int maxScheduleTitleLength = 120;
+  static const int maxScheduleNoteLength = 120;
+  static const int maxScheduleWarningLength = 200;
+
+  @override
+  Future<List<TimetableDraft>> loadSchedules(
+    String uid,
+    String batchId,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.viewSchedules);
+    final load = await BatchStore(
+      directory: files.batchDir(uid, batchId),
+    ).schedules.load();
+    if (!load.isUsable && !load.isMissing) {
+      throw load.failure ??
+          const BatchFailure(
+            BatchFailureCode.corruptStore,
+            detail: 'schedule document unreadable',
+          );
+    }
+    final drafts = [...?load.value]
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return List.unmodifiable(drafts);
+  }
+
+  @override
+  Future<TimetableDraft> saveScheduleDraft(
+    String uid,
+    String batchId,
+    TimetableDraft draft,
+  ) async {
+    if (draft.batchId != batchId) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'batchId',
+      );
+    }
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final load = await store.schedules.load();
+    if (!load.isUsable && !load.isMissing) {
+      throw load.failure ??
+          const BatchFailure(
+            BatchFailureCode.corruptStore,
+            detail: 'schedule document unreadable',
+          );
+    }
+    final drafts = [...?load.value];
+    final index = drafts.indexWhere((item) => item.id == draft.id);
+    final snapshot = await _authorize(
+      uid,
+      batchId,
+      index < 0 ? BatchAction.importTimetable : BatchAction.editTimetable,
+    );
+    final clean = _validateScheduleDraft(snapshot, batchId, draft);
+    final now = _clock();
+    final createdAt = index < 0
+        ? (draft.createdAt.millisecondsSinceEpoch == 0 ? now : draft.createdAt)
+        : drafts[index].createdAt;
+    final saved = TimetableDraft(
+      id: clean.id,
+      batchId: clean.batchId,
+      sourceImageFileName: clean.sourceImageFileName,
+      ocrEngine: clean.ocrEngine,
+      status: clean.status,
+      createdAt: createdAt,
+      updatedAt: now,
+      entries: clean.entries,
+      warnings: clean.warnings,
+    );
+    if (index < 0) {
+      drafts.add(saved);
+    } else {
+      drafts[index] = saved;
+    }
+    await store.schedules.save(drafts);
+    await _appendAudit(
+      store: store,
+      batchId: batchId,
+      actorUid: uid,
+      action: index < 0 ? 'scheduleSaved' : 'scheduleUpdated',
+    );
+    return saved;
+  }
+
+  @override
+  Future<TimetableDraft> publishScheduleDraft(
+    String uid,
+    String batchId,
+    String draftId,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.editTimetable);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final load = await store.schedules.load();
+    if (!load.isUsable && !load.isMissing) {
+      throw load.failure ??
+          const BatchFailure(
+            BatchFailureCode.corruptStore,
+            detail: 'schedule document unreadable',
+          );
+    }
+    final drafts = [...?load.value];
+    final index = drafts.indexWhere((item) => item.id == draftId);
+    if (index < 0) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'draftId');
+    }
+    final draft = drafts[index];
+    // A published timetable must be usable by a reader without guessing: an
+    // unfinished row stays a draft.
+    if (draft.entries.isEmpty ||
+        draft.entries.any((entry) => !entry.isComplete)) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'entries',
+        detail: 'incomplete rows',
+      );
+    }
+    final published = draft.copyWith(
+      status: TimetableDraftStatus.published,
+      updatedAt: _clock(),
+    );
+    drafts[index] = published;
+    await store.schedules.save(drafts);
+    await _appendAudit(
+      store: store,
+      batchId: batchId,
+      actorUid: uid,
+      action: 'schedulePublished',
+    );
+    return published;
+  }
+
+  @override
+  Future<void> deleteScheduleDraft(
+    String uid,
+    String batchId,
+    String draftId,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.editTimetable);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final load = await store.schedules.load();
+    if (!load.isUsable && !load.isMissing) {
+      throw load.failure ??
+          const BatchFailure(
+            BatchFailureCode.corruptStore,
+            detail: 'schedule document unreadable',
+          );
+    }
+    final drafts = [...?load.value];
+    final index = drafts.indexWhere((item) => item.id == draftId);
+    if (index < 0) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'draftId');
+    }
+    final removed = drafts.removeAt(index);
+    await store.schedules.save(drafts);
+    final imagePath = SchedulePaths.storedImagePath(
+      removed.sourceImageFileName,
+    );
+    if (imagePath != null) {
+      try {
+        await files.deleteFile(
+          uid: uid,
+          batchId: batchId,
+          relativePath: imagePath,
+        );
+      } on BatchFailure {
+        // The row is gone; an orphan photo is the only cost.
+      }
+    }
+    await _appendAudit(
+      store: store,
+      batchId: batchId,
+      actorUid: uid,
+      action: 'scheduleDeleted',
+    );
+  }
+
   // -------------------------------------------------------------------- chat
 
   ChatStore _chatStore(String uid, String batchId) => ChatStore(
@@ -953,6 +1135,144 @@ class LocalBatchRepository implements BatchRepository {
     final store = BatchStore(directory: files.batchDir(uid, batchId));
     await store.batch.save(snapshot);
   }
+
+  /// Validates a timetable draft before it enters `schedules.json`.
+  ///
+  /// A draft may keep a row whose end time is missing (the parser reports it
+  /// as uncertain rather than guessing), but the row's values must still be
+  /// addressable and inside a day. Publishing applies the stricter check.
+  TimetableDraft _validateScheduleDraft(
+    BatchSnapshot snapshot,
+    String batchId,
+    TimetableDraft draft,
+  ) {
+    if (draft.batchId != batchId) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'batchId',
+      );
+    }
+    if (!_entityIdPattern.hasMatch(draft.id)) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'draftId',
+      );
+    }
+    final source = draft.sourceImageFileName.trim();
+    if (source.isNotEmpty && SchedulePaths.storedImagePath(source) == null) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'sourceImageFileName',
+      );
+    }
+    if (draft.entries.length > maxScheduleEntries) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'entries',
+      );
+    }
+
+    final subjectIds = {
+      for (final subject in snapshot.batch.subjects) subject.id,
+    };
+    final seen = <String>{};
+    final entries = <TimetableEntry>[];
+    for (final entry in draft.entries) {
+      if (!_entityIdPattern.hasMatch(entry.id) || !seen.add(entry.id)) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'entryId',
+        );
+      }
+      if (entry.dayOfWeek < DateTime.monday ||
+          entry.dayOfWeek > DateTime.sunday ||
+          entry.startMinutes < 0 ||
+          entry.startMinutes >= 24 * 60 ||
+          entry.endMinutes < 0 ||
+          entry.endMinutes > 24 * 60 ||
+          entry.endMinutes < entry.startMinutes) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'times',
+        );
+      }
+      final title = _cleanScheduleLine(entry.title);
+      if (title.isEmpty ||
+          title.runes.length > maxScheduleTitleLength ||
+          _hasControl(title)) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'title',
+        );
+      }
+      final room = _cleanScheduleLine(entry.room);
+      final teacher = _cleanScheduleLine(entry.teacher);
+      if (room.runes.length > maxScheduleNoteLength ||
+          teacher.runes.length > maxScheduleNoteLength) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'details',
+        );
+      }
+      if (entry.subjectId != null && !subjectIds.contains(entry.subjectId)) {
+        throw const BatchFailure(BatchFailureCode.notFound, field: 'subjectId');
+      }
+      final uncertain = <String>[];
+      for (final field in entry.uncertainFields) {
+        final clean = _cleanScheduleLine(field);
+        if (clean.isEmpty || clean.runes.length > 40) continue;
+        uncertain.add(clean);
+      }
+      entries.add(
+        entry.copyWith(
+          title: title,
+          room: room,
+          teacher: teacher,
+          uncertainFields: List.unmodifiable(uncertain),
+        ),
+      );
+    }
+
+    final warnings = <String>[];
+    for (final raw in draft.warnings.take(maxScheduleWarnings)) {
+      final clean = _cleanScheduleLine(raw);
+      if (clean.isEmpty) continue;
+      warnings.add(
+        clean.runes.length > maxScheduleWarningLength
+            ? String.fromCharCodes(
+                clean.runes.take(maxScheduleWarningLength),
+              ).trimRight()
+            : clean,
+      );
+    }
+
+    if (draft.status == TimetableDraftStatus.published &&
+        entries.any((entry) => !entry.isComplete)) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'entries',
+        detail: 'incomplete rows',
+      );
+    }
+
+    return TimetableDraft(
+      id: draft.id,
+      batchId: draft.batchId,
+      sourceImageFileName: source,
+      ocrEngine: draft.ocrEngine,
+      status: draft.status,
+      createdAt: draft.createdAt,
+      updatedAt: draft.updatedAt,
+      entries: List.unmodifiable(entries),
+      warnings: List.unmodifiable(warnings),
+    );
+  }
+
+  /// Collapses whitespace and drops control characters from one stored line.
+  static String _cleanScheduleLine(String raw) => raw
+      .replaceAll(RegExp(r'[\u0000-\u001F\u007F]'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 
   /// Validates a resource before it enters the batch document.
   ///
