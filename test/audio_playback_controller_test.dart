@@ -228,4 +228,18 @@ void main() {
       3000,
     );
   });
+
+  test('close completes before a retry and releases the player once', () async {
+    final bindings = _FakeBindings(durationMs: 10000);
+    final player = build(bindings);
+    await player.initialize();
+
+    player.dispose();
+    // The retry path awaits this future, so it must complete.
+    await player.close();
+
+    expect(bindings.closeCalls, 1);
+    await player.close();
+    expect(bindings.closeCalls, 1);
+  });
 }

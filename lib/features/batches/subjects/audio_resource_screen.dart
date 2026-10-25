@@ -33,8 +33,10 @@ class AudioResourceScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(batchDetailProvider(batchId));
     return detail.when(
-      loading: () => const Scaffold(
-          body: Center(child: LoadingBox(label: 'بنفتح الملف…'))),
+      loading: () => Scaffold(
+        appBar: AppBar(title: const TrText('الملف الصوتي')),
+        body: const Center(child: LoadingBox(label: 'بنفتح الملف…')),
+      ),
       error: (error, _) => Scaffold(
         appBar: AppBar(title: const TrText('الملف الصوتي')),
         body: _AudioError(
@@ -62,8 +64,9 @@ class AudioResourceScreen extends ConsumerWidget {
         }
         final path = BatchResourcePaths.filePath(resource);
         if (path == null) {
-          return const Scaffold(
-            body: EmptyState(
+          return Scaffold(
+            appBar: AppBar(title: const TrText('الملف الصوتي')),
+            body: const EmptyState(
               icon: Icons.insert_drive_file_outlined,
               title: 'الملف مش متاح',
               message: 'مش عارفين نلاقي نسخة محفوظة من الملف ده.',
@@ -173,8 +176,17 @@ class _PlayerScreenState extends ConsumerState<_PlayerScreen>
     super.dispose();
   }
 
-  void _retry() {
-    _controller.dispose();
+  Future<void> _retry() async {
+    final previous = _controller;
+    previous.dispose();
+    try {
+      // Release the native player before opening the file again: a late
+      // release would tear down the player the retry just created.
+      await previous.close();
+    } on Object {
+      // A failed close must not block the retry.
+    }
+    if (!mounted) return;
     setState(() {
       _dragMs = null;
       _controller = _create();
@@ -403,31 +415,35 @@ class _PlayerCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  tooltip: 'ارجع ١٥ ثانية',
+                  tooltip: 'ارجع ١٠ ثواني',
                   onPressed: ready
-                      ? () => controller.seekTo(controller.positionMs - 15000)
+                      ? () => controller.seekTo(controller.positionMs - 10000)
                       : null,
                   icon: const Icon(Icons.replay_10_rounded, size: 30),
                 ),
                 const SizedBox(width: ZakerSpacing.md),
-                FilledButton(
-                  onPressed: ready ? controller.toggle : null,
-                  style: FilledButton.styleFrom(
-                    shape: const CircleBorder(),
-                    padding: const EdgeInsets.all(ZakerSpacing.md),
-                  ),
-                  child: Icon(
-                    controller.isPlaying
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
-                    size: 32,
+                Semantics(
+                  button: true,
+                  label: controller.isPlaying ? 'إيقاف مؤقت' : 'تشغيل',
+                  child: FilledButton(
+                    onPressed: ready ? controller.toggle : null,
+                    style: FilledButton.styleFrom(
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(ZakerSpacing.md),
+                    ),
+                    child: Icon(
+                      controller.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 32,
+                    ),
                   ),
                 ),
                 const SizedBox(width: ZakerSpacing.md),
                 IconButton(
-                  tooltip: 'قدّم ١٥ ثانية',
+                  tooltip: 'قدّم ١٠ ثواني',
                   onPressed: ready
-                      ? () => controller.seekTo(controller.positionMs + 15000)
+                      ? () => controller.seekTo(controller.positionMs + 10000)
                       : null,
                   icon: const Icon(Icons.forward_10_rounded, size: 30),
                 ),

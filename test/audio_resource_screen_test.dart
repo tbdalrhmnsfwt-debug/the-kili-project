@@ -156,16 +156,19 @@ void main() {
       'opens the real local player and shows the honest blocked '
       'transcription note', (tester) async {
     final bindings = _FakeBindings();
-    addTearDown(bindings.controller.close);
     await tester.pumpWidget(app(bindings));
-    await tester.pumpAndSettle();
+    // Bounded pumps: the loading skeletons and the progress indicator repeat
+    // forever, so pumpAndSettle would never return. The screen never closes
+    // the fake binding's controller while it is mounted, so no teardown close.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('شرح الدرس'), findsWidgets);
     expect(find.text('رياضيات · 0:05 · ٢ كيلوبايت'), findsOneWidget);
     expect(find.textContaining('التفريغ الآلي مش متاح'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.play_arrow_rounded));
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(bindings.playCalls, 1);
   });
 }

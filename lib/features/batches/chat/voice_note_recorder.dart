@@ -42,6 +42,7 @@ class _VoiceNoteRecorderState extends ConsumerState<VoiceNoteRecorder> {
   Timer? _timer;
   StreamSubscription<RecorderTick>? _ticks;
   bool _disposed = false;
+  bool _starting = false;
 
   @override
   void initState() {
@@ -51,14 +52,15 @@ class _VoiceNoteRecorderState extends ConsumerState<VoiceNoteRecorder> {
   }
 
   Future<void> _prepare() async {
-    if (_disposed) return;
+    if (_disposed || _starting) return;
+    _starting = true;
     setState(() {
       _stage = _Stage.preparing;
       _error = null;
     });
     try {
-      final granted =
-          await _bindings.hasPermission() || await _bindings.requestPermission();
+      final granted = await _bindings.hasPermission() ||
+          await _bindings.requestPermission();
       if (_disposed) return;
       if (!granted) {
         setState(() => _stage = _Stage.denied);
@@ -83,12 +85,20 @@ class _VoiceNoteRecorderState extends ConsumerState<VoiceNoteRecorder> {
         _stage = _Stage.failed;
         _error = 'recordFailed';
       });
+    } finally {
+      _starting = false;
     }
   }
 
   Future<void> _startRecording() async {
-    _tempName =
-        'voice-${DateTime.now().microsecondsSinceEpoch.toString()}.m4a';
+    // A repeated start must not leave the previous timer and tick listener
+    // running alongside the new recording.
+    _timer?.cancel();
+    _timer = null;
+    final previousTicks = _ticks;
+    _ticks = null;
+    await previousTicks?.cancel();
+    _tempName = 'voice-${DateTime.now().microsecondsSinceEpoch.toString()}.m4a';
     await _bindings.start(_tempName!);
     if (_disposed) {
       await _bindings.cancel();

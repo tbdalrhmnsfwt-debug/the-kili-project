@@ -55,7 +55,14 @@ class AudioPlaybackController extends ChangeNotifier {
   String? get errorCode => _errorCode;
   bool get isPlaying => _state == AudioPlayerState.playing;
   bool get isPreparing => _state == AudioPlayerState.preparing;
-  bool get isReady => _durationMs > 0 && _state != AudioPlayerState.failed;
+
+  /// The player is usable only after [initialize] has opened the file: before
+  /// that the native player is still preparing and a play command would be
+  /// refused with `notReady`.
+  bool get isReady =>
+      _durationMs > 0 &&
+      _state != AudioPlayerState.idle &&
+      _state != AudioPlayerState.failed;
   bool get hasError => _state == AudioPlayerState.failed;
 
   Future<void> initialize() async {
@@ -233,9 +240,16 @@ class AudioPlaybackController extends ChangeNotifier {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    unawaited(_shutdown());
+    unawaited(close());
     super.dispose();
   }
+
+  /// Saves the position and releases the native player. Retrying must await
+  /// this before opening the file again, otherwise the release races the new
+  /// `open` and tears down the player it just created.
+  Future<void> close() => _closeFuture ??= _shutdown();
+
+  Future<void>? _closeFuture;
 
   Future<void> _shutdown() async {
     await saveNow();

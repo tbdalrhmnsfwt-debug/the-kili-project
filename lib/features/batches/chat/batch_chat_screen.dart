@@ -334,13 +334,14 @@ class _BatchChatScreenState extends ConsumerState<BatchChatScreen> {
         authorName: user.displayName,
         replyToId: replyId,
       );
+      if (!mounted) return;
       _input.clear();
       setState(() => _replyTo = null);
       _jumpToLatest();
     } on BatchFailure catch (failure) {
-      _snack(batchErrorText(failure));
+      if (mounted) _snack(batchErrorText(failure));
     } on Object {
-      _snack('مقدرناش نحفظ الرسالة على الجهاز.');
+      if (mounted) _snack('مقدرناش نحفظ الرسالة على الجهاز.');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -361,6 +362,7 @@ class _BatchChatScreenState extends ConsumerState<BatchChatScreen> {
   }
 
   Future<void> _sendClip(RecordedClip clip, String? replyToId) async {
+    if (!mounted || _sending) return;
     final user = ref.read(authUserProvider);
     if (user == null) return;
     setState(() => _sending = true);
@@ -372,9 +374,11 @@ class _BatchChatScreenState extends ConsumerState<BatchChatScreen> {
         replyToId: replyToId,
       );
       _pendingClip = null;
-      if (mounted) setState(() => _replyTo = null);
+      if (!mounted) return;
+      setState(() => _replyTo = null);
       _jumpToLatest();
     } on BatchFailure catch (failure) {
+      if (!mounted) return;
       _pendingClip = clip;
       _snack(
         batchErrorText(failure),
@@ -384,6 +388,7 @@ class _BatchChatScreenState extends ConsumerState<BatchChatScreen> {
         ),
       );
     } on Object {
+      if (!mounted) return;
       _pendingClip = clip;
       _snack(
         'مقدرناش نحفظ الرسالة الصوتية.',
@@ -656,7 +661,7 @@ class _PinnedStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(
+      padding: const EdgeInsetsDirectional.fromSTEB(
         ZakerSpacing.lg,
         ZakerSpacing.xs,
         ZakerSpacing.xs,
@@ -820,7 +825,7 @@ class _MessageTile extends ConsumerWidget {
           maxWidth: MediaQuery.sizeOf(context).width * 0.82,
         ),
         margin: const EdgeInsets.only(bottom: ZakerSpacing.sm),
-        padding: const EdgeInsets.fromLTRB(
+        padding: const EdgeInsetsDirectional.fromSTEB(
           ZakerSpacing.md,
           ZakerSpacing.sm,
           ZakerSpacing.sm,
@@ -828,11 +833,11 @@ class _MessageTile extends ConsumerWidget {
         ),
         decoration: BoxDecoration(
           color: bubbleColor,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(ZakerRadius.md),
-            topRight: const Radius.circular(ZakerRadius.md),
-            bottomLeft: Radius.circular(_mine ? ZakerRadius.md : 4),
-            bottomRight: Radius.circular(_mine ? 4 : ZakerRadius.md),
+          borderRadius: BorderRadiusDirectional.only(
+            topStart: const Radius.circular(ZakerRadius.md),
+            topEnd: const Radius.circular(ZakerRadius.md),
+            bottomStart: Radius.circular(_mine ? ZakerRadius.md : 4),
+            bottomEnd: Radius.circular(_mine ? 4 : ZakerRadius.md),
           ),
           border: Border.all(
             color: deleted
@@ -868,7 +873,7 @@ class _MessageTile extends ConsumerWidget {
                 ),
                 if (message.pinned)
                   Padding(
-                    padding: const EdgeInsets.only(left: 4),
+                    padding: const EdgeInsetsDirectional.only(start: 4),
                     child: Icon(
                       Icons.push_pin_rounded,
                       size: 12,
@@ -1087,7 +1092,7 @@ class _MessageTile extends ConsumerWidget {
   static String _timeLabel(DateTime value) {
     final local = value.toLocal();
     final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
-    final minute = local.minute.toString().padLeft(2, '0');
+    final minute = arabicDigits(local.minute).padLeft(2, '٠');
     final suffix = local.hour < 12 ? 'ص' : 'م';
     return '${arabicDigits(hour)}:$minute $suffix';
   }
@@ -1149,6 +1154,18 @@ class _ReactionChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final base = theme.cardTheme.color ?? theme.colorScheme.surface;
+    // Paint the translucent chip over its real backdrop so the count can be
+    // darkened until it reads at 4.5:1.
+    final background = mine
+        ? Color.alphaBlend(
+            theme.colorScheme.primary.withValues(alpha: 0.14),
+            base,
+          )
+        : Color.alphaBlend(
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
+            base,
+          );
     return Semantics(
       button: true,
       selected: mine,
@@ -1160,11 +1177,7 @@ class _ReactionChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: mine
-                ? theme.colorScheme.primary.withValues(alpha: 0.14)
-                : theme.colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.7,
-                  ),
+            color: background,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: mine
@@ -1182,7 +1195,10 @@ class _ReactionChip extends StatelessWidget {
                 style: theme.textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: mine
-                      ? theme.colorScheme.primary
+                      ? readableTextColor(
+                          theme.colorScheme.primary,
+                          background,
+                        )
                       : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -1462,7 +1478,7 @@ class _Composer extends StatelessWidget {
             if (sending) const LinearProgressIndicator(minHeight: 2),
             if (replyTo != null)
               Container(
-                padding: const EdgeInsets.fromLTRB(
+                padding: const EdgeInsetsDirectional.fromSTEB(
                   ZakerSpacing.md,
                   ZakerSpacing.xs,
                   ZakerSpacing.xs,
