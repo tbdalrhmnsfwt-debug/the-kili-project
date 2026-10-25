@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -12,10 +14,29 @@ import '../lib/core/pdf/pdf_page_geometry.dart';
 import '../lib/core/pdf/pdf_render_channel.dart';
 import '../lib/core/theme.dart';
 import '../lib/features/pdf/pdf_reader_screen.dart';
+import '../lib/features/pdf/widgets/pdf_page_view.dart';
+import '../lib/features/pdf/widgets/pdf_reader_viewport.dart';
 import '../lib/features/tools/pdf_viewer_screen.dart';
 import '../lib/providers/pdf_providers.dart';
 
 import 'dart:io';
+
+/// A 1×1 transparent PNG, so `Image.memory` decodes without an error.
+final Uint8List _onePixelPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==',
+);
+
+class RenderCall {
+  const RenderCall({
+    required this.pageIndex,
+    required this.scale,
+    required this.source,
+  });
+
+  final int pageIndex;
+  final double scale;
+  final NormalizedRect source;
+}
 
 class MemoryStore implements KeyValueStore {
   final Map<String, String> values = {};
@@ -36,8 +57,12 @@ class FakeChannel extends PdfRenderChannel {
   final int pageCount;
   final List<PdfRenderFailure?> _failures;
   final List<String?> passwords = [];
+  final List<RenderCall> renders = [];
   int opens = 0;
   int closes = 0;
+
+  /// When true, `render` never completes.
+  bool hangRenders = false;
 
   @override
   Future<PdfRendererHandle> open(String path, {String? password}) async {
@@ -62,13 +87,73 @@ class FakeChannel extends PdfRenderChannel {
     required NormalizedRect source,
     int maxPixels = 4096,
   }) async {
-    return Uint8List.fromList([1, 2, 3]);
+    renders.add(RenderCall(pageIndex: pageIndex, scale: scale, source: source));
+    if (hangRenders) return Completer<Uint8List>().future;
+    return _onePixelPng;
   }
 
   @override
   Future<void> close(int handle) async {
     closes += 1;
   }
+}
+
+PdfRendererHandle _handle(
+  int pageCount, {
+  PdfPageSize size = const PdfPageSize(595, 842),
+}) {
+  return PdfRendererHandle(
+    id: 7,
+    pageCount: pageCount,
+    pages: List.generate(pageCount, (_) => size),
+  );
+}
+
+PdfReaderViewport _portraitViewport({double zoom = 1}) {
+  return PdfReaderViewport(
+    handle: _handle(1),
+    geometry: const [PdfPageGeometry(widthPoints: 595, heightPoints: 842)],
+    initialPage: 0,
+    onPageChanged: (_) {},
+    initialZoom: zoom,
+  );
+}
+
+PdfReaderViewport _squareViewport({
+  required double zoom,
+  int quarterTurns = 0,
+}) {
+  return PdfReaderViewport(
+    handle: _handle(1, size: const PdfPageSize(600, 600)),
+    geometry: const [PdfPageGeometry(widthPoints: 600, heightPoints: 600)],
+    initialPage: 0,
+    onPageChanged: (_) {},
+    quarterTurns: quarterTurns,
+    initialZoom: zoom,
+  );
+}
+
+Future<void> _pumpViewport(
+  WidgetTester tester, {
+  required FakeChannel channel,
+  required PdfReaderViewport viewport,
+}) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [pdfRenderChannelProvider.overrideWithValue(channel)],
+      child: MaterialApp(
+        theme: ZakerTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(width: 400, height: 800, child: viewport),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump();
+  await tester.pump();
 }
 
 void main() {
@@ -119,6 +204,7 @@ void main() {
     await pump(tester, channel, const PdfReaderScreen(path: '/tmp/zaker.pdf'));
 
     expect(find.text('صفحة 1 من 10'), findsOneWidget);
+    expect(find.byType(PdfReaderViewport), findsOneWidget);
   });
 
   testWidgets('a locked document asks for the password and reopens with it', (
@@ -184,5 +270,107 @@ void main() {
     await pump(tester, channel, const PdfViewerScreen(path: '/x.pdf'));
 
     expect(find.byType(PdfReaderScreen), findsOneWidget);
+  });
+
+  testWidgets('the first frame requests page zero at fit-width', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 1);
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: _portraitViewport(),
+    );
+
+    expect(channel.renders, isNotEmpty);
+    final call = channel.renders.first;
+    expect(call.pageIndex, 0);
+    expect(call.source.left, closeTo(0, 0.01));
+    expect(call.source.top, closeTo(0, 0.01));
+    expect(call.source.width, closeTo(1, 0.01));
+    expect(call.source.height, closeTo(1, 0.01));
+  });
+
+  testWidgets('zooming in requests a narrower source and paints the tile', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 1);
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: _portraitViewport(),
+    );
+    final wide = channel.renders.last.source.width;
+    expect(wide, closeTo(1, 0.01));
+
+    channel.renders.clear();
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: _portraitViewport(zoom: 5),
+    );
+
+    expect(channel.renders, isNotEmpty);
+    final narrow = channel.renders.last.source.width;
+    expect(narrow, lessThan(0.6));
+    expect(narrow, lessThan(wide));
+    expect(find.byType(Image), findsWidgets);
+  });
+
+  testWidgets('a slow renderer shows the placeholder without an exception', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 1)..hangRenders = true;
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: _portraitViewport(),
+    );
+
+    expect(channel.renders, isNotEmpty);
+    expect(find.byType(PdfPageView), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('quarter turns swap the requested source', (tester) async {
+    final channel = FakeChannel(pageCount: 1);
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: _squareViewport(zoom: 2),
+    );
+    final upright = channel.renders.last.source;
+
+    channel.renders.clear();
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: _squareViewport(zoom: 2, quarterTurns: 1),
+    );
+    final rotated = channel.renders.last.source;
+
+    expect(rotated.width, closeTo(upright.height, 0.001));
+    expect(rotated.height, closeTo(upright.width, 0.001));
+  });
+
+  testWidgets('page mode shows one page at a time', (tester) async {
+    final channel = FakeChannel(pageCount: 3);
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: PdfReaderViewport(
+        handle: _handle(3),
+        geometry: List.filled(
+          3,
+          const PdfPageGeometry(widthPoints: 595, heightPoints: 842),
+        ),
+        initialPage: 0,
+        onPageChanged: (_) {},
+        vertical: false,
+      ),
+    );
+
+    expect(find.byType(PageView), findsOneWidget);
   });
 }

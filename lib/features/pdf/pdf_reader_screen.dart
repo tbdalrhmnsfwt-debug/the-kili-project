@@ -21,12 +21,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/pdf/pdf_page_geometry.dart';
 import '../../core/pdf/pdf_render_channel.dart';
 import '../../core/theme.dart';
 import '../../models/pdf_document.dart';
 import '../../providers/pdf_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
+import 'widgets/pdf_reader_viewport.dart';
 
 /// What the reader is allowed to do. Annotate and sign arrive with Plan 2.
 enum PdfReaderMode { read }
@@ -73,9 +75,13 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   Timer? _markTimer;
   bool _loading = true;
   bool _chromeVisible = true;
+  bool _vertical = true;
+  bool _nightMode = false;
+  int _quarterTurns = 0;
   int _page = 0;
   int _attempts = 0;
   int _materialised = 0;
+  List<PdfPageGeometry> _geometry = const [];
 
   @override
   void initState() {
@@ -132,6 +138,13 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
         _loading = false;
         _failure = null;
         _page = lastPage.clamp(1, handle.pageCount) - 1;
+        _geometry = [
+          for (final page in handle.pages)
+            PdfPageGeometry(
+              widthPoints: page.widthPoints,
+              heightPoints: page.heightPoints,
+            ),
+        ];
       });
       _scheduleMarkOpened();
     } on PdfRenderException catch (error) {
@@ -366,6 +379,19 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
                 },
               ),
             ),
+          if (_chromeVisible && handle != null)
+            Positioned(
+              right: ZakerSpacing.md,
+              bottom: 88,
+              child: _ReaderControls(
+                vertical: _vertical,
+                nightMode: _nightMode,
+                onMode: () => setState(() => _vertical = !_vertical),
+                onRotate: () =>
+                    setState(() => _quarterTurns = (_quarterTurns + 1) % 4),
+                onNight: () => setState(() => _nightMode = !_nightMode),
+              ),
+            ),
         ],
       ),
     );
@@ -411,10 +437,21 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _toggleChrome,
-      child: Container(
+      child: ColoredBox(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        alignment: Alignment.center,
-        child: TrText('صفحة ${_page + 1}'),
+        child: PdfReaderViewport(
+          handle: _handle!,
+          geometry: _geometry,
+          initialPage: _page,
+          onPageChanged: (page) {
+            if (page == _page) return;
+            setState(() => _page = page);
+            _scheduleMarkOpened();
+          },
+          vertical: _vertical,
+          nightMode: _nightMode,
+          quarterTurns: _quarterTurns,
+        ),
       ),
     );
   }
@@ -480,6 +517,60 @@ class _TopBar extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Mode, rotation and night-mode toggles floating above the bottom bar.
+class _ReaderControls extends StatelessWidget {
+  const _ReaderControls({
+    required this.vertical,
+    required this.nightMode,
+    required this.onMode,
+    required this.onRotate,
+    required this.onNight,
+  });
+
+  final bool vertical;
+  final bool nightMode;
+  final VoidCallback onMode;
+  final VoidCallback onRotate;
+  final VoidCallback onNight;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surface,
+      elevation: 3,
+      borderRadius: BorderRadius.circular(ZakerRadius.lg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: vertical ? 'صفحة واحدة' : 'عرض مستمر',
+            onPressed: onMode,
+            icon: Icon(
+              vertical
+                  ? Icons.crop_portrait_rounded
+                  : Icons.view_agenda_rounded,
+            ),
+          ),
+          IconButton(
+            tooltip: 'تدوير الصفحة',
+            onPressed: onRotate,
+            icon: const Icon(Icons.rotate_right_rounded),
+          ),
+          IconButton(
+            tooltip: 'الوضع الليلي',
+            onPressed: onNight,
+            icon: Icon(
+              nightMode ? Icons.dark_mode_rounded : Icons.dark_mode_outlined,
+              color: nightMode ? ZakerColors.accent : null,
+            ),
+          ),
+        ],
       ),
     );
   }
