@@ -63,6 +63,7 @@ import '../features/subjects/subject_screen.dart';
 import '../features/subjects/subjects_screen.dart';
 import '../features/tasks/tasks_screen.dart';
 import '../features/tools/irab_screen.dart';
+import '../features/pdf/pdf_library_screen.dart';
 import '../features/tools/pdf_tools_screen.dart';
 import '../features/tools/pdf_viewer_screen.dart';
 import '../features/tools/scan_screen.dart';
@@ -113,6 +114,7 @@ class ZakerRoutes {
   static const String weekly = '/weekly';
   static const String tasbih = '/tasbih';
   static const String pdfTools = '/pdf-tools';
+  static const String pdfLibrary = '/pdf-library';
   static const String pdfViewer = '/pdf-viewer';
   static const String scan = '/scan';
   static const String calculator = '/calculator';
@@ -199,9 +201,8 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '${ZakerRoutes.officialBook}/:bookId',
-      builder: (context, state) => OfficialBookScreen(
-        bookId: state.pathParameters['bookId'] ?? '',
-      ),
+      builder: (context, state) =>
+          OfficialBookScreen(bookId: state.pathParameters['bookId'] ?? ''),
     ),
     GoRoute(
       path: '${ZakerRoutes.officialBook}/:bookId/section/:sectionId',
@@ -388,6 +389,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.pdfTools,
       builder: (context, state) => const PdfToolsScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.pdfLibrary,
+      builder: (context, state) => const PdfLibraryScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.pdfViewer,

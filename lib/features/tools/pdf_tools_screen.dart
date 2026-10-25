@@ -24,13 +24,18 @@ import 'package:syncfusion_flutter_pdf/pdf.dart' as sf;
 
 import '../../core/asset_service.dart';
 import '../../core/pdf_documents.dart';
+import '../../core/pdf/pdf_library_index.dart';
 import '../../core/quiz_generator.dart';
 import '../../core/theme.dart';
 import '../../models/ai.dart';
 import '../../models/exam.dart';
 import '../../models/manhaji.dart';
 import '../../providers/app_providers.dart';
+import '../../providers/pdf_providers.dart';
 import '../../widgets/common.dart';
+import '../pdf/pdf_library_screen.dart';
+import '../pdf/widgets/pdf_document_card.dart';
+import '../pdf/widgets/pdf_import_button.dart';
 import 'pdf_viewer_screen.dart';
 import 'scan_screen.dart';
 import '../../widgets/tr_text.dart';
@@ -61,6 +66,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(ZakerSpacing.lg),
         children: [
+          const _LibrarySection(),
           if (_busy) ...[
             const LinearProgressIndicator(minHeight: 2),
             const SizedBox(height: ZakerSpacing.sm),
@@ -82,10 +88,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
             )
           else
             for (final sheet in sheets)
-              _SheetTile(
-                sheet: sheet,
-                onTap: () => _showSheetDetail(sheet),
-              ),
+              _SheetTile(sheet: sheet, onTap: () => _showSheetDetail(sheet)),
         ],
       ),
     );
@@ -116,16 +119,14 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
 
   /// Opens the on-device PDF reader.
   void _openViewer() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const PdfViewerScreen()),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const PdfViewerScreen()));
   }
 
   /// Opens the scan / OCR pipeline, which also exports its pages as a PDF.
   void _openScan() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const ScanScreen()),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const ScanScreen()));
   }
 
   /// Builds and shares a question bank from the first readable book of the
@@ -178,7 +179,8 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
 
       await Printing.sharePdf(
         bytes: bytes,
-        filename: 'zaker-'
+        filename:
+            'zaker-'
             '${withAnswers ? 'solved' : 'questions'}-'
             '${DateTime.now().millisecondsSinceEpoch}.pdf',
       );
@@ -225,7 +227,8 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
       } else {
         await Printing.sharePdf(
           bytes: bytes,
-          filename: 'zaker-book-'
+          filename:
+              'zaker-book-'
               '${DateTime.now().millisecondsSinceEpoch}.pdf',
         );
       }
@@ -257,7 +260,8 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
 
       final shrank = compressed.length < data.length;
       final output = shrank ? compressed : data;
-      final name = 'zaker-compressed-'
+      final name =
+          'zaker-compressed-'
           '${DateTime.now().millisecondsSinceEpoch}.pdf';
       await Printing.sharePdf(bytes: output, filename: name);
       if (!mounted) return;
@@ -391,9 +395,8 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
                 ),
                 child: TrText(
                   'اختار الكتاب',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
               Flexible(
@@ -405,9 +408,10 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
                         leading: const Icon(Icons.menu_book_outlined),
                         title: TrText(book.title),
                         subtitle: TrText(
-                          [book.subject, book.variant]
-                              .where((s) => s.isNotEmpty)
-                              .join(' • '),
+                          [
+                            book.subject,
+                            book.variant,
+                          ].where((s) => s.isNotEmpty).join(' • '),
                         ),
                         onTap: () => Navigator.of(context).pop(book),
                       ),
@@ -553,6 +557,109 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
   }
 }
 
+/// «ملفاتي» above the tools grid: the most recent few documents plus a way
+/// into the full library. Hidden while the library is empty so the tools grid
+/// stays the first thing on the screen.
+class _LibrarySection extends ConsumerWidget {
+  const _LibrarySection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final index = ref.watch(pdfLibraryControllerProvider);
+    final entries = index.query(
+      sort: PdfSort.addedAt,
+      descending: true,
+      limit: 6,
+    );
+    if (entries.isEmpty) return const SizedBox.shrink();
+    final store = ref.watch(pdfLibraryStoreProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(
+          title: 'ملفاتي',
+          icon: Icons.folder_special_outlined,
+          actionLabel: 'عرض الكل',
+          onAction: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const PdfLibraryScreen()),
+          ),
+        ),
+        SizedBox(
+          height: 184,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: entries.length + 1,
+            separatorBuilder: (context, position) =>
+                const SizedBox(width: ZakerSpacing.sm),
+            itemBuilder: (context, position) {
+              if (position == entries.length) {
+                return SizedBox(
+                  width: 140,
+                  child: _ImportTile(onTap: () => importPdfFiles(context, ref)),
+                );
+              }
+              final entry = entries[position];
+              return SizedBox(
+                width: 150,
+                child: PdfDocumentCard(
+                  entry: entry,
+                  layout: PdfDocumentCardLayout.grid,
+                  available: store.baseFile(entry.id).existsSync(),
+                  onOpen: () => openPdfDocument(context, entry),
+                  onRename: () => renamePdfDocument(context, ref, entry),
+                  onDelete: () => deletePdfDocument(context, ref, entry),
+                  onShare: () => sharePdfDocument(context, ref, entry),
+                  onDetails: () => showPdfDocumentDetails(context, ref, entry),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: ZakerSpacing.xl),
+      ],
+    );
+  }
+}
+
+/// The "add a PDF" tile at the end of the recent row.
+class _ImportTile extends StatelessWidget {
+  const _ImportTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: ZakerRadius.card,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: ZakerRadius.card,
+          border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_rounded, size: 28, color: theme.colorScheme.primary),
+            const SizedBox(height: ZakerSpacing.xs),
+            TrText(
+              'ضيف PDF',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// The grid of PDF operations.
 class _ToolGrid extends StatelessWidget {
   const _ToolGrid({required this.onSelect});
@@ -560,7 +667,11 @@ class _ToolGrid extends StatelessWidget {
   final ValueChanged<_PdfTool> onSelect;
 
   static const _tools = <({_PdfTool tool, String label, IconData icon})>[
-    (tool: _PdfTool.viewer, label: 'اعرض PDF', icon: Icons.auto_stories_rounded),
+    (
+      tool: _PdfTool.viewer,
+      label: 'اعرض PDF',
+      icon: Icons.auto_stories_rounded,
+    ),
     (tool: _PdfTool.images, label: 'PDF من صور', icon: Icons.image_outlined),
     (tool: _PdfTool.solved, label: 'PDF بالحل', icon: Icons.task_alt_rounded),
     (
@@ -573,7 +684,7 @@ class _ToolGrid extends StatelessWidget {
       label: 'PDF أسئلة بس',
       icon: Icons.quiz_outlined,
     ),
-    (tool: _PdfTool.compress, label: 'تضغيم', icon: Icons.compress_rounded),
+    (tool: _PdfTool.compress, label: 'ضغط', icon: Icons.compress_rounded),
     (tool: _PdfTool.print, label: 'طباعة', icon: Icons.print_outlined),
   ];
 
