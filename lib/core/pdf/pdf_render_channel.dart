@@ -38,6 +38,11 @@ enum PdfRenderFailure {
   /// The supplied password was rejected.
   wrongPassword,
 
+  /// The document is protected and this Android version cannot unlock it.
+  ///
+  /// `PdfRenderer` only accepts a password from Android 15 onwards.
+  passwordUnsupported,
+
   /// The file is not a readable PDF.
   corrupt,
 
@@ -129,6 +134,7 @@ class PdfRenderChannel {
     return switch (code) {
       'passwordRequired' => PdfRenderFailure.passwordRequired,
       'wrongPassword' => PdfRenderFailure.wrongPassword,
+      'passwordUnsupported' => PdfRenderFailure.passwordUnsupported,
       'corrupt' => PdfRenderFailure.corrupt,
       'unavailable' => PdfRenderFailure.unavailable,
       _ => PdfRenderFailure.renderFailed,

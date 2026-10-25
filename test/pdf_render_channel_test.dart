@@ -63,6 +63,26 @@ void main() {
     );
   });
 
+  test(
+    'a password this Android version cannot use is a typed failure',
+    () async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        throw PlatformException(code: 'passwordUnsupported');
+      });
+
+      await expectLater(
+        const PdfRenderChannel().open('/docs/locked.pdf', password: 'secret'),
+        throwsA(
+          isA<PdfRenderException>().having(
+            (error) => error.failure,
+            'failure',
+            PdfRenderFailure.passwordUnsupported,
+          ),
+        ),
+      );
+    },
+  );
+
   test('a missing plugin becomes unavailable', () async {
     messenger.setMockMethodCallHandler(channel, (call) async {
       throw MissingPluginException();

@@ -536,6 +536,8 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     return switch (_failure) {
       PdfRenderFailure.passwordRequired ||
       PdfRenderFailure.wrongPassword => 'الملف محمي بكلمة سر ومقدرناش نفتحه.',
+      PdfRenderFailure.passwordUnsupported =>
+        'الملف محمي بكلمة سر، وفتحه محتاج أندرويد 15 أو أحدث.',
       PdfRenderFailure.unavailable => 'قارئ PDF مش متاح على الجهاز ده.',
       _ => 'الملف تالف أو مش مقروء.',
     };

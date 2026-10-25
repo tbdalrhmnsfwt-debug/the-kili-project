@@ -2,7 +2,9 @@ package com.zaker.zaker_ai
 
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.graphics.pdf.LoadParams
 import android.graphics.pdf.PdfRenderer
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
@@ -47,6 +49,25 @@ class PdfRenderChannel(messenger: BinaryMessenger) {
         }
     }
 
+    /**
+     * Builds a renderer for [descriptor], unlocking it with [password] when
+     * the platform supports that.
+     *
+     * `PdfRenderer` only learned to take a password with `LoadParams` in
+     * Android 15; older releases keep the plain constructor, which refuses a
+     * protected file with a `SecurityException`.
+     */
+    private fun openRenderer(
+        descriptor: ParcelFileDescriptor,
+        password: String?,
+    ): PdfRenderer {
+        if (Build.VERSION.SDK_INT >= PASSWORD_API) {
+            val params = LoadParams.Builder().setPassword(password).build()
+            return PdfRenderer(descriptor, params)
+        }
+        return PdfRenderer(descriptor)
+    }
+
     private fun open(call: MethodCall, result: MethodChannel.Result) {
         val path = call.argument<String>("path")
         val password = call.argument<String>("password")
@@ -59,13 +80,20 @@ class PdfRenderChannel(messenger: BinaryMessenger) {
             try {
                 descriptor =
                     ParcelFileDescriptor.open(File(path), ParcelFileDescriptor.MODE_READ_ONLY)
+                if (password != null && Build.VERSION.SDK_INT < PASSWORD_API) {
+                    // Below Android 15 the platform renderer has no way to
+                    // unlock a document, so a correct password would otherwise
+                    // be reported as a wrong one.
+                    try {
+                        descriptor?.close()
+                    } catch (_: Exception) {
+                    }
+                    main.post { result.error("passwordUnsupported", null, null) }
+                    return@execute
+                }
                 val renderer =
                     try {
-                        if (password == null) {
-                            PdfRenderer(descriptor)
-                        } else {
-                            PdfRenderer(descriptor, password)
-                        }
+                        openRenderer(descriptor, password)
                     } catch (error: SecurityException) {
                         try {
                             descriptor?.close()
@@ -207,5 +235,10 @@ class PdfRenderChannel(messenger: BinaryMessenger) {
                 }
             }
         }
+    }
+
+    private companion object {
+        /** The first Android release whose [PdfRenderer] accepts a password. */
+        const val PASSWORD_API = 35
     }
 }
