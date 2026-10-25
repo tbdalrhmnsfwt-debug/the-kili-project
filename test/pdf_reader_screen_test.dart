@@ -205,6 +205,7 @@ void main() {
 
     expect(find.text('صفحة 1 من 10'), findsOneWidget);
     expect(find.byType(PdfReaderViewport), findsOneWidget);
+    expect(find.byIcon(Icons.search_rounded), findsOneWidget);
   });
 
   testWidgets('a locked document asks for the password and reopens with it', (

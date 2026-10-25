@@ -44,6 +44,8 @@ class PdfReaderViewport extends ConsumerStatefulWidget {
     this.nightMode = false,
     this.quarterTurns = 0,
     this.initialZoom = 1,
+    this.highlights = const [],
+    this.highlightPage,
   });
 
   final PdfRendererHandle handle;
@@ -68,6 +70,12 @@ class PdfReaderViewport extends ConsumerStatefulWidget {
 
   /// Starting zoom; 1 is fit-width, 5 is five times fit-width.
   final double initialZoom;
+
+  /// Search hits to paint over the page in [highlightPage].
+  final List<NormalizedRect> highlights;
+
+  /// The page [highlights] belong to.
+  final int? highlightPage;
 
   @override
   ConsumerState<PdfReaderViewport> createState() => _PdfReaderViewportState();
@@ -233,6 +241,9 @@ class _PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
         nightMode: widget.nightMode,
         tile: _tiles[index],
         source: _tileSources[index],
+        highlights: widget.highlightPage == index
+            ? widget.highlights
+            : const [],
       ),
     );
   }

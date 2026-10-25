@@ -23,12 +23,14 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/pdf/pdf_page_geometry.dart';
 import '../../core/pdf/pdf_render_channel.dart';
+import '../../core/pdf/pdf_text_map.dart';
 import '../../core/theme.dart';
 import '../../models/pdf_document.dart';
 import '../../providers/pdf_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import 'widgets/pdf_reader_viewport.dart';
+import 'widgets/pdf_search_sheet.dart';
 
 /// What the reader is allowed to do. Annotate and sign arrive with Plan 2.
 enum PdfReaderMode { read }
@@ -82,6 +84,8 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   int _attempts = 0;
   int _materialised = 0;
   List<PdfPageGeometry> _geometry = const [];
+  List<NormalizedRect> _highlights = const [];
+  int? _highlightPage;
 
   @override
   void initState() {
@@ -323,6 +327,36 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     _scheduleMarkOpened();
   }
 
+  /// Opens in-document search over the resolved file.
+  Future<void> _openSearch() async {
+    final handle = _handle;
+    final path = _resolvedPath;
+    if (handle == null || path == null) return;
+    final file = File(path);
+    if (!file.existsSync()) return;
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+    final textMap = PdfTextMap.fromBytes(bytes, pageCount: handle.pageCount);
+    await showPdfSearchSheet(
+      context,
+      textMap: textMap,
+      onJump: (match) {
+        Navigator.of(context).pop();
+        _jumpToMatch(match);
+      },
+    );
+  }
+
+  void _jumpToMatch(PdfTextMatch match) {
+    final count = _handle?.pageCount ?? 1;
+    setState(() {
+      _page = match.pageIndex.clamp(0, count - 1);
+      _highlightPage = match.pageIndex;
+      _highlights = [match.bounds];
+    });
+    _scheduleMarkOpened();
+  }
+
   Future<void> _shareFile() async {
     final path = _resolvedPath;
     if (path == null) return;
@@ -361,6 +395,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
                 favorite: entry?.favorite ?? false,
                 canFavorite: entry != null,
                 onBack: () => Navigator.of(context).maybePop(),
+                onSearch: _openSearch,
                 onFavorite: entry == null ? null : () => _toggleFavorite(entry),
               ),
             ),
@@ -451,6 +486,8 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
           vertical: _vertical,
           nightMode: _nightMode,
           quarterTurns: _quarterTurns,
+          highlights: _highlights,
+          highlightPage: _highlightPage,
         ),
       ),
     );
@@ -473,6 +510,7 @@ class _TopBar extends StatelessWidget {
     required this.favorite,
     required this.canFavorite,
     required this.onBack,
+    required this.onSearch,
     required this.onFavorite,
   });
 
@@ -480,6 +518,7 @@ class _TopBar extends StatelessWidget {
   final bool favorite;
   final bool canFavorite;
   final VoidCallback onBack;
+  final VoidCallback onSearch;
   final VoidCallback? onFavorite;
 
   @override
@@ -506,6 +545,11 @@ class _TopBar extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
+            ),
+            IconButton(
+              tooltip: 'بحث جوه الملف',
+              onPressed: onSearch,
+              icon: const Icon(Icons.search_rounded),
             ),
             IconButton(
               tooltip: favorite ? 'شيل من المفضلة' : 'ضيف للمفضلة',

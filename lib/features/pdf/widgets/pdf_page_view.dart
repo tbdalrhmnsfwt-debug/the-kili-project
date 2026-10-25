@@ -21,6 +21,7 @@ class PdfPageView extends StatelessWidget {
     this.nightMode = false,
     this.tile,
     this.source,
+    this.highlights = const [],
   });
 
   final PdfPageGeometry geometry;
@@ -34,6 +35,9 @@ class PdfPageView extends StatelessWidget {
 
   /// The normalized page rect [tile] covers.
   final NormalizedRect? source;
+
+  /// Search hits painted over the page, in unrotated page coordinates.
+  final List<NormalizedRect> highlights;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +60,16 @@ class PdfPageView extends StatelessWidget {
               width: source!.width * pageWidth,
               height: source!.height * pageHeight,
               child: nightMode ? _night(_tileImage(tile!)) : _tileImage(tile!),
+            ),
+          for (final rect in highlights)
+            Positioned(
+              left: rect.left * pageWidth,
+              top: rect.top * pageHeight,
+              width: rect.width * pageWidth,
+              height: rect.height * pageHeight,
+              child: const IgnorePointer(
+                child: ColoredBox(color: Color(0x66FFC107)),
+              ),
             ),
         ],
       ),
