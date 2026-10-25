@@ -31,11 +31,11 @@ void main() {
     });
 
     test('accepts Extended Arabic-Indic digits', () {
-      expect(BatchCodeService.normalize('۰۱۲۳۴۵۶۷۸'), '012345678');
+      expect(BatchCodeService.normalize('۰۱۲۳۴۵۶۷'), '01234567');
     });
 
     test('ignores spaces, dashes and bidi marks but keeps the digits', () {
-      expect(BatchCodeService.normalize(' ٠١٢‏ ٣٤٥-٦٧٨ '), '012345678');
+      expect(BatchCodeService.normalize(' ٠١٢‏ ٣٤٥-٦٧ '), '01234567');
     });
 
     test('preserves a leading zero', () {

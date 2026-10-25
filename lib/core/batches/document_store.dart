@@ -84,6 +84,12 @@ class DocumentStore<T> {
     await _quarantine(file);
     final backup = await _read(backupFile);
     if (backup is T) {
+      // Put the good copy back so later reads do not fall back every time.
+      try {
+        await backupFile.copy(file.path);
+      } on FileSystemException {
+        // The in-memory recovery still stands if the copy fails.
+      }
       return DocumentLoad(DocumentLoadStatus.recovered, value: backup);
     }
     return const DocumentLoad(

@@ -441,10 +441,12 @@ class _MetaChip extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 5),
-          TrText(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          Flexible(
+            child: TrText(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],
@@ -475,12 +477,14 @@ class _CodeChip extends StatelessWidget {
         children: [
           Icon(Icons.key_rounded, size: 14, color: theme.colorScheme.primary),
           const SizedBox(width: 5),
-          TrText(
-            'كود الدخول: $code',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
+          Flexible(
+            child: TrText(
+              'كود الدخول: $code',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+              ),
             ),
           ),
         ],
