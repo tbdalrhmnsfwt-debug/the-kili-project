@@ -3,7 +3,7 @@
 /// Wide screens get a permanent sidebar. Phones get the mockup's floating
 /// rounded bottom bar plus an off-canvas drawer opened from the hamburger in
 /// the hero banner or in each tab's app bar. Both navigation surfaces drive
-/// the same four tabs, and every existing route stays untouched.
+/// the same five tabs, and every existing route stays untouched.
 library;
 
 import 'package:flutter/material.dart';
@@ -15,6 +15,7 @@ import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/tr_text.dart';
+import '../batches/batches_screen.dart';
 import '../exam/exam_home_screen.dart';
 import '../library/study_library_screen.dart';
 import '../quran/quran_home_screen.dart';
@@ -33,6 +34,7 @@ const List<_Tab> _tabs = [
   _Tab(icon: HugeIcons.strokeRoundedBookOpen01, label: 'المكتبة الدراسية'),
   _Tab(icon: HugeIcons.strokeRoundedTaskDone01, label: 'الاختبار'),
   _Tab(icon: HugeIcons.strokeRoundedBook02, label: 'القرآن'),
+  _Tab(icon: HugeIcons.strokeRoundedUserGroup, label: 'الدفعات'),
 ];
 
 /// Makes the shell's drawer reachable from any tab screen.
@@ -99,7 +101,7 @@ class ShellScreen extends ConsumerStatefulWidget {
 
 class _ShellScreenState extends ConsumerState<ShellScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  late int _index = widget.initialIndex.clamp(0, 3);
+  late int _index = widget.initialIndex.clamp(0, 4);
 
   Widget _bodyFor(int i) {
     if (i == widget.initialIndex && widget.child != null) return widget.child!;
@@ -107,7 +109,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       0 => const HomeScreen(),
       1 => const StudyLibraryScreen(),
       2 => const ExamHomeScreen(),
-      _ => const QuranHomeScreen(),
+      3 => const QuranHomeScreen(),
+      4 => const BatchesScreen(),
+      _ => const HomeScreen(),
     };
   }
 
@@ -461,9 +465,8 @@ class _SidebarItem extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: selected
-                          ? Colors.white
-                          : theme.colorScheme.onSurface,
+                      color:
+                          selected ? Colors.white : theme.colorScheme.onSurface,
                       fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                     ),
                   ),

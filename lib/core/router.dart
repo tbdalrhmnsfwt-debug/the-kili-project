@@ -19,6 +19,7 @@ import '../features/azkar/azkar_settings_screen.dart';
 import '../features/azkar/azkar_tasbih_screen.dart';
 import '../features/azkar/kahf_screen.dart';
 import '../features/azkar/salat_counter_screen.dart';
+import '../features/batches/batches_screen.dart';
 import '../features/challenges/challenges_screen.dart';
 import '../features/calculator/calc_pro_screen.dart';
 import '../features/courses/course_list_screen.dart';
@@ -87,6 +88,7 @@ class ZakerRoutes {
   static const String exams = '/exams';
   static const String quiz = '/quiz';
   static const String quran = '/quran';
+  static const String batches = '/batches';
   static const String hifz = '/hifz';
   static const String hifzSetup = '/hifz/setup';
   static const String glossary = '/glossary';
@@ -246,6 +248,11 @@ final GoRouter appRouter = GoRouter(
       path: ZakerRoutes.quran,
       builder: (context, state) =>
           const ShellScreen(initialIndex: 3, child: QuranHomeScreen()),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batches,
+      builder: (context, state) =>
+          const ShellScreen(initialIndex: 4, child: BatchesScreen()),
     ),
     GoRoute(
       path: ZakerRoutes.hifz,
