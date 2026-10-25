@@ -176,6 +176,11 @@ void main() {
           builder: (context, state) =>
               const Scaffold(body: Center(child: Text('المواد هنا'))),
         ),
+        GoRoute(
+          path: '/batches/:batchId/schedules',
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('المواعيد هنا'))),
+        ),
       ],
     );
     return ProviderScope(
@@ -318,6 +323,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('المواد هنا'), findsOneWidget);
+  });
+
+  testWidgets('opens the local timetable from the schedules card',
+      (tester) async {
+    await tallScreen(tester);
+    await tester.pumpWidget(
+      app(
+        detail: snapshot(),
+        data: hub(schedules: [schedule()]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('المواعيد'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('المواعيد هنا'), findsOneWidget);
   });
 
   testWidgets('hides the owner code from a non-owner', (tester) async {

@@ -544,6 +544,7 @@ class _HubSections extends ConsumerWidget {
               : 'مفيش مواعيد لسه.',
       countLabel:
           published > 0 ? '${arabicDigits(published)} حصة' : 'مفيش حصص منشورة',
+      onTap: () => context.push(ZakerRoutes.batchSchedules(batchId)),
     );
   }
 

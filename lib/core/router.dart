@@ -25,6 +25,8 @@ import '../features/batches/batches_screen.dart';
 import '../features/batches/chat/batch_chat_screen.dart';
 import '../features/batches/create_batch_screen.dart';
 import '../features/batches/join_batch_screen.dart';
+import '../features/batches/schedules/batch_schedules_screen.dart';
+import '../features/batches/schedules/schedule_draft_screen.dart';
 import '../features/batches/subjects/audio_resource_screen.dart';
 import '../features/batches/subjects/batch_subjects_screen.dart';
 import '../features/batches/subjects/information_bank_screen.dart';
@@ -109,6 +111,9 @@ class ZakerRoutes {
   static const String batchSubjectResourcesPattern =
       '/batches/:batchId/subjects/:subjectId';
   static const String batchChatPattern = '/batches/:batchId/chat';
+  static const String batchSchedulesPattern = '/batches/:batchId/schedules';
+  static const String batchScheduleDraftPattern =
+      '/batches/:batchId/schedules/:draftId';
   static const String batchAudioResourcePattern =
       '/batches/:batchId/audio/:resourceId';
   static const String batchStudyToolsPattern =
@@ -136,6 +141,14 @@ class ZakerRoutes {
 
   /// The saved chat of one batch.
   static String batchChat(String batchId) => '${batchHub(batchId)}/chat';
+
+  /// The local timetable of one batch.
+  static String batchSchedules(String batchId) =>
+      '${batchHub(batchId)}/schedules';
+
+  /// One timetable draft, for review, edits and publishing.
+  static String batchScheduleDraft(String batchId, String draftId) =>
+      '${batchSchedules(batchId)}/${Uri.encodeComponent(draftId)}';
 
   /// The local player for one audio resource.
   static String batchAudioResource(String batchId, String resourceId) =>
@@ -359,6 +372,19 @@ final GoRouter appRouter = GoRouter(
       path: ZakerRoutes.batchChatPattern,
       builder: (context, state) => BatchChatScreen(
         batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchSchedulesPattern,
+      builder: (context, state) => BatchSchedulesScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchScheduleDraftPattern,
+      builder: (context, state) => ScheduleDraftScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        draftId: state.pathParameters['draftId'] ?? '',
       ),
     ),
     GoRoute(

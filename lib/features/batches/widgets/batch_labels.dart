@@ -28,6 +28,59 @@ String arabicDigits(int value) {
 String weekDayLabel(int week, int day) =>
     'الأسبوع ${arabicDigits(week)} · اليوم ${arabicDigits(day)}';
 
+/// Arabic names in the order the app shows the week: Saturday first.
+const List<String> _weekdayNames = [
+  'الاتنين',
+  'التلات',
+  'الأربع',
+  'الخميس',
+  'الجمعة',
+  'السبت',
+  'الحد',
+];
+
+/// The day numbers the app lists in order, starting on Saturday.
+const List<int> scheduleWeekOrder = [
+  DateTime.saturday,
+  DateTime.sunday,
+  DateTime.monday,
+  DateTime.tuesday,
+  DateTime.wednesday,
+  DateTime.thursday,
+  DateTime.friday,
+];
+
+/// The Arabic name of a `DateTime.weekday` value.
+String weekdayName(int dayOfWeek) =>
+    dayOfWeek >= DateTime.monday && dayOfWeek <= DateTime.sunday
+        ? _weekdayNames[dayOfWeek - 1]
+        : '';
+
+/// `٨:٠٠ ص`, with minutes from midnight.
+String formatScheduleTime(int minutes) {
+  final safe = minutes.clamp(0, 24 * 60);
+  final hour24 = safe ~/ 60;
+  final minute = safe % 60;
+  final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+  final suffix = hour24 < 12 ? 'ص' : 'م';
+  final paddedMinute =
+      minute < 10 ? '٠${arabicDigits(minute)}' : arabicDigits(minute);
+  return '${arabicDigits(hour12)}:$paddedMinute $suffix';
+}
+
+/// `٨:٠٠ ص – ٩:٣٠ ص`
+String formatScheduleRange(int startMinutes, int endMinutes) =>
+    '${formatScheduleTime(startMinutes)} – ${formatScheduleTime(endMinutes)}';
+
+/// Arabic copy for a parser uncertainty label.
+String scheduleFieldLabel(String field) => switch (field) {
+      'startMinutes' => 'وقت البداية',
+      'endMinutes' => 'وقت النهاية',
+      'dayOfWeek' => 'اليوم',
+      'title' => 'العنوان',
+      _ => field,
+    };
+
 /// Human file size. Files are never described with a fake precision.
 String formatBytes(int bytes) {
   if (bytes < 1024) return '${arabicDigits(bytes)} بايت';
