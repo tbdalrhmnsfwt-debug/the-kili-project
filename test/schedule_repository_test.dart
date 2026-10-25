@@ -422,7 +422,7 @@ void main() {
     );
   });
 
-  test('an unreadable timetable document is reported, not overwritten',
+  test('an unreadable timetable document is reported and kept for diagnosis',
       () async {
     final document = batchStore();
     await document.schedulesFile.parent.create(recursive: true);
@@ -435,21 +435,20 @@ void main() {
             .having((f) => f.code, 'code', BatchFailureCode.corruptStore),
       ),
     );
-    await expectLater(
-      repository.saveScheduleDraft(uid, batch.id, draftFor()),
-      throwsA(
-        isA<BatchFailure>()
-            .having((f) => f.code, 'code', BatchFailureCode.corruptStore),
-      ),
-    );
 
-    // The bad primary was quarantined for diagnosis, never replaced by a
-    // fresh document that would silently drop whatever it held.
+    // Loading quarantines the bad primary instead of deleting it.
+    final quarantined = [
+      await for (final entity in document.schedulesFile.parent.list())
+        if (entity.path.contains('.corrupt-')) entity,
+    ];
+    expect(quarantined, hasLength(1));
+    expect(await File(quarantined.single.path).readAsString(), 'not json');
     expect(await document.schedulesFile.exists(), isFalse);
-    final quarantined = await document.schedulesFile.parent
-        .list()
-        .where((entity) => entity.path.contains('.corrupt-'))
-        .toList();
-    expect(quarantined, isNotEmpty);
+
+    // With the bad document set aside, the next explicit save starts a fresh
+    // document and still leaves the quarantined copy untouched.
+    final saved = await repository.saveScheduleDraft(uid, batch.id, draftFor());
+    expect(saved.id, 'schedule-test');
+    expect(await File(quarantined.single.path).readAsString(), 'not json');
   });
 }
