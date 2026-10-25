@@ -134,6 +134,9 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        // Tiled page rendering for the PDF reader.
+        PdfRenderChannel(flutterEngine.dartExecutor.binaryMessenger).register()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -316,6 +319,9 @@ class MainActivity : FlutterActivity() {
 
         /** Channel for battery settings and the adhan preview player. */
         const val ADHAN_CHANNEL = "zaker/adhan"
+
+        /** Channel used by the PDF reader for clipped page tiles. */
+        const val PDF_RENDER_CHANNEL = "zaker/pdf_render"
 
         /** Longest preview, in milliseconds. */
         private const val PREVIEW_TIMEOUT_MS = 20_000L
