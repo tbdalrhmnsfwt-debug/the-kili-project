@@ -20,7 +20,7 @@ import '../features/azkar/azkar_tasbih_screen.dart';
 import '../features/azkar/kahf_screen.dart';
 import '../features/azkar/salat_counter_screen.dart';
 import '../features/challenges/challenges_screen.dart';
-import '../features/calculator/calculator_screen.dart';
+import '../features/calculator/calc_pro_screen.dart';
 import '../features/courses/course_list_screen.dart';
 import '../features/exam/exam_home_screen.dart';
 import '../features/exam/quiz_screen.dart';
@@ -402,7 +402,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: ZakerRoutes.calculator,
-      builder: (context, state) => const CalculatorScreen(),
+      builder: (context, state) => const CalculatorProScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.irab,
