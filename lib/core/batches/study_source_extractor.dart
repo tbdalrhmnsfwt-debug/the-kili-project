@@ -60,6 +60,14 @@ class StudySourceExtractor {
 
   bool get isBusy => _lastJob?.isActive ?? false;
 
+  /// The cached document for [resource], or null when it is absent, belongs
+  /// to another resource or does not match the file's SHA-256.
+  Future<SourceDocument?> cached({
+    required String uid,
+    required BatchResource resource,
+  }) =>
+      _loadCached(uid: uid, resource: resource);
+
   /// Extracts [resource], or returns its cached document when the SHA matches.
   ///
   /// Refuses a second start while one job is active, including a duplicate
@@ -84,15 +92,16 @@ class StudySourceExtractor {
       startedAt: _clock(),
       message: 'مستنيين نبدأ قراءة الملف…',
     );
-    _lastJob = job;
-    onProgress?.call(job);
+    job = _emit(job, onProgress);
 
     try {
       if (!force) {
         final cached = await _loadCached(uid: uid, resource: resource);
         if (cached != null) {
-          job = _finish(job, StudyJobState.completed, 'النص محفوظ من قبل.');
-          onProgress?.call(job);
+          job = _emit(
+            _finish(job, StudyJobState.completed, 'النص محفوظ من قبل.'),
+            onProgress,
+          );
           return cached;
         }
       }
@@ -115,11 +124,13 @@ class StudySourceExtractor {
         throw const BatchFailure(BatchFailureCode.encryptedSource);
       }
 
-      job = job.copyWith(
-        state: StudyJobState.processing,
-        message: 'بنقرا نص الملف…',
+      job = _emit(
+        job.copyWith(
+          state: StudyJobState.processing,
+          message: 'بنقرا نص الملف…',
+        ),
+        onProgress,
       );
-      onProgress?.call(job);
 
       final PdfPageSource source;
       try {
@@ -177,8 +188,10 @@ class StudySourceExtractor {
               fromOcr: fromOcr,
             ),
           );
-          job = job.copyWith(done: index + 1, total: total);
-          onProgress?.call(job);
+          job = _emit(
+            job.copyWith(done: index + 1, total: total),
+            onProgress,
+          );
         }
       } finally {
         source.close();
@@ -214,33 +227,49 @@ class StudySourceExtractor {
       );
       await _saveCache(uid: uid, document: document);
 
-      job = _finish(job, StudyJobState.completed, 'خلصنا استخراج النص.');
-      onProgress?.call(job);
+      job = _emit(
+        _finish(job, StudyJobState.completed, 'خلصنا استخراج النص.'),
+        onProgress,
+      );
       return document;
     } on BatchFailure catch (failure) {
-      job = _finish(
-        job,
-        failure.code == BatchFailureCode.cancelled
-            ? StudyJobState.cancelled
-            : StudyJobState.failed,
-        failure.code == BatchFailureCode.cancelled
-            ? 'اتوقف الاستخراج.'
-            : 'الاستخراج وقف. جرّب تاني.',
+      job = _emit(
+        _finish(
+          job,
+          failure.code == BatchFailureCode.cancelled
+              ? StudyJobState.cancelled
+              : StudyJobState.failed,
+          failure.code == BatchFailureCode.cancelled
+              ? 'اتوقف الاستخراج.'
+              : 'الاستخراج وقف. جرّب تاني.',
+        ),
+        onProgress,
       );
-      onProgress?.call(job);
       rethrow;
     } on Object {
-      job = _finish(
-        job,
-        StudyJobState.failed,
-        'الاستخراج وقف. جرّب تاني.',
+      job = _emit(
+        _finish(
+          job,
+          StudyJobState.failed,
+          'الاستخراج وقف. جرّب تاني.',
+        ),
+        onProgress,
       );
-      onProgress?.call(job);
       throw const BatchFailure(
         BatchFailureCode.extractionFailed,
         detail: 'study extraction failed',
       );
     }
+  }
+
+  /// Publishes [job] as the current one and to the caller.
+  ///
+  /// The field must move with every transition: [isBusy] and [lastJob] read
+  /// it, and a stale queued job would block the next extraction forever.
+  StudyJob _emit(StudyJob job, void Function(StudyJob job)? onProgress) {
+    _lastJob = job;
+    onProgress?.call(job);
+    return job;
   }
 
   StudyJob _finish(StudyJob job, StudyJobState state, String message) =>
