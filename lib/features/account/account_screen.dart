@@ -10,10 +10,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth_service.dart';
+import '../../core/guest_profile.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
+import '../batches/claim_batches_prompt.dart';
 
 /// The account screen.
 class AccountScreen extends ConsumerStatefulWidget {
@@ -110,7 +112,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               title: 'بيانات الحساب',
               icon: Icons.badge_outlined,
             ),
-            _InfoRow(label: 'الإيميل', value: user.email.isEmpty ? '—' : user.email),
+            _InfoRow(
+                label: 'الإيميل', value: user.email.isEmpty ? '—' : user.email),
             _InfoRow(label: 'المعرّف', value: user.uid),
             const SizedBox(height: ZakerSpacing.md),
             Row(
@@ -159,7 +162,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             ),
           const SizedBox(height: ZakerSpacing.xl),
           const SectionHeader(title: 'إحصائياتك', icon: Icons.insights_rounded),
-          _InfoRow(label: 'أيام المذاكرة', value: '${stats.dailyMinutes.length}'),
+          _InfoRow(
+              label: 'أيام المذاكرة', value: '${stats.dailyMinutes.length}'),
           _InfoRow(label: 'إجمالي الدقائق', value: '${stats.totalMinutes}'),
           _InfoRow(label: 'السلسلة', value: '${stats.streakDays} يوم'),
         ],
@@ -180,7 +184,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       _snack('اكتب إيميل وكلمة سر ٦ حروف على الأقل.');
       return;
     }
+    final guestUid = ref.read(guestProfileStoreProvider).loadOrCreate().uid;
     setState(() => _busy = true);
+    AuthUser? signedIn;
     try {
       final service = ref.read(authServiceProvider);
       final user = create
@@ -194,6 +200,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               password: password,
               apiKey: apiKey,
             );
+      signedIn = user;
       ref.read(authUserProvider.notifier).state = user;
       ref.invalidate(liveLeaderboardProvider);
       if (!mounted) return;
@@ -205,6 +212,13 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+    if (signedIn == null || !mounted) return;
+    await offerBatchClaimIfNeeded(
+      context: context,
+      ref: ref,
+      guestUid: guestUid,
+      accountUid: signedIn.uid,
+    );
   }
 
   Future<void> _rename() async {
@@ -217,7 +231,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'الاسم اللي يظهر في المتصدرين'),
+          decoration:
+              const InputDecoration(labelText: 'الاسم اللي يظهر في المتصدرين'),
         ),
         actions: [
           TextButton(
@@ -235,8 +250,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (name == null || name.isEmpty) return;
     setState(() => _busy = true);
     try {
-      final updated = await ref.read(authServiceProvider).updateDisplayName(name);
+      final updated =
+          await ref.read(authServiceProvider).updateDisplayName(name);
       ref.read(authUserProvider.notifier).state = updated;
+      if (updated.isAnonymous) {
+        ref
+            .read(guestProfileStoreProvider)
+            .save(GuestProfile(uid: updated.uid, displayName: name));
+      }
       if (mounted) _snack('الاسم اتحدّث.');
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -247,11 +268,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     setState(() => _busy = true);
     try {
       await ref.read(authServiceProvider).signOut();
-      final guest = AuthUser(uid: newGuestUid());
-      ref.read(authServiceProvider).startGuest(uid: guest.uid);
+      final profile = ref.read(guestProfileStoreProvider).loadOrCreate();
+      final guest = ref.read(authServiceProvider).startGuest(
+            uid: profile.uid,
+            displayName: profile.displayName,
+          );
       ref.read(authUserProvider.notifier).state = guest;
       ref.invalidate(liveLeaderboardProvider);
-      if (mounted) _snack('خرجت من الحساب وبقيت ضيف.');
+      if (mounted) _snack('خرجت من الحساب ورجعت لمساحة الضيف.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -357,8 +381,8 @@ class _InfoRow extends StatelessWidget {
             child: TrText(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
           ),
           Flexible(

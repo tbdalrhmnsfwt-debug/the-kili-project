@@ -41,6 +41,7 @@ class _FakeRepository implements BatchRepository {
     required String displayName,
     required String name,
     required List<String> subjects,
+    BatchSettings settings = const BatchSettings(),
   }) =>
       throw UnimplementedError();
 
@@ -148,6 +149,19 @@ void main() {
       find.textContaining('الدفعات بتتحفظ على الجهاز ده لوحده'),
       findsOneWidget,
     );
+    expect(find.text('اعمل دفعة'), findsOneWidget);
+    expect(find.text('عندك كود؟'), findsOneWidget);
+  });
+
+  testWidgets('offers create and join actions without a fake refresh', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app(_FakeRepository([])));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('دفعة جديدة'), findsOneWidget);
+    expect(find.byTooltip('عندك كود دعوة؟'), findsOneWidget);
+    expect(find.byTooltip('تحديث'), findsNothing);
   });
 
   testWidgets('lists a batch with its subjects and owner code', (tester) async {
@@ -157,7 +171,7 @@ void main() {
     expect(find.text('دفعة تالتة ثانوي'), findsOneWidget);
     expect(find.textContaining('2 مواد'), findsOneWidget);
     expect(find.textContaining('أنت بس على الجهاز'), findsOneWidget);
-    expect(find.textContaining('كود الدخول: 00000001'), findsOneWidget);
+    expect(find.textContaining('كود الدخول: 0000 0001'), findsOneWidget);
     expect(find.byTooltip('حذف الدفعة'), findsOneWidget);
   });
 

@@ -49,6 +49,19 @@ void main() {
       expect(BatchCodeService.normalize(''), isNull);
     });
 
+    test('digitsOnly maps every digit script and drops separators', () {
+      expect(BatchCodeService.digitsOnly('٠١٢٣-٤٥٦٧'), '01234567');
+      expect(BatchCodeService.digitsOnly('۰۱۲۳ ۴۵۶۷'), '01234567');
+      expect(BatchCodeService.digitsOnly('12 34'), '1234');
+      expect(BatchCodeService.digitsOnly('abc'), '');
+    });
+
+    test('format groups a complete code and leaves the rest alone', () {
+      expect(BatchCodeService.format('00000001'), '0000 0001');
+      expect(BatchCodeService.format('٠١٢٣٤٥٦٧'), '0123 4567');
+      expect(BatchCodeService.format('123'), '123');
+    });
+
     test('matches only complete, normalised codes', () {
       expect(BatchCodeService.matches('٠١٢٣٤٥٦٧', '01234567'), isTrue);
       expect(BatchCodeService.matches(' 0123-4567 ', '01234567'), isTrue);
@@ -112,47 +125,84 @@ void main() {
   group('CodeAttemptGuard', () {
     final start = DateTime.utc(2026, 10, 25, 12);
 
-    test('allows four failures, then locks for the base cooldown', () {
-      final guard = CodeAttemptGuard(clock: () => start);
-      for (var i = 0; i < 4; i++) {
-        guard.recordFailure();
-        expect(guard.canAttempt(), isTrue);
+    void fail(CodeAttemptGuard guard, int times, [DateTime? at]) {
+      for (var i = 0; i < times; i++) {
+        guard.recordFailure(at);
       }
+    }
+
+    test('allows five failures, then locks for the base cooldown', () {
+      final guard = CodeAttemptGuard(clock: () => start);
+      fail(guard, 4);
+      expect(guard.canAttempt(), isTrue);
       guard.recordFailure();
       expect(guard.canAttempt(), isFalse);
-      expect(guard.remaining(), const Duration(seconds: 30));
-      expect(guard.canAttempt(start.add(const Duration(seconds: 30))), isTrue);
+      expect(guard.remaining(), const Duration(minutes: 1));
+      expect(
+        guard.canAttempt(start.add(const Duration(seconds: 59))),
+        isFalse,
+      );
+      expect(
+        guard.canAttempt(start.add(const Duration(seconds: 60))),
+        isTrue,
+      );
     });
 
-    test('doubles the wait for a second block and caps it', () {
-      final guard = CodeAttemptGuard(
-        maxCooldown: const Duration(minutes: 1),
-        clock: () => start,
-      );
-      for (var i = 0; i < 5; i++) {
-        guard.recordFailure();
-      }
-      expect(guard.remaining(), const Duration(seconds: 30));
-      for (var i = 0; i < 5; i++) {
-        guard.recordFailure();
-      }
+    test('doubles the wait for each block and caps it', () {
+      final guard = CodeAttemptGuard(clock: () => start);
+      fail(guard, 5);
       expect(guard.remaining(), const Duration(minutes: 1));
-      for (var i = 0; i < 5; i++) {
-        guard.recordFailure();
-      }
-      expect(guard.remaining(), const Duration(minutes: 1));
+
+      var at = start.add(const Duration(minutes: 1));
+      fail(guard, 5, at);
+      expect(guard.remaining(at), const Duration(minutes: 2));
+
+      at = at.add(const Duration(minutes: 2));
+      fail(guard, 5, at);
+      expect(guard.remaining(at), const Duration(minutes: 4));
+
+      at = at.add(const Duration(minutes: 4));
+      fail(guard, 5, at);
+      expect(guard.remaining(at), const Duration(minutes: 8));
+
+      // Sixteen minutes would exceed the cap.
+      at = at.add(const Duration(minutes: 8));
+      fail(guard, 5, at);
+      expect(guard.remaining(at), const Duration(minutes: 10));
+    });
+
+    test('forgets failures outside the window', () {
+      final guard = CodeAttemptGuard(clock: () => start);
+      fail(guard, 4);
+      expect(guard.failures, 4);
+
+      final later = start.add(const Duration(minutes: 11));
+      expect(guard.canAttempt(later), isTrue);
+      guard.recordFailure(later);
+      expect(guard.failures, 1);
     });
 
     test('reset clears both the count and the lock', () {
       final guard = CodeAttemptGuard(clock: () => start);
-      for (var i = 0; i < 5; i++) {
-        guard.recordFailure();
-      }
+      fail(guard, 5);
       expect(guard.canAttempt(), isFalse);
       guard.reset();
       expect(guard.canAttempt(), isTrue);
       expect(guard.failures, 0);
+      expect(guard.blocks, 0);
       expect(guard.remaining(), Duration.zero);
+    });
+
+    test('round-trips only timestamps and counters', () {
+      final guard = CodeAttemptGuard(clock: () => start);
+      fail(guard, 5);
+      final restored = CodeAttemptGuard.fromJson(
+        guard.toJson(),
+        clock: () => start,
+      );
+      expect(restored.canAttempt(), isFalse);
+      expect(restored.remaining(), const Duration(minutes: 1));
+      expect(restored.blocks, 1);
     });
   });
 }

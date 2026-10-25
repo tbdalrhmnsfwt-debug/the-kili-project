@@ -9,6 +9,7 @@ import '../core/api_client.dart';
 import '../core/asset_service.dart';
 import '../core/auth_service.dart';
 import '../core/curriculum_search.dart';
+import '../core/guest_profile.dart';
 import '../core/live_service.dart';
 import '../core/local_store.dart';
 import '../core/notification_service.dart';
@@ -56,23 +57,44 @@ final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(api: ref.watch(apiClientProvider));
 });
 
+/// The persistent guest profile. Kept apart from `auth_user` so signing out
+/// always returns to the same local workspace.
+final guestProfileStoreProvider = Provider<GuestProfileStore>((ref) {
+  return GuestProfileStore(ref.watch(localStoreProvider));
+});
+
 /// Restores the saved profile, or creates the local guest identity once.
 final authBootstrapProvider = Provider<AuthUser>((ref) {
   final store = ref.watch(localStoreProvider);
   final service = ref.watch(authServiceProvider);
+  final guestStore = ref.watch(guestProfileStoreProvider);
 
-  AuthUser? user;
+  AuthUser? stored;
   final raw = store.getString('auth_user');
   if (raw != null && raw.isNotEmpty) {
     try {
-      user = AuthUser.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      stored = AuthUser.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     } catch (e) {
       debugPrint('auth: ignoring a corrupt profile ($e)');
     }
   }
-  if (user == null || user.uid.isEmpty) {
-    user = AuthUser(uid: newGuestUid());
+
+  final anonymous = stored == null || stored.uid.isEmpty || stored.isAnonymous;
+  final guest = guestStore.loadOrCreate(
+    seedUid: anonymous ? stored?.uid : null,
+    seedDisplayName: anonymous ? stored?.displayName : null,
+  );
+  final AuthUser user;
+  if (anonymous) {
+    final storedName = (stored?.displayName ?? '').trim();
+    final displayName = storedName.isEmpty ? guest.displayName : storedName;
+    user = AuthUser(uid: guest.uid, displayName: displayName);
+    if (guest.uid != user.uid || guest.displayName != displayName) {
+      guestStore.save(GuestProfile(uid: guest.uid, displayName: displayName));
+    }
     store.setString('auth_user', jsonEncode(user.toJson()));
+  } else {
+    user = stored;
   }
   if (user.isAnonymous) {
     service.startGuest(uid: user.uid, displayName: user.displayName);
@@ -406,12 +428,10 @@ final leaderboardProvider = StateProvider<LeaderboardWeek>((ref) {
   for (var i = 0; i < 7; i++) {
     focusSeconds += stats.minutesOn(start.add(Duration(days: i))) * 60;
   }
-  final weekResults = results
-      .where((r) {
-        final at = r.finishedAt;
-        return at != null && !at.isBefore(start);
-      })
-      .toList(growable: false);
+  final weekResults = results.where((r) {
+    final at = r.finishedAt;
+    return at != null && !at.isBefore(start);
+  }).toList(growable: false);
   final points = weekResults.fold<int>(0, (sum, r) => sum + r.score);
 
   final rows = <LeaderboardRow>[];
@@ -478,8 +498,7 @@ final wordListsProvider = StateProvider<List<WordList>>((ref) {
 final challengesProvider = StateProvider<List<Challenge>>((ref) {
   final now = DateTime.now();
   final date = DateTime(now.year, now.month, now.day);
-  final key =
-      '${now.year}-'
+  final key = '${now.year}-'
       '${now.month.toString().padLeft(2, '0')}-'
       '${now.day.toString().padLeft(2, '0')}';
   return [
@@ -498,9 +517,8 @@ final challengesProvider = StateProvider<List<Challenge>>((ref) {
 final liveChallengesProvider = FutureProvider<List<Challenge>>((ref) async {
   final config = ref.watch(liveConfigProvider);
   if (!LiveService.canSync(config)) return const <Challenge>[];
-  final challenges = await ref
-      .watch(liveServiceProvider)
-      .fetchChallenges(config);
+  final challenges =
+      await ref.watch(liveServiceProvider).fetchChallenges(config);
   return challenges ?? const <Challenge>[];
 });
 
@@ -592,9 +610,8 @@ final weeklyReportProvider = Provider<WeeklyReport>((ref) {
     if (minutes > 0) {
       // Focus sessions are not tied to a subject, so spread the day's time
       // across the subjects that were scheduled on it.
-      final subjects = subjectsToday.isEmpty
-          ? const ['مراجعة']
-          : subjectsToday.toList();
+      final subjects =
+          subjectsToday.isEmpty ? const ['مراجعة'] : subjectsToday.toList();
       final share = (minutes / subjects.length).round();
       for (final subject in subjects) {
         subjectMinutes[subject] = (subjectMinutes[subject] ?? 0) + share;
@@ -614,17 +631,16 @@ final weeklyReportProvider = Provider<WeeklyReport>((ref) {
     );
   }
 
-  final subjects =
-      subjectMinutes.entries
-          .map(
-            (e) => WeekSubject(
-              subject: e.key,
-              focusMinutes: e.value,
-              points: e.value,
-            ),
-          )
-          .toList()
-        ..sort((a, b) => b.focusMinutes.compareTo(a.focusMinutes));
+  final subjects = subjectMinutes.entries
+      .map(
+        (e) => WeekSubject(
+          subject: e.key,
+          focusMinutes: e.value,
+          points: e.value,
+        ),
+      )
+      .toList()
+    ..sort((a, b) => b.focusMinutes.compareTo(a.focusMinutes));
 
   return WeeklyReport(
     weekStart: start,

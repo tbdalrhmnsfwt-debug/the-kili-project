@@ -3,9 +3,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/batches/batch_code_service.dart';
 import '../../core/batches/batch_failure.dart';
 import '../../core/batches/batch_repository.dart';
+import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/batch_providers.dart';
@@ -30,9 +33,14 @@ class BatchesScreen extends ConsumerWidget {
         title: const TrText('الدفعات'),
         actions: [
           IconButton(
-            tooltip: 'تحديث',
-            onPressed: () => ref.read(batchControllerProvider).refresh(),
-            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'عندك كود دعوة؟',
+            onPressed: () => context.push(ZakerRoutes.batchJoin),
+            icon: const Icon(Icons.key_rounded),
+          ),
+          IconButton(
+            tooltip: 'دفعة جديدة',
+            onPressed: () => context.push(ZakerRoutes.batchCreate),
+            icon: const Icon(Icons.group_add_rounded),
           ),
         ],
       ),
@@ -44,32 +52,40 @@ class BatchesScreen extends ConsumerWidget {
         ),
         data: (items) {
           if (items.isEmpty) {
-            return const EmptyState(
+            return EmptyState(
               icon: Icons.groups_2_outlined,
               title: 'مفيش دفعات على الجهاز',
-              message:
-                  'الدفعات بتتحفظ على الجهاز ده لوحده. المزايا اللي محتاجة '
-                  'سيرفر — زي الانضمام من جهاز تاني وتوصيل الرسائل — '
-                  'هتظهر كغير متاحة.',
+              message: 'الدفعات بتتحفظ على الجهاز ده لوحده. اعمل دفعة جديدة، '
+                  'أو اكتب كود دعوة لو عندك واحد على الجهاز ده.',
+              action: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => context.push(ZakerRoutes.batchCreate),
+                    icon: const Icon(Icons.group_add_rounded),
+                    label: const TrText('اعمل دفعة'),
+                  ),
+                  const SizedBox(height: ZakerSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: () => context.push(ZakerRoutes.batchJoin),
+                    icon: const Icon(Icons.key_rounded),
+                    label: const TrText('عندك كود؟'),
+                  ),
+                ],
+              ),
             );
           }
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(batchListProvider);
-              await ref.read(batchListProvider.future);
-            },
-            child: ListView(
-              padding: const EdgeInsets.all(ZakerSpacing.lg),
-              children: [
-                const _LocalOnlyNotice(),
+          return ListView(
+            padding: const EdgeInsets.all(ZakerSpacing.lg),
+            children: [
+              const _LocalOnlyNotice(),
+              const SizedBox(height: ZakerSpacing.md),
+              for (final summary in items) ...[
+                _BatchCard(summary: summary, uid: uid),
                 const SizedBox(height: ZakerSpacing.md),
-                for (final summary in items) ...[
-                  _BatchCard(summary: summary, uid: uid),
-                  const SizedBox(height: ZakerSpacing.md),
-                ],
-                const SizedBox(height: ZakerSpacing.lg),
               ],
-            ),
+              const SizedBox(height: ZakerSpacing.lg),
+            ],
           );
         },
       ),
@@ -243,7 +259,7 @@ class _BatchCard extends ConsumerWidget {
                 label: 'آخر نشاط: ${_formatDate(summary.lastActivityAt)}',
               ),
               if (isOwner && code.isActive)
-                _CodeChip(code: code.code)
+                _CodeChip(code: BatchCodeService.format(code.code))
               else if (isOwner)
                 const _MetaChip(
                   icon: Icons.key_off_rounded,

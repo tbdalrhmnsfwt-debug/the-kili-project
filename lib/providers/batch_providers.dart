@@ -5,7 +5,9 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/batches/batch_claim_service.dart';
 import '../core/batches/batch_file_store.dart';
+import '../core/batches/batch_join_service.dart';
 import '../core/batches/batch_repository.dart';
 import '../core/batches/batch_store.dart';
 import '../core/batches/local_batch_repository.dart';
@@ -24,9 +26,39 @@ final batchFileStoreProvider = Provider<BatchFileStore>((ref) {
   return BatchFileStore(root: ref.watch(batchRootDirProvider));
 });
 
-final batchRepositoryProvider = Provider<BatchRepository>((ref) {
+/// The concrete local repository, for services that need its claim/lookup
+/// helpers in addition to the shared command surface.
+final localBatchRepositoryProvider = Provider<LocalBatchRepository>((ref) {
   return LocalBatchRepository(
     files: ref.watch(batchFileStoreProvider),
+    store: ref.watch(localStoreProvider),
+  );
+});
+
+final batchRepositoryProvider = Provider<BatchRepository>((ref) {
+  return ref.watch(localBatchRepositoryProvider);
+});
+
+final batchJoinServiceProvider = Provider<BatchJoinService>((ref) {
+  return BatchJoinService(
+    repository: ref.watch(localBatchRepositoryProvider),
+    store: ref.watch(localStoreProvider),
+  );
+});
+
+/// Resolves a typed code for the active uid. Widget tests override this with
+/// an in-memory function so they never touch the file system.
+typedef JoinCodeResolver = Future<JoinCodeResolution> Function(String input);
+
+final batchJoinResolverProvider = Provider<JoinCodeResolver>((ref) {
+  final service = ref.watch(batchJoinServiceProvider);
+  final uid = ref.watch(authUserProvider)?.uid ?? '';
+  return (input) => service.resolve(uid: uid, input: input);
+});
+
+final batchClaimServiceProvider = Provider<BatchClaimService>((ref) {
+  return BatchClaimService(
+    repository: ref.watch(localBatchRepositoryProvider),
     store: ref.watch(localStoreProvider),
   );
 });
@@ -70,12 +102,14 @@ class BatchController {
     required String name,
     required List<String> subjects,
     String displayName = '',
+    BatchSettings settings = const BatchSettings(),
   }) async {
     final batch = await _repository.createBatch(
       uid: _uid,
       displayName: displayName,
       name: name,
       subjects: subjects,
+      settings: settings,
     );
     _ref.invalidate(batchListProvider);
     return batch;

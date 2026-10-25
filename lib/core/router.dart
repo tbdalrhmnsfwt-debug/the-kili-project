@@ -19,7 +19,10 @@ import '../features/azkar/azkar_settings_screen.dart';
 import '../features/azkar/azkar_tasbih_screen.dart';
 import '../features/azkar/kahf_screen.dart';
 import '../features/azkar/salat_counter_screen.dart';
+import '../features/batches/batch_created_screen.dart';
 import '../features/batches/batches_screen.dart';
+import '../features/batches/create_batch_screen.dart';
+import '../features/batches/join_batch_screen.dart';
 import '../features/challenges/challenges_screen.dart';
 import '../features/calculator/calc_pro_screen.dart';
 import '../features/courses/course_list_screen.dart';
@@ -89,6 +92,11 @@ class ZakerRoutes {
   static const String quiz = '/quiz';
   static const String quran = '/quran';
   static const String batches = '/batches';
+  static const String batchCreate = '/batches/create';
+  static const String batchJoin = '/batches/join';
+  static const String batchCreatedPattern = '/batches/:batchId/created';
+
+  static String batchCreated(String batchId) => '/batches/$batchId/created';
   static const String hifz = '/hifz';
   static const String hifzSetup = '/hifz/setup';
   static const String glossary = '/glossary';
@@ -253,6 +261,20 @@ final GoRouter appRouter = GoRouter(
       path: ZakerRoutes.batches,
       builder: (context, state) =>
           const ShellScreen(initialIndex: 4, child: BatchesScreen()),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchCreate,
+      builder: (context, state) => const CreateBatchScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchJoin,
+      builder: (context, state) => const JoinBatchScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchCreatedPattern,
+      builder: (context, state) => BatchCreatedScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
     ),
     GoRoute(
       path: ZakerRoutes.hifz,

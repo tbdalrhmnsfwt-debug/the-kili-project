@@ -35,6 +35,35 @@ class BatchSummary {
       DateTime.fromMillisecondsSinceEpoch(0);
 }
 
+/// How a typed invite code matched the local batch documents.
+enum CodeMatchKind {
+  /// No local batch has this code.
+  none,
+
+  /// A batch on this account has this active code.
+  active,
+
+  /// A batch on this account kept this code but it was revoked.
+  revoked,
+}
+
+/// The result of looking up a code without creating a membership.
+class CodeMatch {
+  const CodeMatch.none()
+      : kind = CodeMatchKind.none,
+        snapshot = null;
+
+  const CodeMatch.active(BatchSnapshot this.snapshot)
+      : kind = CodeMatchKind.active;
+
+  const CodeMatch.revoked()
+      : kind = CodeMatchKind.revoked,
+        snapshot = null;
+
+  final CodeMatchKind kind;
+  final BatchSnapshot? snapshot;
+}
+
 /// Commands shared by the local and future remote repositories.
 ///
 /// Every method validates its input, re-checks the access matrix when a
@@ -51,6 +80,7 @@ abstract interface class BatchRepository {
     required String displayName,
     required String name,
     required List<String> subjects,
+    BatchSettings settings = const BatchSettings(),
   });
 
   Future<Batch> updateSettings(

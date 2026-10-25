@@ -171,6 +171,7 @@ class Batch {
 
   Batch copyWith({
     String? name,
+    String? ownerUid,
     BatchSettings? settings,
     List<BatchSubject>? subjects,
     InviteCodeState? codeState,
@@ -179,7 +180,7 @@ class Batch {
       Batch(
         id: id,
         name: name ?? this.name,
-        ownerUid: ownerUid,
+        ownerUid: ownerUid ?? this.ownerUid,
         createdAt: createdAt,
         settings: settings ?? this.settings,
         subjects: subjects ?? this.subjects,

@@ -72,17 +72,44 @@ class BatchCodeService {
     return code.length == 8 ? code : null;
   }
 
+  /// The digits of [input] in Latin form, dropping separators and anything
+  /// that is not a digit. Used by the grouping input formatter while the field
+  /// is still incomplete; [normalize] remains the validating entry point.
+  static String digitsOnly(String input) {
+    final buffer = StringBuffer();
+    for (final rune in input.runes) {
+      final digit = _digitFor(rune);
+      if (digit != null) buffer.writeCharCode(digit);
+    }
+    return buffer.toString();
+  }
+
+  /// Groups a complete code as `1234 5678`; returns [code] unchanged when it
+  /// is not a complete code.
+  static String format(String code) {
+    final normalized = normalize(code);
+    if (normalized == null) return code;
+    return '${normalized.substring(0, 4)} ${normalized.substring(4)}';
+  }
+
+  static int? _digitFor(int rune) {
+    if (rune >= 0x0660 && rune <= 0x0669) return 0x30 + rune - 0x0660;
+    if (rune >= 0x06F0 && rune <= 0x06F9) return 0x30 + rune - 0x06F0;
+    if (rune >= 0x30 && rune <= 0x39) return rune;
+    return null;
+  }
+
   static bool _isSeparator(int rune) =>
       rune == 0x20 || // space
       rune == 0x09 || // tab
       rune == 0x0A || // newline
       rune == 0x0D || // carriage return
-      rune == 0x2D || // hyphen-minus
       rune == 0x2010 || // hyphen
       rune == 0x2013 || // en dash
       rune == 0x2014 || // em dash
       rune == 0x200E || // left-to-right mark
-      rune == 0x200F; // right-to-left mark
+      rune == 0x200F || // right-to-left mark
+      rune == 0x2D; // hyphen-minus
 
   /// Whether [input] resolves to [expected].
   static bool matches(String input, String expected) {
@@ -103,28 +130,39 @@ class BatchCodeService {
 
 /// Limits repeated wrong-code attempts on one device.
 ///
-/// After [freeAttempts] failures the guard locks for [baseCooldown]; each
-/// further block doubles the wait, capped at [maxCooldown]. A successful
-/// resolution calls [reset].
+/// A failure is counted only when it happened inside [window]. After
+/// [freeAttempts] failures the guard locks for [baseCooldown]; each further
+/// block doubles the wait, capped at [maxCooldown]. A successful resolution
+/// calls [reset]. The guard is a usability measure, not a security boundary.
 class CodeAttemptGuard {
   CodeAttemptGuard({
     this.freeAttempts = 5,
-    this.baseCooldown = const Duration(seconds: 30),
-    this.maxCooldown = const Duration(minutes: 15),
+    this.window = const Duration(minutes: 10),
+    this.baseCooldown = const Duration(seconds: 60),
+    this.maxCooldown = const Duration(minutes: 10),
     DateTime Function()? clock,
+    List<DateTime> failures = const [],
+    int blocks = 0,
+    DateTime? lockedUntil,
   })  : _clock = clock ?? DateTime.now,
-        assert(freeAttempts > 0);
+        _failures = [...failures],
+        _blocks = blocks,
+        _lockedUntil = lockedUntil,
+        assert(freeAttempts > 0) {
+    _prune(_clock());
+  }
 
   final int freeAttempts;
+  final Duration window;
   final Duration baseCooldown;
   final Duration maxCooldown;
   final DateTime Function() _clock;
 
-  int _failures = 0;
-  int _blocks = 0;
+  final List<DateTime> _failures;
+  int _blocks;
   DateTime? _lockedUntil;
 
-  int get failures => _failures;
+  int get failures => _failures.length;
   int get blocks => _blocks;
 
   bool canAttempt([DateTime? now]) {
@@ -142,18 +180,72 @@ class CodeAttemptGuard {
   }
 
   void recordFailure([DateTime? now]) {
-    _failures++;
-    if (_failures < freeAttempts) return;
     final at = now ?? _clock();
+    _prune(at);
+    _failures.add(at);
+    if (_failures.length < freeAttempts) return;
+    _failures.clear();
     final duration = _cooldownFor(_blocks);
     _lockedUntil = at.add(duration);
     _blocks++;
   }
 
   void reset() {
-    _failures = 0;
+    _failures.clear();
     _blocks = 0;
     _lockedUntil = null;
+  }
+
+  /// The state to persist. Only timestamps and counters, never the code.
+  Map<String, dynamic> toJson() {
+    final now = _clock();
+    _prune(now);
+    return {
+      'failures': [
+        for (final failure in _failures) failure.toUtc().toIso8601String(),
+      ],
+      'blocks': _blocks,
+      if (_lockedUntil != null)
+        'lockedUntil': _lockedUntil!.toUtc().toIso8601String(),
+    };
+  }
+
+  /// Restores a persisted state, ignoring malformed entries.
+  factory CodeAttemptGuard.fromJson(
+    Map<String, dynamic> json, {
+    DateTime Function()? clock,
+    int freeAttempts = 5,
+    Duration window = const Duration(minutes: 10),
+    Duration baseCooldown = const Duration(seconds: 60),
+    Duration maxCooldown = const Duration(minutes: 10),
+  }) {
+    final failures = <DateTime>[];
+    final rawFailures = json['failures'];
+    if (rawFailures is List) {
+      for (final raw in rawFailures) {
+        if (raw is! String) continue;
+        final parsed = DateTime.tryParse(raw);
+        if (parsed != null) failures.add(parsed.toLocal());
+      }
+    }
+    final blocks = (json['blocks'] as num?)?.toInt() ?? 0;
+    final lockedUntil = DateTime.tryParse(
+      json['lockedUntil'] as String? ?? '',
+    )?.toLocal();
+    return CodeAttemptGuard(
+      freeAttempts: freeAttempts,
+      window: window,
+      baseCooldown: baseCooldown,
+      maxCooldown: maxCooldown,
+      clock: clock,
+      failures: failures,
+      blocks: blocks < 0 ? 0 : blocks,
+      lockedUntil: lockedUntil,
+    );
+  }
+
+  void _prune(DateTime now) {
+    _failures.removeWhere((failure) => now.difference(failure) > window);
   }
 
   Duration _cooldownFor(int block) {

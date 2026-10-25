@@ -2,6 +2,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 
 import '../../models/batch.dart';
 import '../key_value_store.dart';
@@ -28,7 +29,7 @@ class LocalBatchRepository implements BatchRepository {
   final BatchCodeService _codes;
   final DateTime Function() _clock;
 
-  static const int maxSubjects = 20;
+  static const int maxSubjects = 30;
   static const int maxSubjectNameLength = 40;
   static const int maxBatchNameLength = 60;
   static const int auditCap = 200;
@@ -123,6 +124,42 @@ class LocalBatchRepository implements BatchRepository {
     return snapshot;
   }
 
+  /// Finds the local batch that owns [code] without changing any membership.
+  ///
+  /// Only the caller's own workspace is scanned, so this can never reveal
+  /// another account's batches. A malformed code is a plain miss; callers
+  /// distinguish format errors before calling.
+  Future<CodeMatch> lookupCode(String uid, String code) async {
+    final normalized = BatchCodeService.normalize(code);
+    if (normalized == null) return const CodeMatch.none();
+
+    List<String> onDisk;
+    try {
+      onDisk = await files.listBatchDirectories(uid);
+    } on FileSystemException {
+      throw const BatchFailure(
+        BatchFailureCode.corruptStore,
+        detail: 'batch directory listing failed',
+      );
+    }
+    final ordered = <String>[];
+    final seen = <String>{};
+    for (final id in [..._readIndex(uid), ...onDisk]) {
+      if (_batchIdPattern.hasMatch(id) && seen.add(id)) ordered.add(id);
+    }
+
+    for (final batchId in ordered) {
+      final store = BatchStore(directory: files.batchDir(uid, batchId));
+      final load = await store.batch.load();
+      if (!load.isUsable) continue;
+      final state = load.value!.batch.codeState;
+      if (state.code != normalized) continue;
+      if (state.isActive) return CodeMatch.active(load.value!);
+      return const CodeMatch.revoked();
+    }
+    return const CodeMatch.none();
+  }
+
   @override
   Future<int> storageUsed(String uid, String batchId) =>
       files.storageUsed(uid: uid, batchId: batchId);
@@ -135,6 +172,7 @@ class LocalBatchRepository implements BatchRepository {
     required String displayName,
     required String name,
     required List<String> subjects,
+    BatchSettings settings = const BatchSettings(),
   }) async {
     final cleanName = _normalizeBatchName(name);
     final cleanSubjects = _normalizeSubjects(subjects);
@@ -157,7 +195,7 @@ class LocalBatchRepository implements BatchRepository {
       name: cleanName,
       ownerUid: uid,
       createdAt: now,
-      settings: const BatchSettings(),
+      settings: settings,
       subjects: models,
       codeState: InviteCodeState(code: code, createdAt: now),
       lastActivityAt: now,
@@ -428,6 +466,181 @@ class LocalBatchRepository implements BatchRepository {
     await _writeIndex(uid, ids);
   }
 
+  /// Moves one batch directory from the guest workspace into an account.
+  ///
+  /// The directory rename is the atomic part: if the rewritten document cannot
+  /// be saved, the whole directory is renamed back. Re-running with the same
+  /// ids is safe: an already-claimed target is adopted and both indexes are
+  /// repaired.
+  Future<void> claimBatch({
+    required String guestUid,
+    required String accountUid,
+    required String batchId,
+  }) async {
+    if (guestUid.isEmpty || accountUid.isEmpty || guestUid == accountUid) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'uid',
+      );
+    }
+    final source = files.batchDir(guestUid, batchId);
+    final target = files.batchDir(accountUid, batchId);
+    final targetStore = BatchStore(directory: target);
+
+    if (await target.exists()) {
+      final existing = await targetStore.batch.load();
+      if (existing.isUsable && existing.value!.batch.ownerUid == accountUid) {
+        await _finishClaim(
+          guestUid: guestUid,
+          accountUid: accountUid,
+          batchId: batchId,
+          codeState: existing.value!.batch.codeState,
+        );
+        return;
+      }
+      throw const BatchFailure(
+        BatchFailureCode.conflict,
+        detail: 'account already has a batch with this id',
+      );
+    }
+
+    if (!await source.exists()) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'batchId');
+    }
+    final sourceLoad = await BatchStore(directory: source).batch.load();
+    if (!sourceLoad.isUsable) {
+      throw const BatchFailure(
+        BatchFailureCode.corruptStore,
+        detail: 'claimed batch document unreadable',
+      );
+    }
+    final snapshot = sourceLoad.value!;
+    if (snapshot.batch.ownerUid != guestUid) {
+      throw const BatchFailure(BatchFailureCode.notAuthorized);
+    }
+    final membership = _membershipOf(snapshot, guestUid);
+    if (membership == null || membership.role != BatchRole.owner) {
+      throw const BatchFailure(BatchFailureCode.notAuthorized);
+    }
+
+    final now = _clock();
+    final claimed = snapshot.copyWith(
+      batch: snapshot.batch.copyWith(ownerUid: accountUid, lastActivityAt: now),
+      members: [
+        for (final member in snapshot.members)
+          if (member.uid == guestUid)
+            Membership(
+              batchId: member.batchId,
+              uid: accountUid,
+              displayName: member.displayName,
+              role: member.role,
+              joinedAt: member.joinedAt,
+              removedAt: member.removedAt,
+            )
+          else
+            member,
+      ],
+    );
+
+    try {
+      final accountDir = files.userDir(accountUid);
+      if (!await accountDir.exists()) {
+        await accountDir.create(recursive: true);
+      }
+      await source.rename(target.path);
+    } on FileSystemException {
+      throw const BatchFailure(
+        BatchFailureCode.claimFailed,
+        detail: 'batch directory move failed',
+      );
+    }
+
+    try {
+      await targetStore.batch.save(claimed);
+    } catch (error) {
+      try {
+        await target.rename(source.path);
+      } on FileSystemException {
+        throw const BatchFailure(
+          BatchFailureCode.claimFailed,
+          detail: 'claim save and rollback both failed',
+        );
+      }
+      if (error is BatchFailure) rethrow;
+      throw const BatchFailure(
+        BatchFailureCode.claimFailed,
+        detail: 'claim save failed',
+      );
+    }
+
+    await _rewriteClaimAudit(
+      store: targetStore,
+      batchId: batchId,
+      guestUid: guestUid,
+      accountUid: accountUid,
+    );
+    await _finishClaim(
+      guestUid: guestUid,
+      accountUid: accountUid,
+      batchId: batchId,
+      codeState: claimed.batch.codeState,
+    );
+  }
+
+  Future<void> _finishClaim({
+    required String guestUid,
+    required String accountUid,
+    required String batchId,
+    required InviteCodeState codeState,
+  }) async {
+    await _addToIndex(accountUid, batchId);
+    final guestIds = _readIndex(guestUid)..remove(batchId);
+    await _writeIndex(guestUid, guestIds);
+    if (codeState.isActive) {
+      await _rememberCode(accountUid, codeState.code);
+    }
+  }
+
+  Future<void> _rewriteClaimAudit({
+    required BatchStore store,
+    required String batchId,
+    required String guestUid,
+    required String accountUid,
+  }) async {
+    try {
+      final load = await store.audit.load();
+      final entries = load.isUsable ? [...load.value!] : <AuditEntry>[];
+      final rewritten = <AuditEntry>[
+        for (final entry in entries)
+          if (entry.actorUid == guestUid)
+            AuditEntry(
+              id: entry.id,
+              batchId: entry.batchId,
+              actorUid: accountUid,
+              action: entry.action,
+              at: entry.at,
+              detail: entry.detail,
+            )
+          else
+            entry,
+        AuditEntry(
+          id: newEntityId('audit'),
+          batchId: batchId,
+          actorUid: accountUid,
+          action: 'batchClaimed',
+          at: _clock(),
+        ),
+      ];
+      final capped = rewritten.length > auditCap
+          ? rewritten.sublist(rewritten.length - auditCap)
+          : rewritten;
+      await store.audit.save(capped);
+    } on BatchFailure {
+      // The move is already atomic and committed; a best-effort audit must not
+      // turn it into a reported failure.
+    }
+  }
+
   // ----------------------------------------------------------------- helpers
 
   Future<BatchSnapshot> _authorize(
@@ -576,7 +789,7 @@ class LocalBatchRepository implements BatchRepository {
   }
 
   List<String> _normalizeSubjects(List<String> subjects) {
-    if (subjects.isEmpty || subjects.length > maxSubjects) {
+    if (subjects.length > maxSubjects) {
       throw const BatchFailure(
         BatchFailureCode.invalidSubject,
         field: 'subjects',
@@ -586,7 +799,7 @@ class LocalBatchRepository implements BatchRepository {
     final result = <String>[];
     for (final raw in subjects) {
       final name = _normalizeSubjectName(raw);
-      final key = name.toLowerCase();
+      final key = _subjectKey(name);
       if (!seen.add(key)) {
         throw const BatchFailure(
           BatchFailureCode.invalidSubject,
@@ -600,9 +813,13 @@ class LocalBatchRepository implements BatchRepository {
   }
 
   bool _hasSubjectNamed(List<BatchSubject> subjects, String name) {
-    final key = name.toLowerCase();
-    return subjects.any((item) => item.name.toLowerCase() == key);
+    final key = _subjectKey(name);
+    return subjects.any((item) => _subjectKey(item.name) == key);
   }
+
+  /// Subject names are unique regardless of case or spacing.
+  static String _subjectKey(String name) =>
+      name.toLowerCase().replaceAll(RegExp(r'\s+'), '');
 
   bool _hasControl(String value) =>
       value.runes.any((rune) => rune < 0x20 || rune == 0x7F);

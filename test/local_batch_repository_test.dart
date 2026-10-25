@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zaker_ai/core/batches/batch_code_service.dart';
 import 'package:zaker_ai/core/batches/batch_failure.dart';
 import 'package:zaker_ai/core/batches/batch_file_store.dart';
+import 'package:zaker_ai/core/batches/batch_repository.dart';
 import 'package:zaker_ai/core/batches/batch_store.dart';
 import 'package:zaker_ai/core/batches/local_batch_repository.dart';
 import 'package:zaker_ai/core/key_value_store.dart';
@@ -125,7 +126,38 @@ void main() {
           uid: uid,
           displayName: '',
           name: 'دفعة',
-          subjects: const [],
+          subjects: const ['Math', 'math'],
+        ),
+        throwsA(isA<BatchFailure>()),
+      );
+      await expectLater(
+        repo.createBatch(
+          uid: uid,
+          displayName: '',
+          name: 'دفعة',
+          subjects: const ['Math', 'M ath'],
+        ),
+        throwsA(isA<BatchFailure>()),
+      );
+      expect(await repo.listBatches(uid), isEmpty);
+    });
+
+    test('allows no subjects and rejects more than thirty', () async {
+      final repo = repository();
+      final batch = await repo.createBatch(
+        uid: uid,
+        displayName: '',
+        name: 'دفعة',
+        subjects: const [],
+      );
+      expect(batch.subjects, isEmpty);
+
+      await expectLater(
+        repo.createBatch(
+          uid: uid,
+          displayName: '',
+          name: 'دفعة تانية',
+          subjects: [for (var i = 0; i < 31; i++) 'مادة $i'],
         ),
         throwsA(
           isA<BatchFailure>().having(
@@ -135,16 +167,26 @@ void main() {
           ),
         ),
       );
-      await expectLater(
-        repo.createBatch(
-          uid: uid,
-          displayName: '',
-          name: 'دفعة',
-          subjects: const ['Math', 'math'],
+    });
+
+    test('persists the settings given at create', () async {
+      final repo = repository();
+      final batch = await repo.createBatch(
+        uid: uid,
+        displayName: '',
+        name: 'دفعة',
+        subjects: const [],
+        settings: const BatchSettings(
+          uploadsAdminOnly: false,
+          requireApproval: false,
         ),
-        throwsA(isA<BatchFailure>()),
       );
-      expect(await repo.listBatches(uid), isEmpty);
+      expect(batch.settings.uploadsAdminOnly, isFalse);
+      expect(batch.settings.requireApproval, isFalse);
+
+      final snapshot = await repo.loadBatch(uid, batch.id);
+      expect(snapshot.batch.settings.uploadsAdminOnly, isFalse);
+      expect(snapshot.batch.settings.requireApproval, isFalse);
     });
 
     test('rescues a batch directory that is missing from the index', () async {
@@ -327,6 +369,178 @@ void main() {
         isTrue,
       );
       expect(store.values.toString(), isNot(contains(again.code)));
+    });
+
+    test('lookupCode finds only complete, active local codes', () async {
+      final repo = repository();
+      final batch = await repo.createBatch(
+        uid: uid,
+        displayName: '',
+        name: 'دفعة',
+        subjects: const [],
+      );
+
+      final active = await repo.lookupCode(uid, ' 0000 0001 ');
+      expect(active.kind, CodeMatchKind.active);
+      expect(active.snapshot!.batch.id, batch.id);
+
+      final arabic = await repo.lookupCode(uid, '٠٠٠٠٠٠٠١');
+      expect(arabic.kind, CodeMatchKind.active);
+
+      final incomplete = await repo.lookupCode(uid, '0001');
+      expect(incomplete.kind, CodeMatchKind.none);
+
+      final otherAccount = await repo.lookupCode('guest-other', '00000001');
+      expect(otherAccount.kind, CodeMatchKind.none);
+
+      await repo.revokeCode(uid, batch.id);
+      final revoked = await repo.lookupCode(uid, '00000001');
+      expect(revoked.kind, CodeMatchKind.revoked);
+      expect(revoked.snapshot, isNull);
+    });
+  });
+
+  group('claiming a guest batch', () {
+    const account = 'user-account-1';
+
+    test('moves ownership, membership, audit and the code ledger', () async {
+      final repo = repository();
+      final batch = await repo.createBatch(
+        uid: uid,
+        displayName: 'طالب',
+        name: 'دفعة الضيف',
+        subjects: const ['رياضيات'],
+      );
+
+      await repo.claimBatch(
+        guestUid: uid,
+        accountUid: account,
+        batchId: batch.id,
+      );
+
+      expect(await files.batchDir(uid, batch.id).exists(), isFalse);
+      expect(await files.batchDir(account, batch.id).exists(), isTrue);
+      expect(await repo.listBatches(uid), isEmpty);
+
+      final summaries = await repo.listBatches(account);
+      expect(summaries.single.batchId, batch.id);
+      expect(summaries.single.batch!.ownerUid, account);
+
+      final claimed = await repo.loadBatch(account, batch.id);
+      expect(claimed.batch.name, 'دفعة الضيف');
+      expect(claimed.batch.subjects.single.name, 'رياضيات');
+      expect(claimed.members.single.uid, account);
+      expect(claimed.members.single.displayName, 'طالب');
+      expect(claimed.members.single.role, BatchRole.owner);
+
+      final auditStore = BatchStore(
+        directory: files.batchDir(account, batch.id),
+      );
+      final audit = await auditStore.audit.load();
+      expect(audit.isUsable, isTrue);
+      expect(audit.value!.last.action, 'batchClaimed');
+      expect(
+        audit.value!.every((entry) => entry.actorUid == account),
+        isTrue,
+      );
+
+      final ledger = store.values['batches.codes.v1.$account']!;
+      expect(
+        ledger,
+        contains(BatchCodeService.codeHash(batch.codeState.code)),
+      );
+      expect(ledger, isNot(contains(batch.codeState.code)));
+    });
+
+    test('keeps the invitation code working for the account', () async {
+      final repo = repository();
+      final batch = await repo.createBatch(
+        uid: uid,
+        displayName: '',
+        name: 'دفعة',
+        subjects: const [],
+      );
+      await repo.claimBatch(
+        guestUid: uid,
+        accountUid: account,
+        batchId: batch.id,
+      );
+
+      final match = await repo.lookupCode(account, batch.codeState.code);
+      expect(match.kind, CodeMatchKind.active);
+      expect(match.snapshot!.batch.ownerUid, account);
+    });
+
+    test('is idempotent for an already-claimed batch', () async {
+      final repo = repository();
+      final batch = await repo.createBatch(
+        uid: uid,
+        displayName: '',
+        name: 'دفعة',
+        subjects: const [],
+      );
+      await repo.claimBatch(
+        guestUid: uid,
+        accountUid: account,
+        batchId: batch.id,
+      );
+
+      await repo.claimBatch(
+        guestUid: uid,
+        accountUid: account,
+        batchId: batch.id,
+      );
+      expect((await repo.listBatches(account)).length, 1);
+    });
+
+    test('refuses to overwrite an unrelated target directory', () async {
+      final repo = repository();
+      final batch = await repo.createBatch(
+        uid: uid,
+        displayName: '',
+        name: 'دفعة الضيف',
+        subjects: const [],
+      );
+      final targetDir = files.batchDir(account, batch.id);
+      await targetDir.create(recursive: true);
+      await BatchStore(
+        directory: targetDir,
+      ).batchFile.writeAsString('{oops');
+
+      await expectLater(
+        repo.claimBatch(
+          guestUid: uid,
+          accountUid: account,
+          batchId: batch.id,
+        ),
+        throwsA(
+          isA<BatchFailure>().having(
+            (failure) => failure.code,
+            'code',
+            BatchFailureCode.conflict,
+          ),
+        ),
+      );
+      expect(await files.batchDir(uid, batch.id).exists(), isTrue);
+      expect(await repo.listBatches(uid), hasLength(1));
+    });
+
+    test('reports the failure for a missing guest batch', () async {
+      final repo = repository();
+      await expectLater(
+        repo.claimBatch(
+          guestUid: uid,
+          accountUid: account,
+          batchId: 'batch-missing',
+        ),
+        throwsA(
+          isA<BatchFailure>().having(
+            (failure) => failure.code,
+            'code',
+            BatchFailureCode.notFound,
+          ),
+        ),
+      );
     });
   });
 
