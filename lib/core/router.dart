@@ -22,8 +22,10 @@ import '../features/azkar/salat_counter_screen.dart';
 import '../features/batches/batch_created_screen.dart';
 import '../features/batches/batch_hub_screen.dart';
 import '../features/batches/batches_screen.dart';
+import '../features/batches/chat/batch_chat_screen.dart';
 import '../features/batches/create_batch_screen.dart';
 import '../features/batches/join_batch_screen.dart';
+import '../features/batches/subjects/audio_resource_screen.dart';
 import '../features/batches/subjects/batch_subjects_screen.dart';
 import '../features/batches/subjects/subject_resources_screen.dart';
 import '../features/challenges/challenges_screen.dart';
@@ -102,6 +104,9 @@ class ZakerRoutes {
   static const String batchSubjectsPattern = '/batches/:batchId/subjects';
   static const String batchSubjectResourcesPattern =
       '/batches/:batchId/subjects/:subjectId';
+  static const String batchChatPattern = '/batches/:batchId/chat';
+  static const String batchAudioResourcePattern =
+      '/batches/:batchId/audio/:resourceId';
 
   static String batchCreated(String batchId) => '/batches/$batchId/created';
 
@@ -116,6 +121,14 @@ class ZakerRoutes {
   /// The resources inside one subject.
   static String batchSubjectResources(String batchId, String subjectId) =>
       '${batchSubjects(batchId)}/${Uri.encodeComponent(subjectId)}';
+
+  /// The saved chat of one batch.
+  static String batchChat(String batchId) => '${batchHub(batchId)}/chat';
+
+  /// The local player for one audio resource.
+  static String batchAudioResource(String batchId, String resourceId) =>
+      '${batchHub(batchId)}/audio/${Uri.encodeComponent(resourceId)}';
+
   static const String hifz = '/hifz';
   static const String hifzSetup = '/hifz/setup';
   static const String glossary = '/glossary';
@@ -312,6 +325,19 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => SubjectResourcesScreen(
         batchId: state.pathParameters['batchId'] ?? '',
         subjectId: state.pathParameters['subjectId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchChatPattern,
+      builder: (context, state) => BatchChatScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchAudioResourcePattern,
+      builder: (context, state) => AudioResourceScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        resourceId: state.pathParameters['resourceId'] ?? '',
       ),
     ),
     GoRoute(

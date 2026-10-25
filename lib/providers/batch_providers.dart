@@ -6,15 +6,20 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/batches/audio_player_channel.dart';
+import '../core/batches/audio_recorder_channel.dart';
 import '../core/batches/batch_claim_service.dart';
 import '../core/batches/batch_file_store.dart';
 import '../core/batches/batch_join_service.dart';
 import '../core/batches/batch_repository.dart';
 import '../core/batches/batch_resource_paths.dart';
 import '../core/batches/batch_store.dart';
+import '../core/batches/chat_seen_store.dart';
 import '../core/batches/hub_summary.dart';
 import '../core/batches/local_batch_repository.dart';
+import '../core/batches/playback_position_store.dart';
 import '../core/batches/resource_store.dart';
+import '../features/batches/chat/chat_controller.dart';
 import '../models/batch.dart';
 import '../models/batch_resource.dart';
 import 'app_providers.dart';
@@ -158,6 +163,36 @@ final resourceThumbnailProvider = FutureProvider.autoDispose
   );
 });
 
+/// Remembers audio resume positions in the per-account key-value index.
+final playbackPositionStoreProvider = Provider<PlaybackPositionStore>((ref) {
+  return PlaybackPositionStore(ref.watch(localStoreProvider));
+});
+
+/// Remembers when each chat was last opened, for the «رسائل جديدة» marker.
+final chatSeenStoreProvider = Provider<ChatSeenStore>((ref) {
+  return ChatSeenStore(ref.watch(localStoreProvider));
+});
+
+/// Native audio bindings, replaceable so widget tests never open a channel.
+final audioPlayerBindingsProvider = Provider<AudioPlayerBindings>((ref) {
+  return AudioPlayerChannel();
+});
+
+final audioRecorderBindingsProvider = Provider<AudioRecorderBindings>((ref) {
+  return AudioRecorderChannel();
+});
+
+/// Paged chat for one batch. Disposed when the chat screen closes.
+final chatControllerProvider = StateNotifierProvider.autoDispose
+    .family<ChatController, ChatState, String>((ref, batchId) {
+  return ChatController(
+    repository: ref.watch(batchRepositoryProvider),
+    files: ref.watch(batchFileStoreProvider),
+    uid: _currentUid(ref),
+    batchId: batchId,
+  );
+});
+
 /// Commands used by screens. Each one invalidates the affected reads.
 class BatchController {
   BatchController(this._ref);
@@ -275,7 +310,13 @@ class BatchController {
   }
 
   Future<void> deleteResource(String batchId, String resourceId) async {
-    await _repository.deleteResource(_uid, batchId, resourceId);
+    final uid = _uid;
+    await _repository.deleteResource(uid, batchId, resourceId);
+    await _ref.read(playbackPositionStoreProvider).remove(
+          uid: uid,
+          batchId: batchId,
+          resourceId: resourceId,
+        );
     _refresh(batchId);
     _refreshStorage(batchId);
   }
@@ -308,7 +349,12 @@ class BatchController {
   }
 
   Future<void> deleteBatch(String batchId) async {
-    await _repository.deleteBatch(_uid, batchId);
+    final uid = _uid;
+    await _repository.deleteBatch(uid, batchId);
+    await _ref.read(playbackPositionStoreProvider).clearBatch(
+          uid: uid,
+          batchId: batchId,
+        );
     _ref.invalidate(batchListProvider);
   }
 

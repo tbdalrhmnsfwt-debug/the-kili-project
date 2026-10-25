@@ -6,6 +6,7 @@
 library;
 
 import '../../models/batch.dart';
+import '../../models/batch_chat.dart';
 import '../../models/batch_resource.dart';
 import 'batch_failure.dart';
 import 'batch_store.dart';
@@ -123,6 +124,50 @@ abstract interface class BatchRepository {
     String batchId,
     String resourceId,
     bool starred,
+  );
+
+  /// The newest chat messages older than [before].
+  Future<ChatPage> loadChat(
+    String uid,
+    String batchId, {
+    ChatCursor? before,
+    int limit = 30,
+  });
+
+  /// Appends [message]; a repeated client key returns the stored one.
+  Future<ChatMessage> sendChatMessage(
+    String uid,
+    String batchId,
+    ChatMessage message,
+  );
+
+  Future<ChatMessage> editChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+    String text,
+  );
+
+  /// Leaves a tombstone and removes any voice file. Never logs the text.
+  Future<ChatMessage> deleteChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+  );
+
+  Future<ChatMessage> reactToChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+    String emoji,
+    bool reacted,
+  );
+
+  Future<ChatMessage> pinChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+    bool pinned,
   );
 
   Future<InviteCodeState> rotateCode(String uid, String batchId);

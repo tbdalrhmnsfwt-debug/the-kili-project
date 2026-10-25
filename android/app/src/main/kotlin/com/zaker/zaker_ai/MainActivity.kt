@@ -29,6 +29,10 @@ class MainActivity : FlutterActivity() {
     private var previewPlayer: MediaPlayer? = null
     private val previewHandler = Handler(Looper.getMainLooper())
 
+    /** Batch audio playback and voice-note recording. */
+    private var audioPlayerChannel: AudioPlayerChannel? = null
+    private var audioRecorderChannel: AudioRecorderChannel? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -137,6 +141,25 @@ class MainActivity : FlutterActivity() {
 
         // Tiled page rendering for the PDF reader.
         PdfRenderChannel(flutterEngine.dartExecutor.binaryMessenger).register()
+
+        // Audio resources and microphone voice notes for batch chat.
+        audioPlayerChannel = AudioPlayerChannel(flutterEngine.dartExecutor.binaryMessenger)
+            .also { it.register(this) }
+        audioRecorderChannel = AudioRecorderChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            this,
+        ).also { it.register() }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        if (audioRecorderChannel?.onRequestPermissionsResult(requestCode, grantResults) == true) {
+            return
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -199,6 +222,10 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         stopPreview()
+        audioPlayerChannel?.dispose()
+        audioRecorderChannel?.dispose()
+        audioPlayerChannel = null
+        audioRecorderChannel = null
         super.onDestroy()
     }
 

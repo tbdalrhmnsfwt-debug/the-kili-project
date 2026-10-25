@@ -9,6 +9,7 @@ import 'package:zaker_ai/core/local_store.dart';
 import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/features/batches/batches_screen.dart';
 import 'package:zaker_ai/models/batch.dart';
+import 'package:zaker_ai/models/batch_chat.dart';
 import 'package:zaker_ai/models/batch_resource.dart';
 import 'package:zaker_ai/providers/app_providers.dart';
 import 'package:zaker_ai/providers/batch_providers.dart';
@@ -99,6 +100,59 @@ class _FakeRepository implements BatchRepository {
     String batchId,
     String resourceId,
     bool starred,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ChatPage> loadChat(
+    String uid,
+    String batchId, {
+    ChatCursor? before,
+    int limit = 30,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ChatMessage> sendChatMessage(
+    String uid,
+    String batchId,
+    ChatMessage message,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ChatMessage> editChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+    String text,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ChatMessage> deleteChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ChatMessage> reactToChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+    String emoji,
+    bool reacted,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ChatMessage> pinChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+    bool pinned,
   ) =>
       throw UnimplementedError();
 

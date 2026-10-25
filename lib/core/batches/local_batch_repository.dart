@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../models/batch.dart';
+import '../../models/batch_chat.dart';
 import '../../models/batch_resource.dart';
 import '../key_value_store.dart';
 import 'batch_access.dart';
@@ -15,6 +16,7 @@ import 'batch_ids.dart';
 import 'batch_repository.dart';
 import 'batch_resource_paths.dart';
 import 'batch_store.dart';
+import 'chat_store.dart';
 import 'document_store.dart';
 
 class LocalBatchRepository implements BatchRepository {
@@ -523,6 +525,153 @@ class LocalBatchRepository implements BatchRepository {
       action: starred ? 'resourceStarred' : 'resourceUnstarred',
     );
     return updatedResource;
+  }
+
+  // -------------------------------------------------------------------- chat
+
+  ChatStore _chatStore(String uid, String batchId) => ChatStore(
+        directory: files.batchDir(uid, batchId),
+        clock: _clock,
+      );
+
+  @override
+  Future<ChatPage> loadChat(
+    String uid,
+    String batchId, {
+    ChatCursor? before,
+    int limit = 30,
+  }) async {
+    await _authorize(uid, batchId, BatchAction.viewChat);
+    return _chatStore(uid, batchId).page(before: before, limit: limit);
+  }
+
+  @override
+  Future<ChatMessage> sendChatMessage(
+    String uid,
+    String batchId,
+    ChatMessage message,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.sendMessage);
+    if (message.authorUid != uid || message.batchId != batchId) {
+      throw const BatchFailure(BatchFailureCode.notAuthorized);
+    }
+    if (message.kind == ChatMessageKind.voice) {
+      final exists = await files.fileExists(
+        uid: uid,
+        batchId: batchId,
+        relativePath: ChatStore.voicePath(message.id),
+      );
+      if (!exists) {
+        throw const BatchFailure(
+          BatchFailureCode.missingFile,
+          field: 'voice',
+        );
+      }
+    }
+    final saved = await _chatStore(uid, batchId).append(message);
+    await _appendAudit(
+      store: BatchStore(directory: files.batchDir(uid, batchId)),
+      batchId: batchId,
+      actorUid: uid,
+      action: 'chatMessageSent',
+    );
+    return saved;
+  }
+
+  @override
+  Future<ChatMessage> editChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+    String text,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.sendMessage);
+    final store = _chatStore(uid, batchId);
+    final existing = await store.find(messageId);
+    if (existing == null) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'messageId');
+    }
+    if (existing.authorUid != uid) {
+      throw const BatchFailure(BatchFailureCode.notAuthorized);
+    }
+    final updated = await store.edit(messageId, text);
+    await _appendAudit(
+      store: BatchStore(directory: files.batchDir(uid, batchId)),
+      batchId: batchId,
+      actorUid: uid,
+      action: 'chatMessageEdited',
+    );
+    return updated;
+  }
+
+  @override
+  Future<ChatMessage> deleteChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+  ) async {
+    final snapshot = await _authorize(uid, batchId, BatchAction.viewChat);
+    final membership = _membershipOf(snapshot, uid);
+    final store = _chatStore(uid, batchId);
+    final existing = await store.find(messageId);
+    if (existing == null) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'messageId');
+    }
+    final action = existing.authorUid == uid
+        ? BatchAction.deleteOwnMessage
+        : BatchAction.deleteAnyMessage;
+    if (membership == null || !BatchAccess.can(membership.role, action)) {
+      throw const BatchFailure(BatchFailureCode.notAuthorized);
+    }
+    final deleted = await store.delete(messageId);
+    if (existing.kind == ChatMessageKind.voice) {
+      try {
+        await files.deleteFile(
+          uid: uid,
+          batchId: batchId,
+          relativePath: ChatStore.voicePath(existing.id),
+        );
+      } on BatchFailure {
+        // The tombstone stands even when the file was already gone.
+      }
+    }
+    await _appendAudit(
+      store: BatchStore(directory: files.batchDir(uid, batchId)),
+      batchId: batchId,
+      actorUid: uid,
+      action: 'chatMessageDeleted',
+    );
+    return deleted;
+  }
+
+  @override
+  Future<ChatMessage> reactToChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+    String emoji,
+    bool reacted,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.react);
+    return _chatStore(uid, batchId).react(messageId, emoji, uid, reacted);
+  }
+
+  @override
+  Future<ChatMessage> pinChatMessage(
+    String uid,
+    String batchId,
+    String messageId,
+    bool pinned,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.pinMessage);
+    final updated = await _chatStore(uid, batchId).setPinned(messageId, pinned);
+    await _appendAudit(
+      store: BatchStore(directory: files.batchDir(uid, batchId)),
+      batchId: batchId,
+      actorUid: uid,
+      action: pinned ? 'chatMessagePinned' : 'chatMessageUnpinned',
+    );
+    return updated;
   }
 
   @override

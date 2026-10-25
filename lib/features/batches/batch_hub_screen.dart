@@ -321,25 +321,30 @@ class _ChatPreviewCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hub = ref.watch(batchHubDataProvider(batchId));
+    void open() => context.push(ZakerRoutes.batchChat(batchId));
     return hub.when(
-      loading: () => const _ChatCard(
+      loading: () => _ChatCard(
         subtitle: 'بنقرا المحادثة…',
         loading: true,
+        onTap: open,
       ),
-      error: (_, __) => const _ChatCard(
+      error: (_, __) => _ChatCard(
         subtitle: 'مقدرناش نقرا المحادثة.',
         unavailable: true,
+        onTap: open,
       ),
       data: (data) {
         if (!data.chatAvailable) {
-          return const _ChatCard(
+          return _ChatCard(
             subtitle: 'مقدرناش نقرا المحادثة.',
             unavailable: true,
+            onTap: open,
           );
         }
         final message = data.lastMessage;
         return _ChatCard(
           subtitle: message == null ? 'لسه مفيش رسائل' : _preview(message),
+          onTap: open,
         );
       },
     );
@@ -359,82 +364,90 @@ class _ChatCard extends StatelessWidget {
     required this.subtitle,
     this.unavailable = false,
     this.loading = false,
+    this.onTap,
   });
 
   final String subtitle;
   final bool unavailable;
   final bool loading;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent =
         unavailable ? theme.colorScheme.error : theme.colorScheme.primary;
-    return Container(
-      padding: const EdgeInsets.all(ZakerSpacing.md),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
+    return Material(
+      color: theme.cardTheme.color,
+      shape: RoundedRectangleBorder(
         borderRadius: ZakerRadius.card,
-        border: Border.all(
+        side: BorderSide(
           color: unavailable
               ? theme.colorScheme.error.withValues(alpha: 0.3)
               : theme.dividerTheme.color ?? Colors.black12,
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(ZakerRadius.sm),
-            ),
-            child: Icon(Icons.forum_outlined, size: 21, color: accent),
-          ),
-          const SizedBox(width: ZakerSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+      child: InkWell(
+        borderRadius: ZakerRadius.card,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(ZakerSpacing.md),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(ZakerRadius.sm),
+                ),
+                child: Icon(Icons.forum_outlined, size: 21, color: accent),
+              ),
+              const SizedBox(width: ZakerSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Expanded(
-                      child: TrText(
-                        'المحادثة',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: TrText(
+                            'المحادثة',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        TrText(
+                          'محادثة على الجهاز',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
-                    TrText(
-                      'محادثة على الجهاز',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                    const SizedBox(height: 2),
+                    if (loading)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: ZakerSkeleton(height: 12),
+                      )
+                    else
+                      TrText(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: unavailable
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 2),
-                if (loading)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: ZakerSkeleton(height: 12),
-                  )
-                else
-                  TrText(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: unavailable
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

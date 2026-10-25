@@ -208,11 +208,7 @@ class ResourceCard extends ConsumerWidget {
           ),
         );
       case ResourceKind.audio:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: TrText('المشغّل الصوتي مش متاح في النسخة دي.'),
-          ),
-        );
+        context.push(ZakerRoutes.batchAudioResource(batchId, resource.id));
     }
   }
 

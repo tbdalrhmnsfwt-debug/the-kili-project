@@ -28,6 +28,17 @@ class ChatCursor {
       );
 }
 
+/// A page of messages plus whether older ones remain.
+///
+/// [messages] is ordered oldest to newest so the list can be appended to the
+/// top without reversing it again.
+class ChatPage {
+  const ChatPage({required this.messages, required this.hasMore});
+
+  final List<ChatMessage> messages;
+  final bool hasMore;
+}
+
 /// One message in a batch channel.
 class ChatMessage {
   const ChatMessage({
