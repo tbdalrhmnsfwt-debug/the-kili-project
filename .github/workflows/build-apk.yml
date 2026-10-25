@@ -236,6 +236,9 @@ jobs:
             -name 'flutter_tesseract_ocr-*' -type d \
             -exec grep -n "mavenCentral\|com.android.tools.build:gradle" {}/android/build.gradle \;
 
+      - name: Run tests
+        run: flutter test
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
