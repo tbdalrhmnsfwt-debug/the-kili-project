@@ -29,7 +29,9 @@ String batchErrorText(BatchFailure failure) => switch (failure.code) {
       BatchFailureCode.ocrLowConfidence => 'الصورة مش واضحة كفاية.',
       BatchFailureCode.extractionFailed => 'استخراج النص من الملف فشل.',
       BatchFailureCode.encryptedSource =>
-        'الملف محمي بكلمة سر ومش بنقدر نقراه.',
+        'الملف محمي بكلمة سر — أدوات الدراسة مش متاحة',
+      BatchFailureCode.tooManyPages =>
+        'الملف فيه صفحات أكتر من الحد المسموح لأدوات الدراسة.',
       BatchFailureCode.examNotOpen => 'الامتحان لسه مفتحش.',
       BatchFailureCode.examClosed => 'الامتحان اتقفل.',
       BatchFailureCode.examWindowInvalid => 'ميعاد الامتحان مش صح.',

@@ -24,6 +24,7 @@ enum BatchFailureCode {
   ocrLowConfidence,
   extractionFailed,
   encryptedSource,
+  tooManyPages,
   examNotOpen,
   examClosed,
   examWindowInvalid,
