@@ -18,6 +18,7 @@ import '../lib/core/book_storage.dart';
 import '../lib/core/key_value_store.dart';
 import '../lib/core/official_library_store.dart';
 import '../lib/core/official_study_plan.dart';
+import '../lib/core/official_subject_index.dart';
 import '../lib/core/vocabulary.dart';
 import '../lib/models/exam.dart';
 import '../lib/models/extraction.dart';
@@ -925,6 +926,136 @@ void verifyVocabulary() {
   check(arabic.isEmpty, 'Arabic-only text produces no Latin vocabulary');
 }
 
+void verifySubjectIndex() {
+  checkEqual(
+    officialSubjectKey('الرياضيات باللغة الإنجليزية'),
+    'الرياضيات',
+    'a language variant folds onto its subject',
+  );
+  checkEqual(
+    officialSubjectKey('الرياضيات-القصة'),
+    'الرياضيات',
+    'a component variant folds onto its subject',
+  );
+  check(
+    officialSubjectKey('الرياضيات البحتة باللغة العربية') !=
+        officialSubjectKey('الرياضيات'),
+    'pure mathematics stays separate from general mathematics',
+  );
+  checkEqual(
+    officialSubjectKey('اللغة الأسبانية'),
+    officialSubjectKey('اللغة الإسبانية'),
+    'alef spelling variants share one subject key',
+  );
+  checkEqual(
+    officialSubjectKey('اللغة الصينية لغة أجنبية ثانية'),
+    officialSubjectKey('اللغة الصينية'),
+    'a second-language suffix does not split a subject',
+  );
+  checkEqual(
+    officialSubjectKey('اللغة الصينية لغة أجنبية ثانية - قديم'),
+    officialSubjectKey('اللغة الصينية'),
+    'the retired suffix folds too',
+  );
+  checkEqual(
+    officialSubjectKey('إدارة الأعمال بالغة الإنجليزية'),
+    officialSubjectKey('إدارة الأعمال'),
+    'the catalog بالغة typo does not split a subject',
+  );
+  checkEqual(
+    officialSubjectKey('جغرافيا التنمية'),
+    officialSubjectKey('الجغرافيا'),
+    'development geography maps onto the bundled subject',
+  );
+  checkEqual(
+    officialSubjectKey('تكنولوجيا المعلومات والاتصالات'),
+    officialSubjectKey('تكنولوجيا المعلومات'),
+    'ICT maps onto the bundled subject',
+  );
+
+  final file = File('assets/data/official_books.json');
+  if (!file.existsSync()) return;
+  final catalog = OfficialBookCatalog.fromJson(
+    jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
+  );
+
+  final sec1 = officialCountsForGrade(catalog, 'sec1');
+  checkEqual(sec1.books, 24, 'sec1 counts 24 official books');
+  checkEqual(sec1.assessments, 80, 'sec1 counts 80 assessments');
+  checkEqual(sec1.sources, 104, 'sec1 counts every published source');
+  final sec2 = officialCountsForGrade(catalog, 'sec2');
+  checkEqual(sec2.books, 84, 'sec2 counts 84 official books');
+  checkEqual(sec2.assessments, 103, 'sec2 counts 103 assessments');
+  final sec3 = officialCountsForGrade(catalog, 'sec3');
+  checkEqual(sec3.books, 38, 'sec3 counts 38 official books');
+  checkEqual(sec3.assessments, 0, 'sec3 has no published assessments');
+  check(
+    officialCountsForGrade(catalog, 'prep1').isEmpty,
+    'primary grades have no official rows',
+  );
+
+  final groups = officialSubjectGroups(catalog, 'sec1');
+  check(groups.isNotEmpty, 'sec1 has official subject groups');
+  check(
+    groups.every((group) => group.sources > 0),
+    'every official subject group has something to open',
+  );
+  checkEqual(
+    groups.map((group) => group.key).toSet().length,
+    groups.length,
+    'official subject groups have unique keys',
+  );
+  check(
+    groups.any((group) => group.displayName.contains('البرمجة')),
+    'official-only programming appears as its own subject',
+  );
+  check(
+    groups.every(
+      (group) => group.sources + group.unavailable == group.rows.length,
+    ),
+    'every row is counted as available or unavailable',
+  );
+
+  final math = officialRowsForSubject(catalog, 'sec1', 'الرياضيات');
+  check(math.isNotEmpty, 'sec1 mathematics resolves to official rows');
+  check(
+    math.every(
+      (row) =>
+          row.grade == 'sec1' && officialSubjectKey(row.subject) == 'الرياضيات',
+    ),
+    'subject rows never leak another grade or subject',
+  );
+  final pureMath = officialRowsForSubject(catalog, 'sec2', 'الرياضيات البحتة');
+  check(pureMath.isNotEmpty, 'sec2 pure mathematics resolves');
+  check(
+    pureMath.every(
+      (row) => officialSubjectKey(row.subject) == 'الرياضيات البحتة',
+    ),
+    'pure mathematics never mixes with general mathematics',
+  );
+  final generalMath = officialRowsForSubject(catalog, 'sec2', 'الرياضيات');
+  check(generalMath.isNotEmpty, 'sec2 general mathematics resolves');
+  check(
+    generalMath.every((row) => officialSubjectKey(row.subject) == 'الرياضيات'),
+    'general mathematics excludes pure mathematics',
+  );
+
+  final arabic = officialRowsForSubject(catalog, 'sec2', 'اللغة العربية');
+  check(
+    arabic.any((row) => row.system == EducationSystem.egyptianBaccalaureate),
+    'a subject list includes Baccalaureate rows',
+  );
+  final chinese = officialRowsForSubject(catalog, 'sec2', 'اللغة الصينية');
+  check(
+    chinese.any((row) => !row.isPublished),
+    'rows awaiting review stay visible but cannot download',
+  );
+  check(
+    officialRowsForSubject(catalog, 'sec3', 'الكتب الرسمية').isEmpty,
+    'notice rows are not treated as a subject',
+  );
+}
+
 Future<void> main() async {
   verifyUrlPolicy();
   verifyStorage();
@@ -935,6 +1066,7 @@ Future<void> main() async {
   verifyVocabulary();
   await verifyLibraryStore();
   verifyCatalog();
+  verifySubjectIndex();
 
   if (_failures.isEmpty) {
     stdout.writeln('OK — $_checks checks passed.');

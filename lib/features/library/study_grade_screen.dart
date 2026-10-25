@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/official_subject_index.dart';
 import '../../core/router.dart';
 import '../../core/study_library.dart';
 import '../../core/theme.dart';
 import '../../models/manhaji.dart';
+import '../../models/official_book.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
@@ -23,6 +25,7 @@ class StudyGradeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final gradeAsync = ref.watch(gradeProvider(gradeId));
     final read = ref.watch(readLessonsProvider);
+    final officialCatalog = ref.watch(officialBooksProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(title: TrText(kGradeLabels[gradeId] ?? gradeId)),
@@ -33,21 +36,35 @@ class StudyGradeScreen extends ConsumerWidget {
           title: 'مش قادرين نحمّل الصف',
           message: '$error',
         ),
-        data: (grade) => _GradeBody(grade: grade, read: read),
+        data: (grade) => _GradeBody(
+          grade: grade,
+          read: read,
+          officialCatalog: officialCatalog,
+        ),
       ),
     );
   }
 }
 
 class _GradeBody extends StatelessWidget {
-  const _GradeBody({required this.grade, required this.read});
+  const _GradeBody({
+    required this.grade,
+    required this.read,
+    required this.officialCatalog,
+  });
 
   final Grade grade;
   final Set<String> read;
+  final OfficialBookCatalog? officialCatalog;
 
   @override
   Widget build(BuildContext context) {
-    final subjects = studySubjects(grade, read);
+    final subjects = studySubjects(
+      grade,
+      read,
+      officialCatalog: officialCatalog,
+    );
+    final official = officialCountsForGrade(officialCatalog, grade.id);
     final stage = StudyStage.of(grade.id);
 
     return ListView(
@@ -58,7 +75,12 @@ class _GradeBody extends StatelessWidget {
         ZakerSpacing.xxl,
       ),
       children: [
-        _GradeHeader(grade: grade, stage: stage, subjectCount: subjects.length),
+        _GradeHeader(
+          grade: grade,
+          stage: stage,
+          subjectCount: subjects.length,
+          official: official,
+        ),
         if (stage == StudyStage.secondary) ...[
           const SizedBox(height: ZakerSpacing.md),
           _SecondaryHubCard(gradeId: grade.id),
@@ -110,11 +132,13 @@ class _GradeHeader extends StatelessWidget {
     required this.grade,
     required this.stage,
     required this.subjectCount,
+    required this.official,
   });
 
   final Grade grade;
   final StudyStage? stage;
   final int subjectCount;
+  final OfficialGradeCounts official;
 
   @override
   Widget build(BuildContext context) {
@@ -191,6 +215,12 @@ class _GradeHeader extends StatelessWidget {
                 label: 'درس',
                 icon: Icons.play_lesson_outlined,
               ),
+              if (!official.isEmpty)
+                _GlassStat(
+                  value: '${official.sources}',
+                  label: 'مصدر رسمي',
+                  icon: Icons.verified_outlined,
+                ),
             ],
           ),
         ],
@@ -330,6 +360,10 @@ class _SubjectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final accentInk = readableTextColor(
+      subject.color,
+      theme.cardTheme.color ?? theme.colorScheme.surface,
+    );
 
     return Material(
       color: Colors.transparent,
@@ -407,7 +441,9 @@ class _SubjectCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 TrText(
-                  '${subject.books} كتاب · ${subject.lessons} درس',
+                  subject.isOfficialOnly
+                      ? _officialLabel(subject)
+                      : '${subject.lessons} درس · ${subject.books} كتاب',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -415,28 +451,51 @@ class _SubjectCard extends StatelessWidget {
                     fontSize: 10.5,
                   ),
                 ),
-                const SizedBox(height: ZakerSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ProgressBar(
-                        value: subject.progress,
-                        height: 5,
-                        color: subject.color,
+                if (subject.hasOfficial && !subject.isOfficialOnly) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(Icons.verified_rounded, size: 11, color: accentInk),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: TrText(
+                          _officialLabel(subject),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: accentInk,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${subject.percent}%',
-                      textDirection: TextDirection.ltr,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: subject.color,
-                        fontSize: 10,
+                    ],
+                  ),
+                ],
+                if (subject.lessons > 0) ...[
+                  const SizedBox(height: ZakerSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ProgressBar(
+                          value: subject.progress,
+                          height: 5,
+                          color: subject.color,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${subject.percent}%',
+                        textDirection: TextDirection.ltr,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: accentInk,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -444,4 +503,14 @@ class _SubjectCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The official availability line on a subject card.
+String _officialLabel(StudySubjectSummary subject) {
+  final parts = <String>[
+    if (subject.officialBooks > 0) '${subject.officialBooks} كتاب رسمي',
+    if (subject.officialAssessments > 0)
+      '${subject.officialAssessments} تقييم رسمي',
+  ];
+  return parts.join(' · ');
 }

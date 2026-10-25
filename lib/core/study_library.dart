@@ -9,6 +9,8 @@ library;
 import 'package:flutter/material.dart';
 
 import '../models/manhaji.dart';
+import '../models/official_book.dart';
+import 'official_subject_index.dart';
 
 /// Grade labels, in the order the app shows them.
 const Map<String, String> kGradeLabels = {
@@ -58,23 +60,40 @@ class StudySubjectSummary {
     required this.readLessons,
     required this.icon,
     required this.color,
+    this.officialBooks = 0,
+    this.officialAssessments = 0,
   });
 
   /// The official subject name stored on each [Book].
   final String name;
 
-  /// How many books belong to this subject.
+  /// How many bundled books belong to this subject.
   final int books;
 
-  /// How many lessons those books contain.
+  /// How many lessons those bundled books contain.
   final int lessons;
 
   /// How many of those lessons the student marked as read.
   final int readLessons;
 
+  /// Published official books, stories, workbooks and activities.
+  final int officialBooks;
+
+  /// Published official assessment papers.
+  final int officialAssessments;
+
   /// Presentation only: icon and accent used on the subject cards.
   final IconData icon;
   final Color color;
+
+  /// Everything the verified catalog offers for this subject right now.
+  int get officialSources => officialBooks + officialAssessments;
+
+  /// Whether the catalog has at least one downloadable official source.
+  bool get hasOfficial => officialSources > 0;
+
+  /// True when the subject exists only in the official catalog.
+  bool get isOfficialOnly => books == 0 && lessons == 0 && hasOfficial;
 
   /// Read progress in the range 0..1; zero-safe for empty subjects.
   double get progress => lessons == 0 ? 0 : readLessons / lessons;
@@ -88,13 +107,24 @@ class StudySubjectSummary {
 /// The map preserves the order in which subjects first appear in the grade's
 /// `index.json`. Progress uses the same `gradeId/bookId/lessonNumber` key as
 /// the rest of the app.
-List<StudySubjectSummary> studySubjects(Grade grade, Set<String> readLessons) {
+///
+/// When [officialCatalog] is provided, each subject also receives the real
+/// counts from the verified Ministry catalog, and official-only subjects are
+/// appended so their books are reachable from the grade screen. Language and
+/// component variants (`الرياضيات باللغة الإنجليزية`, `الرياضيات-القصة`) fold
+/// onto the bundled subject.
+List<StudySubjectSummary> studySubjects(
+  Grade grade,
+  Set<String> readLessons, {
+  OfficialBookCatalog? officialCatalog,
+}) {
   final grouped = <String, _SubjectAccumulator>{};
+  final order = <String>[];
   for (final book in grade.books) {
-    final accumulator = grouped.putIfAbsent(
-      book.subject,
-      _SubjectAccumulator.new,
-    );
+    final accumulator = grouped.putIfAbsent(book.subject, () {
+      order.add(book.subject);
+      return _SubjectAccumulator();
+    });
     accumulator.books++;
     accumulator.lessons += book.lessons;
     for (var lesson = 1; lesson <= book.lessons; lesson++) {
@@ -104,9 +134,28 @@ List<StudySubjectSummary> studySubjects(Grade grade, Set<String> readLessons) {
     }
   }
 
-  return [
-    for (final entry in grouped.entries) _summary(entry.key, entry.value),
-  ];
+  for (final group in officialSubjectGroups(officialCatalog, grade.id)) {
+    final bundledName = _bundledNameFor(group.key, grouped.keys);
+    final accumulator = bundledName == null
+        ? _SubjectAccumulator()
+        : grouped[bundledName]!;
+    accumulator.officialBooks += group.books;
+    accumulator.officialAssessments += group.assessments;
+    if (bundledName == null) {
+      grouped[group.displayName] = accumulator;
+      order.add(group.displayName);
+    }
+  }
+
+  return [for (final name in order) _summary(name, grouped[name]!)];
+}
+
+/// The bundled subject name whose canonical key is [key], if any.
+String? _bundledNameFor(String key, Iterable<String> names) {
+  for (final name in names) {
+    if (officialSubjectKey(name) == key) return name;
+  }
+  return null;
 }
 
 StudySubjectSummary _summary(String name, _SubjectAccumulator accumulator) {
@@ -118,6 +167,8 @@ StudySubjectSummary _summary(String name, _SubjectAccumulator accumulator) {
     readLessons: accumulator.readLessons,
     icon: visual.icon,
     color: visual.color,
+    officialBooks: accumulator.officialBooks,
+    officialAssessments: accumulator.officialAssessments,
   );
 }
 
@@ -125,6 +176,8 @@ class _SubjectAccumulator {
   int books = 0;
   int lessons = 0;
   int readLessons = 0;
+  int officialBooks = 0;
+  int officialAssessments = 0;
 }
 
 /// The number of lessons across every book in [grade].
@@ -201,10 +254,7 @@ const _slate = Color(0xFF475569);
     'التربية الوطنية' => (icon: Icons.flag_rounded, color: _green),
     'المواطنة وحقوق الإنسان' => (icon: Icons.gavel_rounded, color: _teal),
     'تكنولوجيا المعلومات' => (icon: Icons.computer_rounded, color: _slate),
-    'البرمجة والذكاء الاصطناعي' => (
-      icon: Icons.code_rounded,
-      color: _violet,
-    ),
+    'البرمجة والذكاء الاصطناعي' => (icon: Icons.code_rounded, color: _violet),
     'إدارة الأعمال' => (icon: Icons.business_center_rounded, color: _amber),
     'المحاسبة' => (icon: Icons.account_balance_rounded, color: _emerald),
     'المكتبة ومهارات البحث' => (

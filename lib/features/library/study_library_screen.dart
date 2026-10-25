@@ -10,9 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/router.dart';
+import '../../core/official_subject_index.dart';
 import '../../core/study_library.dart';
 import '../../core/theme.dart';
 import '../../models/manhaji.dart';
+import '../../models/official_book.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/official_library_providers.dart';
 import '../../widgets/common.dart';
@@ -46,6 +48,7 @@ class StudyLibraryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final gradesAsync = ref.watch(gradesProvider);
     final read = ref.watch(readLessonsProvider);
+    final officialCatalog = ref.watch(officialBooksProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
@@ -66,17 +69,26 @@ class StudyLibraryScreen extends ConsumerWidget {
           title: 'مش قادرين نحمّل المكتبة',
           message: '$error',
         ),
-        data: (grades) => _LibraryBody(grades: grades, read: read),
+        data: (grades) => _LibraryBody(
+          grades: grades,
+          read: read,
+          officialCatalog: officialCatalog,
+        ),
       ),
     );
   }
 }
 
 class _LibraryBody extends StatelessWidget {
-  const _LibraryBody({required this.grades, required this.read});
+  const _LibraryBody({
+    required this.grades,
+    required this.read,
+    required this.officialCatalog,
+  });
 
   final List<Grade> grades;
   final Set<String> read;
+  final OfficialBookCatalog? officialCatalog;
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +99,11 @@ class _LibraryBody extends StatelessWidget {
     final totalLessons = grades.fold<int>(
       0,
       (sum, grade) => sum + studyLessonCount(grade),
+    );
+    final totalOfficial = grades.fold<int>(
+      0,
+      (sum, grade) =>
+          sum + officialCountsForGrade(officialCatalog, grade.id).sources,
     );
 
     return ListView(
@@ -101,6 +118,7 @@ class _LibraryBody extends StatelessWidget {
           grades: grades.length,
           books: totalBooks,
           lessons: totalLessons,
+          official: totalOfficial,
         ),
         const SizedBox(height: ZakerSpacing.lg),
         const _OfficialLibraryEntry(),
@@ -134,6 +152,7 @@ class _LibraryBody extends StatelessWidget {
                     grade: grade,
                     stage: stage,
                     read: read,
+                    officialCatalog: officialCatalog,
                     onTap: () =>
                         context.push(ZakerRoutes.libraryPath(grade.id)),
                   ),
@@ -245,11 +264,15 @@ class _LibraryHero extends StatelessWidget {
     required this.grades,
     required this.books,
     required this.lessons,
+    required this.official,
   });
 
   final int grades;
   final int books;
   final int lessons;
+
+  /// Downloadable resources in the verified Ministry catalog.
+  final int official;
 
   @override
   Widget build(BuildContext context) {
@@ -366,6 +389,12 @@ class _LibraryHero extends StatelessWidget {
                       label: 'درس',
                       icon: Icons.play_lesson_outlined,
                     ),
+                    if (official > 0)
+                      _GlassStat(
+                        value: '$official',
+                        label: 'مصدر رسمي',
+                        icon: Icons.verified_outlined,
+                      ),
                   ],
                 ),
               ],
@@ -412,13 +441,7 @@ class _GlassStat extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          TrText(
-            label,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 10.5,
-            ),
-          ),
+          TrText(label, style: TextStyle(color: Colors.white, fontSize: 10.5)),
         ],
       ),
     );
@@ -431,12 +454,14 @@ class _GradeCard extends StatelessWidget {
     required this.grade,
     required this.stage,
     required this.read,
+    required this.officialCatalog,
     required this.onTap,
   });
 
   final Grade grade;
   final StudyStage stage;
   final Set<String> read;
+  final OfficialBookCatalog? officialCatalog;
   final VoidCallback onTap;
 
   @override
@@ -444,7 +469,12 @@ class _GradeCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final accent = _stageColor(stage);
-    final subjects = studySubjects(grade, read);
+    final subjects = studySubjects(
+      grade,
+      read,
+      officialCatalog: officialCatalog,
+    );
+    final official = officialCountsForGrade(officialCatalog, grade.id);
     final progress = studyProgress(grade, read);
     final percent = (progress * 100).round();
 
@@ -560,7 +590,10 @@ class _GradeCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 TrText(
-                  '${studyLessonCount(grade)} درس',
+                  official.isEmpty
+                      ? '${studyLessonCount(grade)} درس'
+                      : '${studyLessonCount(grade)} درس · '
+                            '${official.books} كتاب رسمي',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelSmall?.copyWith(
