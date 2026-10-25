@@ -17,6 +17,7 @@ import '../lib/core/pdf/pdf_library_index.dart';
 import '../lib/core/pdf/pdf_library_repository.dart';
 import '../lib/core/pdf/pdf_library_store.dart';
 import '../lib/core/pdf/pdf_page_geometry.dart';
+import '../lib/core/pdf/pdf_tile_cache.dart';
 import '../lib/models/pdf_document.dart';
 
 var _checks = 0;
@@ -71,6 +72,7 @@ Future<void> main() async {
   await _repository();
   _geometry();
   await _storeAsync();
+  _tileCache();
 
   if (_failures.isEmpty) {
     // ignore: avoid_print
@@ -381,6 +383,85 @@ Future<void> _storeAsync() async {
     root.deleteSync(recursive: true);
     cache.deleteSync(recursive: true);
   }
+}
+
+void _tileCache() {
+  final key = PdfTileKey.fromSource(
+    pageIndex: 2,
+    scale: 1.234,
+    source: const NormalizedRect(0.1001, 0, 0.5, 0.5),
+  );
+  check(key.scaleBucket == 123, 'the scale bucket rounds to hundredths');
+  check(key.x0 == 100, 'the left edge is quantized to thousandths');
+  check(key.x1 == 600, 'the right edge is quantized to thousandths');
+  check(
+    key ==
+        PdfTileKey.fromSource(
+          pageIndex: 2,
+          scale: 1.234,
+          source: const NormalizedRect(0.1004, 0, 0.5, 0.5),
+        ),
+    'a sub-thousandth nudge keeps the same tile key',
+  );
+  check(
+    key !=
+        PdfTileKey.fromSource(
+          pageIndex: 3,
+          scale: 1.234,
+          source: const NormalizedRect(0.1001, 0, 0.5, 0.5),
+        ),
+    'a different page is a different tile key',
+  );
+
+  Uint8List bytes(int seed) => Uint8List.fromList([seed, seed, seed, seed]);
+  final cache = PdfTileCache();
+  check(cache.get(key) == null, 'a missing tile is null');
+  cache.put(key, bytes(1));
+  check(
+    cache.get(key)!.join(',') == bytes(1).join(','),
+    'put then get returns the bytes',
+  );
+
+  final small = PdfTileCache(maxBytes: 10);
+  final first = PdfTileKey.fromSource(
+    pageIndex: 0,
+    scale: 1,
+    source: const NormalizedRect(0, 0, 0.1, 0.1),
+  );
+  final second = PdfTileKey.fromSource(
+    pageIndex: 0,
+    scale: 1,
+    source: const NormalizedRect(0.1, 0, 0.1, 0.1),
+  );
+  final third = PdfTileKey.fromSource(
+    pageIndex: 0,
+    scale: 1,
+    source: const NormalizedRect(0.2, 0, 0.1, 0.1),
+  );
+  small.put(first, bytes(1));
+  small.put(second, bytes(2));
+  small.put(third, bytes(3));
+  check(small.length == 2, 'the budget evicts down to two entries');
+  check(small.get(first) == null, 'the oldest entry is evicted first');
+  check(small.get(third) != null, 'the newest entry survives');
+
+  final recency = PdfTileCache(maxBytes: 10);
+  recency.put(first, bytes(1));
+  recency.put(second, bytes(2));
+  recency.get(first);
+  recency.put(third, bytes(3));
+  check(recency.get(first) != null, 'reading a tile refreshes its recency');
+  check(recency.get(second) == null, 'the unread tile is evicted');
+
+  final replace = PdfTileCache(maxBytes: 100);
+  replace.put(first, bytes(1));
+  replace.put(first, Uint8List.fromList([1, 2, 3, 4, 5, 6]));
+  check(replace.length == 1, 'replacing a key does not grow the entry count');
+  check(replace.bytes == 6, 'replacing a key updates the byte total');
+
+  replace.clear();
+  check(replace.bytes == 0, 'clear resets the byte total');
+  check(replace.length == 0, 'clear resets the entry count');
 }
 
 Future<void> _repository() async {
