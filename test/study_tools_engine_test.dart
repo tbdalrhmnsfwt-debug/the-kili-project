@@ -8,6 +8,10 @@ const _massLine = 'الكتلة: مقدار ما يحتويه الجسم من م
 const _speedLine = 'السرعة: المسافة التي يقطعها الجسم في وحدة الزمن.';
 const _forceLine = 'القوة: مؤثر يغير من حالة حركة الجسم أو شكله.';
 
+const _kineticDefinition = 'طاقة يمتلكها الجسم بسبب حركته.';
+const _massDefinition = 'مقدار ما يحتويه الجسم من مادة.';
+const _speedDefinition = 'المسافة التي يقطعها الجسم في وحدة الزمن.';
+
 SourceDocument _document() => SourceDocument(
       resourceId: 'res-phy',
       batchId: 'batch-1',
@@ -47,7 +51,7 @@ StudyQuestion _validQuestion() => const StudyQuestion(
       id: 'q-valid',
       kind: StudyQuestionKind.multipleChoice,
       prompt: 'إيه التعريف الصح لـ «الكتلة»؟',
-      choices: [_massLine, _kineticLine, _speedLine],
+      choices: [_massDefinition, _kineticDefinition, _speedDefinition],
       correctIndex: 0,
       page: 1,
       evidence: _massLine,
@@ -148,7 +152,9 @@ void main() {
     });
 
     test('rejects fewer than three choices', () {
-      final question = _copyWith(choices: const [_massLine, _kineticLine]);
+      final question = _copyWith(
+        choices: const [_massDefinition, _kineticDefinition],
+      );
 
       expect(
         engine.validate(question, document).rejection,
@@ -158,7 +164,7 @@ void main() {
 
     test('rejects duplicate choices', () {
       final question = _copyWith(
-        choices: const [_massLine, _massLine, _speedLine],
+        choices: const [_massDefinition, _massDefinition, _speedDefinition],
       );
 
       expect(
@@ -180,8 +186,8 @@ void main() {
       final question = _copyWith(
         choices: const [
           'طاقة الوضع لجسم مرتفع عن سطح الأرض.',
-          _kineticLine,
-          _speedLine,
+          _kineticDefinition,
+          _speedDefinition,
         ],
       );
 

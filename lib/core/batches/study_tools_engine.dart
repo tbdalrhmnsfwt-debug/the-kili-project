@@ -9,7 +9,6 @@ library;
 
 import 'dart:math' as math;
 
-import '../../models/extraction.dart';
 import '../../models/study_source.dart';
 import '../book_sectioning.dart';
 import 'evidence_validator.dart';
@@ -258,18 +257,7 @@ class StudyToolsEngine {
   StudyMindMap mindMap(SourceDocument document) {
     final terms = _terms(document);
     final steps = _steps(document);
-    final extracted = [
-      for (final page in document.pages)
-        ExtractedPage(
-          pageNumber: page.pageNumber,
-          text: page.text,
-          fromOcr: page.fromOcr,
-        ),
-    ];
-    final sections = buildSections(extracted, <String>[])
-        .where((section) => !section.isFallback)
-        .take(8)
-        .toList(growable: false);
+    final sections = _headingGroups(document).take(8).toList(growable: false);
 
     final children = <StudyMapNode>[];
     final usedTerms = <String>{};
@@ -495,6 +483,42 @@ class StudyToolsEngine {
       }
     }
     return steps;
+  }
+
+  /// The printed unit/lesson headings and the pages under each.
+  ///
+  /// Unlike `buildSections`, a heading on the page right before the next one
+  /// still gets its own node: the page under the heading is body, not an empty
+  /// chapter. A heading repeated on consecutive pages is treated as a running
+  /// header and folded.
+  List<({String title, int startPage, int endPage})> _headingGroups(
+    SourceDocument document,
+  ) {
+    final headings = <({int index, String title})>[];
+    String? previous;
+    for (var index = 0; index < document.pages.length; index++) {
+      final heading = findHeading(document.pages[index].text);
+      if (heading == null) continue;
+      final normalized = EvidenceValidator.normalize(heading);
+      if (previous != null && previous == normalized) continue;
+      previous = normalized;
+      headings.add((index: index, title: heading));
+    }
+
+    final groups = <({String title, int startPage, int endPage})>[];
+    for (var i = 0; i < headings.length; i++) {
+      final start = headings[i].index;
+      final last = i + 1 < headings.length
+          ? headings[i + 1].index - 1
+          : document.pages.length - 1;
+      if (last < start) continue;
+      groups.add((
+        title: headings[i].title,
+        startPage: document.pages[start].pageNumber,
+        endPage: document.pages[last].pageNumber,
+      ));
+    }
+    return groups;
   }
 
   static bool _foundAnywhere(SourceDocument document, String excerpt) {

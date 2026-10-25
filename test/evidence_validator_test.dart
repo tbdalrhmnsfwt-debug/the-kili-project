@@ -158,6 +158,8 @@ void main() {
         text,
         start: text.indexOf('ثانياً'),
         end: text.indexOf('ثانياً') + 'ثانياً نعوض بالقيم'.length,
+        before: 2,
+        after: 2,
       );
 
       expect(excerpt.contains('ثانياً نعوض بالقيم'), isTrue);
@@ -171,7 +173,7 @@ void main() {
         EvidenceValidator.excerptAround(
           text,
           start: 0,
-          end: 3,
+          end: 5,
           before: 50,
           after: 0,
         ),

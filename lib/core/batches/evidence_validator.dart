@@ -54,7 +54,7 @@ class EvidenceValidator {
       if (digit != null) {
         if (pendingSpace && folded.isNotEmpty) folded.write(' ');
         pendingSpace = false;
-        folded.write(digit);
+        folded.writeCharCode(digit);
         continue;
       }
       if (_isIgnoredMark(rune)) continue;
