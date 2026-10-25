@@ -224,7 +224,7 @@ void main() {
                   ],
         ),
         resourceMissingProvider.overrideWith(
-          (ref, args) async => args.relativePath == 'resources/missing.pdf',
+          (ref, args) async => args.relativePath == 'resources/res-missing.pdf',
         ),
         resourceThumbnailProvider.overrideWith((ref, args) async => null),
       ],

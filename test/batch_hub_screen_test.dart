@@ -98,7 +98,12 @@ void main() {
     );
   }
 
-  BatchUpdate update(String id, String title, {bool read = false}) {
+  BatchUpdate update(
+    String id,
+    String title, {
+    bool read = false,
+    int minutes = 0,
+  }) {
     return BatchUpdate(
       id: id,
       batchId: batchId,
@@ -106,7 +111,7 @@ void main() {
       authorName: 'طالب',
       title: title,
       body: '',
-      createdAt: fixed,
+      createdAt: fixed.add(Duration(minutes: minutes)),
       kind: BatchUpdateKind.announcement,
       readBy: read ? {uid} : const {},
     );
@@ -270,7 +275,7 @@ void main() {
         data: hub(
           updates: [
             update('u1', 'مستجد قديم', read: true),
-            update('u2', 'مراجعة يوم الخميس'),
+            update('u2', 'مراجعة يوم الخميس', minutes: 1),
           ],
           lastMessage: message('هنبدأ الساعة سبعة'),
         ),
