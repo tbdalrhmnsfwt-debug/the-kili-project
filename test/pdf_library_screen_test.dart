@@ -113,6 +113,21 @@ void main() {
     expect(find.text('تقرير'), findsOneWidget);
   });
 
+  testWidgets('a file deleted outside the app is shown as unavailable', (
+    tester,
+  ) async {
+    final entry = (await controller.import([source('تقرير.pdf')]))
+        .imported
+        .single;
+    await store.baseFile(entry.id).delete();
+
+    await pump(tester, const PdfLibraryScreen());
+
+    expect(find.text('تقرير'), findsOneWidget);
+    expect(find.text('الملف مش موجود'), findsOneWidget);
+    expect(controller.state.entries, hasLength(1));
+  });
+
   testWidgets('the hub shows the library only when it has files', (
     tester,
   ) async {

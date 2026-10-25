@@ -51,11 +51,17 @@ class MemoryStore implements KeyValueStore {
 }
 
 class FakeChannel extends PdfRenderChannel {
-  FakeChannel({this.pageCount = 10, List<PdfRenderFailure?>? failures})
-    : _failures = failures ?? [];
+  FakeChannel({
+    this.pageCount = 10,
+    List<PdfRenderFailure?>? failures,
+    this.expectedPassword,
+  }) : _failures = failures ?? [];
 
   final int pageCount;
   final List<PdfRenderFailure?> _failures;
+
+  /// When set, `open` demands this password on every call.
+  final String? expectedPassword;
   final List<String?> passwords = [];
   final List<RenderCall> renders = [];
   int opens = 0;
@@ -68,6 +74,14 @@ class FakeChannel extends PdfRenderChannel {
   Future<PdfRendererHandle> open(String path, {String? password}) async {
     opens += 1;
     passwords.add(password);
+    if (expectedPassword != null) {
+      if (password == null) {
+        throw const PdfRenderException(PdfRenderFailure.passwordRequired);
+      }
+      if (password != expectedPassword) {
+        throw const PdfRenderException(PdfRenderFailure.wrongPassword);
+      }
+    }
     if (_failures.isNotEmpty) {
       final failure = _failures.removeAt(0);
       if (failure != null) throw PdfRenderException(failure);
@@ -373,5 +387,84 @@ void main() {
     );
 
     expect(find.byType(PageView), findsOneWidget);
+  });
+
+  testWidgets('three wrong passwords still allow a fresh retry', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 3, expectedPassword: 'secret');
+    await pump(tester, channel, const PdfReaderScreen(path: '/tmp/locked.pdf'));
+
+    for (var attempt = 0; attempt < 3; attempt++) {
+      expect(find.text('الملف محمي بكلمة سر'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'nope$attempt');
+      await tester.tap(find.text('فتح'));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.text('تعذّر فتح الملف'), findsOneWidget);
+
+    await tester.tap(find.text('جرّب تاني'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('الملف محمي بكلمة سر'), findsOneWidget);
+  });
+
+  testWidgets('rotated pages report the page under the viewport', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 3);
+    final changes = <int>[];
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: PdfReaderViewport(
+        handle: PdfRendererHandle(
+          id: 7,
+          pageCount: 3,
+          pages: List.filled(3, const PdfPageSize(200, 400)),
+        ),
+        geometry: List.filled(
+          3,
+          const PdfPageGeometry(widthPoints: 200, heightPoints: 400),
+        ),
+        initialPage: 0,
+        onPageChanged: changes.add,
+        quarterTurns: 1,
+        initialZoom: 2,
+      ),
+    );
+
+    await tester.drag(find.byType(PdfReaderViewport), const Offset(0, -790));
+    await tester.pumpAndSettle();
+
+    expect(changes, isNotEmpty);
+    expect(changes.last, 1);
+  });
+
+  testWidgets('tiles for pages far off screen are released', (tester) async {
+    final channel = FakeChannel(pageCount: 6);
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: PdfReaderViewport(
+        handle: _handle(6),
+        geometry: List.filled(
+          6,
+          const PdfPageGeometry(widthPoints: 595, heightPoints: 842),
+        ),
+        initialPage: 0,
+        onPageChanged: (_) {},
+      ),
+    );
+    final state = tester.state<PdfReaderViewportState>(
+      find.byType(PdfReaderViewport),
+    );
+    expect(state.retainedTilePages, contains(0));
+
+    await tester.drag(find.byType(PdfReaderViewport), const Offset(0, -3000));
+    await tester.pumpAndSettle();
+
+    expect(state.retainedTilePages, isNot(contains(0)));
   });
 }

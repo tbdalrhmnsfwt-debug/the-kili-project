@@ -33,7 +33,8 @@ class _PdfLibraryScreenState extends ConsumerState<PdfLibraryScreen> {
   @override
   void initState() {
     super.initState();
-    // Drop entries whose file vanished while the app was closed.
+    // Re-read the catalog; entries whose file vanished stay listed so the
+    // card can offer removal instead of silently losing the document.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(pdfLibraryControllerProvider.notifier).refresh();

@@ -175,6 +175,16 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     }
   }
 
+  /// Retries after a failure.
+  ///
+  /// The attempt counter resets here: after three wrong passwords the user may
+  /// still remember the right one, and the retry button must offer the prompt
+  /// again instead of re-showing the same error forever.
+  Future<void> _retry() {
+    _attempts = 0;
+    return _open();
+  }
+
   /// Asks for the document password. Three failures stop the loop.
   Future<void> _promptPassword({required bool wrong}) async {
     if (_attempts >= 3) {
@@ -454,7 +464,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             FilledButton.icon(
-              onPressed: () => _open(),
+              onPressed: _retry,
               icon: const Icon(Icons.refresh_rounded),
               label: const TrText('جرّب تاني'),
             ),
@@ -464,6 +474,10 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
                 icon: const Icon(Icons.ios_share_rounded, size: 18),
                 label: const TrText('شارك الملف'),
               ),
+            TextButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              child: const TrText('رجوع'),
+            ),
           ],
         ),
       );

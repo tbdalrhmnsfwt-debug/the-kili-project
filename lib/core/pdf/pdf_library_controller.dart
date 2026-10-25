@@ -1,9 +1,10 @@
-/// Owns «ملفاتي»: importing, renaming, favouriting and pruning.
+/// Owns «ملفاتي»: importing, renaming, favouriting and removing.
 ///
 /// Every mutation goes through [PdfLibraryRepository] so the catalog on disk
 /// always matches the state the UI is showing. The controller never touches a
 /// file the user did not hand it: imports are copies, and `remove` only
-/// deletes those copies.
+/// deletes those copies. Nothing here deletes a catalog entry because a file
+/// disappeared — that is always the user's call.
 library;
 
 import 'dart:io';
@@ -171,21 +172,20 @@ class PdfLibraryController extends StateNotifier<PdfLibraryIndex> {
     );
   }
 
-  /// Drops entries whose file is missing and persists the result.
+  /// Re-reads the catalog from disk.
+  ///
+  /// Entries whose base file vanished are deliberately kept: the library shows
+  /// them as unavailable so the user can remove them or add the file again.
+  /// Deleting a catalog entry is never a side effect of opening a screen.
   Future<void> refresh() async {
-    final pruned = state.pruneMissing(
-      (entry) => _store.baseFile(entry.id).existsSync(),
-    );
-    if (pruned.entries.length != state.entries.length) {
-      await _commit(pruned);
-    }
+    state = _repository.load();
   }
 
-  /// Reloads the catalog from disk, then drops entries whose file is gone.
-  Future<void> reindex() async {
-    state = _repository.load();
-    await refresh();
-  }
+  /// Reloads the catalog from disk on the user's explicit request.
+  ///
+  /// This is the hook a future «تنظيف المكتبة» action can build on; it never
+  /// deletes entries on its own today.
+  Future<void> reindex() => refresh();
 
   PdfDocumentEntry? _entry(String id) {
     for (final entry in state.entries) {

@@ -78,10 +78,10 @@ class PdfReaderViewport extends ConsumerStatefulWidget {
   final int? highlightPage;
 
   @override
-  ConsumerState<PdfReaderViewport> createState() => _PdfReaderViewportState();
+  PdfReaderViewportState createState() => PdfReaderViewportState();
 }
 
-class _PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
+class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   final PdfTileCache _cache = PdfTileCache();
   final Map<int, Uint8List> _tiles = {};
   final Map<int, NormalizedRect> _tileSources = {};
@@ -110,6 +110,10 @@ class _PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   int _generation = 0;
 
   bool get _oddTurns => widget.quarterTurns.isOdd;
+
+  /// Pages whose decoded tile is still held in memory. Test hook.
+  @visibleForTesting
+  Set<int> get retainedTilePages => _tiles.keys.toSet();
 
   @override
   void initState() {
@@ -262,11 +266,13 @@ class _PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   }
 
   /// A page's height in the continuous list, after rotation.
+  ///
+  /// [PdfPageView] lays [geometry] out and swaps the outer box for odd turns,
+  /// so the height on screen is always the display height — swapping here as
+  /// well would count each rotated page as its unrotated height.
   double _pageExtent(int index) {
     final display = _displayGeometry(widget.geometry[index]);
-    final width = display.displayWidth(fitScale: _fitScale, zoom: _zoom);
-    final height = display.displayHeight(fitScale: _fitScale, zoom: _zoom);
-    return _oddTurns ? width : height;
+    return display.displayHeight(fitScale: _fitScale, zoom: _zoom);
   }
 
   /// How far the page list has scrolled above [index].
@@ -328,10 +334,23 @@ class _PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
     if (_pinching) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _releaseOffscreenTiles(viewport);
       for (final index in _visiblePages(viewport)) {
         _requestTile(index, viewport);
       }
     });
+  }
+
+  /// Drops the bytes of pages that scrolled away.
+  ///
+  /// [_tiles] holds decoded PNGs, so leaving an entry per visited page would
+  /// grow without limit and keep the tile cache from ever freeing anything.
+  /// The bounded [PdfTileCache] still has them, so scrolling back is a hit.
+  void _releaseOffscreenTiles(Size viewport) {
+    final keep = _visiblePages(viewport).toSet();
+    _tiles.removeWhere((index, _) => !keep.contains(index));
+    _tileSources.removeWhere((index, _) => !keep.contains(index));
+    _requestedKeys.removeWhere((index, _) => !keep.contains(index));
   }
 
   /// The visible pages plus one neighbour on each side, for prefetching.

@@ -116,7 +116,7 @@ void main() {
     expect(store.thumbFile(entry.id).existsSync(), isFalse);
   });
 
-  test('refresh drops entries whose base file is gone', () async {
+  test('refresh keeps entries whose base file is gone', () async {
     final lib = controller();
     final entry = (await lib.import([source('a.pdf', '%PDF-1.7 a')]))
         .imported
@@ -125,8 +125,8 @@ void main() {
     await store.baseFile(entry.id).delete();
     await lib.refresh();
 
-    expect(lib.state.entries, isEmpty);
-    expect(PdfLibraryRepository(keyValues).load().entries, isEmpty);
+    expect(lib.state.entries.single.id, entry.id);
+    expect(PdfLibraryRepository(keyValues).load().entries.single.id, entry.id);
   });
 
   test('last read page survives a fresh controller', () async {
