@@ -144,10 +144,22 @@ class ResourceCard extends ConsumerWidget {
                   PopupMenuButton<String>(
                     tooltip: 'خيارات الملف',
                     onSelected: (value) {
-                      if (value == 'delete') _confirmDelete(context, ref);
+                      switch (value) {
+                        case 'study':
+                          context.push(
+                            ZakerRoutes.batchStudyTools(batchId, resource.id),
+                          );
+                        case 'delete':
+                          _confirmDelete(context, ref);
+                      }
                     },
-                    itemBuilder: (menuContext) => const [
-                      PopupMenuItem(
+                    itemBuilder: (menuContext) => [
+                      if (resource.kind == ResourceKind.pdf && !missing)
+                        const PopupMenuItem(
+                          value: 'study',
+                          child: TrText('أدوات الدراسة'),
+                        ),
+                      const PopupMenuItem(
                         value: 'delete',
                         child: TrText('حذف الملف'),
                       ),

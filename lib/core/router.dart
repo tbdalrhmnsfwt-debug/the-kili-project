@@ -27,6 +27,10 @@ import '../features/batches/create_batch_screen.dart';
 import '../features/batches/join_batch_screen.dart';
 import '../features/batches/subjects/audio_resource_screen.dart';
 import '../features/batches/subjects/batch_subjects_screen.dart';
+import '../features/batches/subjects/information_bank_screen.dart';
+import '../features/batches/subjects/interactive_test_screen.dart';
+import '../features/batches/subjects/mind_map_screen.dart';
+import '../features/batches/subjects/study_tools_screen.dart';
 import '../features/batches/subjects/subject_resources_screen.dart';
 import '../features/challenges/challenges_screen.dart';
 import '../features/calculator/calc_pro_screen.dart';
@@ -107,6 +111,14 @@ class ZakerRoutes {
   static const String batchChatPattern = '/batches/:batchId/chat';
   static const String batchAudioResourcePattern =
       '/batches/:batchId/audio/:resourceId';
+  static const String batchStudyToolsPattern =
+      '/batches/:batchId/study/:resourceId';
+  static const String batchStudyTestPattern =
+      '/batches/:batchId/study/:resourceId/test';
+  static const String batchStudyBankPattern =
+      '/batches/:batchId/study/:resourceId/bank';
+  static const String batchStudyMapPattern =
+      '/batches/:batchId/study/:resourceId/map';
 
   static String batchCreated(String batchId) => '/batches/$batchId/created';
 
@@ -128,6 +140,22 @@ class ZakerRoutes {
   /// The local player for one audio resource.
   static String batchAudioResource(String batchId, String resourceId) =>
       '${batchHub(batchId)}/audio/${Uri.encodeComponent(resourceId)}';
+
+  /// The study-tool hub for one PDF.
+  static String batchStudyTools(String batchId, String resourceId) =>
+      '${batchHub(batchId)}/study/${Uri.encodeComponent(resourceId)}';
+
+  /// The generated interactive test for one PDF.
+  static String batchStudyTest(String batchId, String resourceId) =>
+      '${batchStudyTools(batchId, resourceId)}/test';
+
+  /// The generated information bank for one PDF.
+  static String batchStudyBank(String batchId, String resourceId) =>
+      '${batchStudyTools(batchId, resourceId)}/bank';
+
+  /// The generated mind map for one PDF.
+  static String batchStudyMap(String batchId, String resourceId) =>
+      '${batchStudyTools(batchId, resourceId)}/map';
 
   static const String hifz = '/hifz';
   static const String hifzSetup = '/hifz/setup';
@@ -336,6 +364,34 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: ZakerRoutes.batchAudioResourcePattern,
       builder: (context, state) => AudioResourceScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        resourceId: state.pathParameters['resourceId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchStudyToolsPattern,
+      builder: (context, state) => StudyToolsScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        resourceId: state.pathParameters['resourceId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchStudyTestPattern,
+      builder: (context, state) => InteractiveTestScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        resourceId: state.pathParameters['resourceId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchStudyBankPattern,
+      builder: (context, state) => InformationBankScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        resourceId: state.pathParameters['resourceId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchStudyMapPattern,
+      builder: (context, state) => BatchMindMapScreen(
         batchId: state.pathParameters['batchId'] ?? '',
         resourceId: state.pathParameters['resourceId'] ?? '',
       ),
