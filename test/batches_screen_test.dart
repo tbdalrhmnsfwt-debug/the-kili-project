@@ -9,6 +9,7 @@ import 'package:zaker_ai/core/local_store.dart';
 import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/features/batches/batches_screen.dart';
 import 'package:zaker_ai/models/batch.dart';
+import 'package:zaker_ai/models/batch_resource.dart';
 import 'package:zaker_ai/providers/app_providers.dart';
 import 'package:zaker_ai/providers/batch_providers.dart';
 
@@ -67,7 +68,38 @@ class _FakeRepository implements BatchRepository {
       throw UnimplementedError();
 
   @override
-  Future<void> deleteSubject(String uid, String batchId, String subjectId) =>
+  Future<void> deleteSubject(
+    String uid,
+    String batchId,
+    String subjectId, {
+    String? moveToSubjectId,
+    bool deleteResources = false,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<BatchResource> addResource(
+    String uid,
+    String batchId,
+    BatchResource resource,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteResource(
+    String uid,
+    String batchId,
+    String resourceId,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<BatchResource> setStarred(
+    String uid,
+    String batchId,
+    String resourceId,
+    bool starred,
+  ) =>
       throw UnimplementedError();
 
   @override

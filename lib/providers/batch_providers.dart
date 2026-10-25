@@ -2,6 +2,7 @@
 library;
 
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,9 +10,13 @@ import '../core/batches/batch_claim_service.dart';
 import '../core/batches/batch_file_store.dart';
 import '../core/batches/batch_join_service.dart';
 import '../core/batches/batch_repository.dart';
+import '../core/batches/batch_resource_paths.dart';
 import '../core/batches/batch_store.dart';
+import '../core/batches/hub_summary.dart';
 import '../core/batches/local_batch_repository.dart';
+import '../core/batches/resource_store.dart';
 import '../models/batch.dart';
+import '../models/batch_resource.dart';
 import 'app_providers.dart';
 
 /// The app-support directory that holds `batches/`.
@@ -84,6 +89,75 @@ final batchDetailProvider = FutureProvider.autoDispose
   return ref.watch(batchRepositoryProvider).loadBatch(uid, batchId);
 });
 
+/// Counts and latest items for the hub's four sections.
+final batchHubDataProvider = FutureProvider.autoDispose
+    .family<BatchHubData, String>((ref, batchId) async {
+  final uid = _currentUid(ref);
+  if (uid.isEmpty) {
+    throw StateError('no active account');
+  }
+  // Reading the batch first keeps the access check in one place.
+  await ref.watch(batchDetailProvider(batchId).future);
+  final files = ref.watch(batchFileStoreProvider);
+  return BatchHubData.load(
+    store: BatchStore(directory: files.batchDir(uid, batchId)),
+  );
+});
+
+/// Books storage usage for a batch, shown on the subjects screen.
+final batchStorageProvider = FutureProvider.autoDispose.family<int, String>((
+  ref,
+  batchId,
+) async {
+  final uid = _currentUid(ref);
+  if (uid.isEmpty) return 0;
+  return ref.watch(batchRepositoryProvider).storageUsed(uid, batchId);
+});
+
+/// Imports files into the active account's workspaces.
+final resourceStoreProvider = Provider<ResourceStore>((ref) {
+  final files = ref.watch(batchFileStoreProvider);
+  return ResourceStore(
+    files: files,
+    repository: ref.watch(batchRepositoryProvider),
+    thumbnails: PdfResourceThumbnailer(files: files),
+  );
+});
+
+/// True when a resource's private copy is gone.
+///
+/// Widget tests override this family so no real I/O runs in the fake-async
+/// zone.
+typedef ResourceMissingArgs = ({String batchId, String relativePath});
+
+final resourceMissingProvider = FutureProvider.autoDispose
+    .family<bool, ResourceMissingArgs>((ref, args) async {
+  final uid = _currentUid(ref);
+  if (uid.isEmpty) return false;
+  final files = ref.watch(batchFileStoreProvider);
+  final exists = await files.fileExists(
+    uid: uid,
+    batchId: args.batchId,
+    relativePath: args.relativePath,
+  );
+  return !exists;
+});
+
+/// Page-one thumbnail bytes for a PDF resource, or null.
+typedef ResourceThumbnailArgs = ({String batchId, String resourceId});
+
+final resourceThumbnailProvider = FutureProvider.autoDispose
+    .family<Uint8List?, ResourceThumbnailArgs>((ref, args) async {
+  final uid = _currentUid(ref);
+  if (uid.isEmpty) return null;
+  final files = ref.watch(batchFileStoreProvider);
+  return files.readBytes(
+    uid: uid,
+    batchId: args.batchId,
+    relativePath: BatchResourcePaths.thumbnailPath(args.resourceId),
+  );
+});
+
 /// Commands used by screens. Each one invalidates the affected reads.
 class BatchController {
   BatchController(this._ref);
@@ -136,9 +210,89 @@ class BatchController {
     _refresh(batchId);
   }
 
-  Future<void> deleteSubject(String batchId, String subjectId) async {
-    await _repository.deleteSubject(_uid, batchId, subjectId);
+  Future<void> deleteSubject(
+    String batchId,
+    String subjectId, {
+    String? moveToSubjectId,
+    bool deleteResources = false,
+  }) async {
+    await _repository.deleteSubject(
+      _uid,
+      batchId,
+      subjectId,
+      moveToSubjectId: moveToSubjectId,
+      deleteResources: deleteResources,
+    );
     _refresh(batchId);
+    _refreshStorage(batchId);
+  }
+
+  Future<BatchResource> addResource(BatchResource resource) async {
+    final saved =
+        await _repository.addResource(_uid, resource.batchId, resource);
+    _refresh(resource.batchId);
+    _refreshStorage(resource.batchId);
+    return saved;
+  }
+
+  /// Copies a chosen file into the batch and indexes it.
+  Future<BatchResource> importResource({
+    required String batchId,
+    required String subjectId,
+    required ResourceKind kind,
+    required String sourcePath,
+    String? title,
+  }) async {
+    final resource = await _ref.read(resourceStoreProvider).importFile(
+          uid: _uid,
+          batchId: batchId,
+          subjectId: subjectId,
+          kind: kind,
+          sourcePath: sourcePath,
+          title: title,
+        );
+    _refresh(batchId);
+    _refreshStorage(batchId);
+    return resource;
+  }
+
+  Future<BatchResource> addNote({
+    required String batchId,
+    required String subjectId,
+    required String title,
+    required String note,
+  }) async {
+    final resource = await _ref.read(resourceStoreProvider).addNote(
+          uid: _uid,
+          batchId: batchId,
+          subjectId: subjectId,
+          title: title,
+          note: note,
+        );
+    _refresh(batchId);
+    _refreshStorage(batchId);
+    return resource;
+  }
+
+  Future<void> deleteResource(String batchId, String resourceId) async {
+    await _repository.deleteResource(_uid, batchId, resourceId);
+    _refresh(batchId);
+    _refreshStorage(batchId);
+  }
+
+  Future<BatchResource> setStarred(
+    String batchId,
+    String resourceId,
+    bool starred,
+  ) async {
+    final resource = await _repository.setStarred(
+      _uid,
+      batchId,
+      resourceId,
+      starred,
+    );
+    _refresh(batchId);
+    return resource;
   }
 
   Future<InviteCodeState> rotateCode(String batchId) async {
@@ -165,7 +319,12 @@ class BatchController {
 
   void _refresh(String batchId) {
     _ref.invalidate(batchDetailProvider(batchId));
+    _ref.invalidate(batchHubDataProvider(batchId));
     _ref.invalidate(batchListProvider);
+  }
+
+  void _refreshStorage(String batchId) {
+    _ref.invalidate(batchStorageProvider(batchId));
   }
 }
 

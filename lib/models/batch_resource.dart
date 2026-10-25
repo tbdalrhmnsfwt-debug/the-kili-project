@@ -74,6 +74,7 @@ class BatchResource {
   final String note;
 
   BatchResource copyWith({
+    String? subjectId,
     String? title,
     String? fileName,
     String? mime,
@@ -89,7 +90,7 @@ class BatchResource {
       BatchResource(
         id: id,
         batchId: batchId,
-        subjectId: subjectId,
+        subjectId: subjectId ?? this.subjectId,
         kind: kind,
         title: title ?? this.title,
         uploaderUid: uploaderUid,

@@ -6,6 +6,7 @@
 library;
 
 import '../../models/batch.dart';
+import '../../models/batch_resource.dart';
 import 'batch_failure.dart';
 import 'batch_store.dart';
 
@@ -98,7 +99,31 @@ abstract interface class BatchRepository {
     String name,
   );
 
-  Future<void> deleteSubject(String uid, String batchId, String subjectId);
+  Future<void> deleteSubject(
+    String uid,
+    String batchId,
+    String subjectId, {
+    String? moveToSubjectId,
+    bool deleteResources = false,
+  });
+
+  /// Indexes an already copied resource. The caller owns the file.
+  Future<BatchResource> addResource(
+    String uid,
+    String batchId,
+    BatchResource resource,
+  );
+
+  /// Removes the index entry and then its private files.
+  Future<void> deleteResource(String uid, String batchId, String resourceId);
+
+  /// Stars or unstars a resource for the current uid only.
+  Future<BatchResource> setStarred(
+    String uid,
+    String batchId,
+    String resourceId,
+    bool starred,
+  );
 
   Future<InviteCodeState> rotateCode(String uid, String batchId);
 

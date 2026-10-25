@@ -186,88 +186,94 @@ class _BatchCard extends ConsumerWidget {
     final isOwner = batch.ownerUid == uid;
     final code = batch.codeState;
 
-    return Container(
-      padding: const EdgeInsets.all(ZakerSpacing.md),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
+    return Material(
+      color: theme.cardTheme.color,
+      shape: RoundedRectangleBorder(
         borderRadius: ZakerRadius.card,
-        border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
+        side: BorderSide(color: theme.dividerTheme.color ?? Colors.black12),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push(ZakerRoutes.batchHub(batch.id)),
+        child: Padding(
+          padding: const EdgeInsets.all(ZakerSpacing.md),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ZakerGlassGlyph(
-                icon: Icons.groups_2_outlined,
-                accent: theme.colorScheme.primary,
-                size: 42,
-                iconSize: 22,
-                radius: ZakerRadius.sm,
-              ),
-              const SizedBox(width: ZakerSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TrText(
-                      batch.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    TrText(
-                      '${batch.subjects.length} مواد · أنت بس على الجهاز',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (summary.unreadUpdates > 0) ...[
-                const SizedBox(width: ZakerSpacing.sm),
-                _UnreadBadge(count: summary.unreadUpdates),
-              ],
-              if (isOwner)
-                IconButton(
-                  tooltip: 'حذف الدفعة',
-                  onPressed: () => _confirmDelete(
-                    context,
-                    ref,
-                    batchId: batch.id,
-                    batchName: batch.name,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ZakerGlassGlyph(
+                    icon: Icons.groups_2_outlined,
+                    accent: theme.colorScheme.primary,
+                    size: 42,
+                    iconSize: 22,
+                    radius: ZakerRadius.sm,
                   ),
-                  icon: const Icon(Icons.delete_outline_rounded),
-                ),
-            ],
-          ),
-          const SizedBox(height: ZakerSpacing.sm),
-          Wrap(
-            spacing: ZakerSpacing.sm,
-            runSpacing: ZakerSpacing.xs,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              _MetaChip(
-                icon: Icons.calendar_today_rounded,
-                label: 'آخر نشاط: ${_formatDate(summary.lastActivityAt)}',
+                  const SizedBox(width: ZakerSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TrText(
+                          batch.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        TrText(
+                          '${batch.subjects.length} مواد · أنت بس على الجهاز',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (summary.unreadUpdates > 0) ...[
+                    const SizedBox(width: ZakerSpacing.sm),
+                    _UnreadBadge(count: summary.unreadUpdates),
+                  ],
+                  if (isOwner)
+                    IconButton(
+                      tooltip: 'حذف الدفعة',
+                      onPressed: () => _confirmDelete(
+                        context,
+                        ref,
+                        batchId: batch.id,
+                        batchName: batch.name,
+                      ),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                    ),
+                ],
               ),
-              if (isOwner && code.isActive)
-                _CodeChip(code: BatchCodeService.format(code.code))
-              else if (isOwner)
-                const _MetaChip(
-                  icon: Icons.key_off_rounded,
-                  label: 'الكود متوقف',
-                ),
+              const SizedBox(height: ZakerSpacing.sm),
+              Wrap(
+                spacing: ZakerSpacing.sm,
+                runSpacing: ZakerSpacing.xs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  _MetaChip(
+                    icon: Icons.calendar_today_rounded,
+                    label: 'آخر نشاط: ${_formatDate(summary.lastActivityAt)}',
+                  ),
+                  if (isOwner && code.isActive)
+                    _CodeChip(code: BatchCodeService.format(code.code))
+                  else if (isOwner)
+                    const _MetaChip(
+                      icon: Icons.key_off_rounded,
+                      label: 'الكود متوقف',
+                    ),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

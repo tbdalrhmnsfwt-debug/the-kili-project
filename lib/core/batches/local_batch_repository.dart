@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../models/batch.dart';
+import '../../models/batch_resource.dart';
 import '../key_value_store.dart';
 import 'batch_access.dart';
 import 'batch_code_service.dart';
@@ -12,6 +13,7 @@ import 'batch_failure.dart';
 import 'batch_file_store.dart';
 import 'batch_ids.dart';
 import 'batch_repository.dart';
+import 'batch_resource_paths.dart';
 import 'batch_store.dart';
 import 'document_store.dart';
 
@@ -32,10 +34,13 @@ class LocalBatchRepository implements BatchRepository {
   static const int maxSubjects = 30;
   static const int maxSubjectNameLength = 40;
   static const int maxBatchNameLength = 60;
+  static const int maxResourceTitleLength = 120;
+  static const int maxNoteChars = 20000;
   static const int auditCap = 200;
   static const int codeLedgerCap = 200;
 
   static final RegExp _batchIdPattern = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
+  static final RegExp _entityIdPattern = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
 
   // ------------------------------------------------------------------- reads
 
@@ -348,20 +353,35 @@ class LocalBatchRepository implements BatchRepository {
   Future<void> deleteSubject(
     String uid,
     String batchId,
-    String subjectId,
-  ) async {
+    String subjectId, {
+    String? moveToSubjectId,
+    bool deleteResources = false,
+  }) async {
     final snapshot = await _authorize(uid, batchId, BatchAction.manageSubjects);
     final subjects = snapshot.batch.subjects;
     final index = subjects.indexWhere((item) => item.id == subjectId);
     if (index < 0) {
       throw const BatchFailure(BatchFailureCode.notFound, field: 'subjectId');
     }
-    if (snapshot.resources.any((item) => item.subjectId == subjectId)) {
-      throw const BatchFailure(
-        BatchFailureCode.validationFailed,
-        field: 'subjectId',
-        detail: 'subject still has resources',
-      );
+    final affected = snapshot.resources
+        .where((item) => item.subjectId == subjectId)
+        .toList();
+    if (affected.isNotEmpty) {
+      if (moveToSubjectId == null && !deleteResources) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'subjectId',
+          detail: 'subject still has resources',
+        );
+      }
+      if (moveToSubjectId != null &&
+          (moveToSubjectId == subjectId ||
+              !subjects.any((item) => item.id == moveToSubjectId))) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'moveToSubjectId',
+        );
+      }
     }
     final now = _clock();
     final remaining = [...subjects]..removeAt(index);
@@ -369,16 +389,140 @@ class LocalBatchRepository implements BatchRepository {
       for (var i = 0; i < remaining.length; i++)
         remaining[i].copyWith(order: i),
     ];
+    final resources = moveToSubjectId != null
+        ? [
+            for (final item in snapshot.resources)
+              item.subjectId == subjectId
+                  ? item.copyWith(subjectId: moveToSubjectId)
+                  : item,
+          ]
+        : [
+            for (final item in snapshot.resources)
+              if (item.subjectId != subjectId) item,
+          ];
     final updated = snapshot.copyWith(
-      batch: snapshot.batch.copyWith(subjects: renumbered, lastActivityAt: now),
+      batch: snapshot.batch.copyWith(
+        subjects: renumbered,
+        lastActivityAt: now,
+      ),
+      resources: resources,
     );
     await _save(uid, batchId, updated);
+    if (moveToSubjectId == null) {
+      for (final resource in affected) {
+        await _deleteResourceFiles(uid, batchId, resource);
+      }
+    }
     await _appendAudit(
       store: BatchStore(directory: files.batchDir(uid, batchId)),
       batchId: batchId,
       actorUid: uid,
       action: 'subjectDeleted',
     );
+  }
+
+  @override
+  Future<BatchResource> addResource(
+    String uid,
+    String batchId,
+    BatchResource resource,
+  ) async {
+    final snapshot = await _authorize(uid, batchId, BatchAction.uploadResource);
+    final membership = _membershipOf(snapshot, uid);
+    if (snapshot.batch.settings.uploadsAdminOnly &&
+        membership != null &&
+        membership.role != BatchRole.owner &&
+        membership.role != BatchRole.admin) {
+      throw const BatchFailure(
+        BatchFailureCode.notAuthorized,
+        detail: 'uploads are limited to admins',
+      );
+    }
+    final clean = _validateResource(snapshot, batchId, resource);
+    if (snapshot.resources.any((item) => item.id == clean.id)) {
+      throw const BatchFailure(BatchFailureCode.conflict, field: 'id');
+    }
+    final now = _clock();
+    final updated = snapshot.copyWith(
+      resources: [...snapshot.resources, clean],
+      batch: snapshot.batch.copyWith(lastActivityAt: now),
+    );
+    await _save(uid, batchId, updated);
+    await _appendAudit(
+      store: BatchStore(directory: files.batchDir(uid, batchId)),
+      batchId: batchId,
+      actorUid: uid,
+      action: 'resourceAdded',
+    );
+    return clean;
+  }
+
+  @override
+  Future<void> deleteResource(
+    String uid,
+    String batchId,
+    String resourceId,
+  ) async {
+    final snapshot = await loadBatch(uid, batchId);
+    final membership = _membershipOf(snapshot, uid);
+    final index =
+        snapshot.resources.indexWhere((item) => item.id == resourceId);
+    if (index < 0) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'resourceId');
+    }
+    final resource = snapshot.resources[index];
+    final action = resource.uploaderUid == uid
+        ? BatchAction.deleteOwnResource
+        : BatchAction.deleteAnyResource;
+    if (membership == null || !BatchAccess.can(membership.role, action)) {
+      throw const BatchFailure(BatchFailureCode.notAuthorized);
+    }
+    final now = _clock();
+    final updated = snapshot.copyWith(
+      resources: [...snapshot.resources]..removeAt(index),
+      batch: snapshot.batch.copyWith(lastActivityAt: now),
+    );
+    await _save(uid, batchId, updated);
+    await _deleteResourceFiles(uid, batchId, resource);
+    await _appendAudit(
+      store: BatchStore(directory: files.batchDir(uid, batchId)),
+      batchId: batchId,
+      actorUid: uid,
+      action: 'resourceDeleted',
+    );
+  }
+
+  @override
+  Future<BatchResource> setStarred(
+    String uid,
+    String batchId,
+    String resourceId,
+    bool starred,
+  ) async {
+    final snapshot = await _authorize(uid, batchId, BatchAction.starResource);
+    final index =
+        snapshot.resources.indexWhere((item) => item.id == resourceId);
+    if (index < 0) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'resourceId');
+    }
+    final resource = snapshot.resources[index];
+    final stars = {...resource.starredBy};
+    if (starred) {
+      stars.add(uid);
+    } else {
+      stars.remove(uid);
+    }
+    final updatedResource = resource.copyWith(starredBy: stars);
+    final resources = [...snapshot.resources];
+    resources[index] = updatedResource;
+    await _save(uid, batchId, snapshot.copyWith(resources: resources));
+    await _appendAudit(
+      store: BatchStore(directory: files.batchDir(uid, batchId)),
+      batchId: batchId,
+      actorUid: uid,
+      action: starred ? 'resourceStarred' : 'resourceUnstarred',
+    );
+    return updatedResource;
   }
 
   @override
@@ -659,6 +803,101 @@ class LocalBatchRepository implements BatchRepository {
   Future<void> _save(String uid, String batchId, BatchSnapshot snapshot) async {
     final store = BatchStore(directory: files.batchDir(uid, batchId));
     await store.batch.save(snapshot);
+  }
+
+  /// Validates a resource before it enters the batch document.
+  ///
+  /// The importer has already copied the file; this re-checks the facts the
+  /// document will rely on so a malformed record can never be indexed.
+  BatchResource _validateResource(
+    BatchSnapshot snapshot,
+    String batchId,
+    BatchResource resource,
+  ) {
+    if (resource.batchId != batchId) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'batchId',
+      );
+    }
+    if (!_entityIdPattern.hasMatch(resource.id)) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'resourceId',
+      );
+    }
+    if (!snapshot.batch.subjects.any((item) => item.id == resource.subjectId)) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'subjectId');
+    }
+    final title = resource.title.trim();
+    if (title.isEmpty ||
+        title.runes.length > maxResourceTitleLength ||
+        _hasControl(title)) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'title',
+      );
+    }
+    final extension = BatchResourcePaths.extensionOf(resource.fileName);
+    switch (resource.kind) {
+      case ResourceKind.pdf:
+        if (extension != 'pdf' ||
+            resource.fileName.length > 255 ||
+            resource.sizeBytes <= 0 ||
+            resource.sizeBytes > BatchFileStore.maxPdfBytes) {
+          throw const BatchFailure(
+            BatchFailureCode.validationFailed,
+            field: 'file',
+          );
+        }
+        return resource.copyWith(title: title);
+      case ResourceKind.audio:
+        if (extension == null ||
+            !BatchResourcePaths.isAudioExtension(extension) ||
+            resource.fileName.length > 255 ||
+            resource.sizeBytes <= 0 ||
+            resource.sizeBytes > BatchFileStore.maxImportBytes) {
+          throw const BatchFailure(
+            BatchFailureCode.validationFailed,
+            field: 'file',
+          );
+        }
+        return resource.copyWith(title: title);
+      case ResourceKind.note:
+        final note = resource.note.trim();
+        if (note.isEmpty || note.runes.length > maxNoteChars) {
+          throw const BatchFailure(
+            BatchFailureCode.validationFailed,
+            field: 'note',
+          );
+        }
+        return resource.copyWith(title: title, note: note);
+    }
+  }
+
+  /// Removes the files that belonged to [resource].
+  ///
+  /// The index entry is already gone, so a failure here leaves an orphan file
+  /// rather than a broken card; it is never reported as a failed delete.
+  Future<void> _deleteResourceFiles(
+    String uid,
+    String batchId,
+    BatchResource resource,
+  ) async {
+    final filePath = BatchResourcePaths.filePath(resource);
+    final paths = <String>[
+      if (filePath != null) filePath,
+      BatchResourcePaths.thumbnailPath(resource.id),
+      if (resource.sha256.isNotEmpty)
+        BatchResourcePaths.textCachePath(resource.sha256),
+    ];
+    for (final path in paths) {
+      try {
+        await files.deleteFile(uid: uid, batchId: batchId, relativePath: path);
+      } on BatchFailure {
+        // Best-effort cleanup; the batch stays consistent without it.
+      }
+    }
   }
 
   Membership? _membershipOf(BatchSnapshot snapshot, String uid) {

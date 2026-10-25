@@ -20,9 +20,12 @@ import '../features/azkar/azkar_tasbih_screen.dart';
 import '../features/azkar/kahf_screen.dart';
 import '../features/azkar/salat_counter_screen.dart';
 import '../features/batches/batch_created_screen.dart';
+import '../features/batches/batch_hub_screen.dart';
 import '../features/batches/batches_screen.dart';
 import '../features/batches/create_batch_screen.dart';
 import '../features/batches/join_batch_screen.dart';
+import '../features/batches/subjects/batch_subjects_screen.dart';
+import '../features/batches/subjects/subject_resources_screen.dart';
 import '../features/challenges/challenges_screen.dart';
 import '../features/calculator/calc_pro_screen.dart';
 import '../features/courses/course_list_screen.dart';
@@ -95,8 +98,24 @@ class ZakerRoutes {
   static const String batchCreate = '/batches/create';
   static const String batchJoin = '/batches/join';
   static const String batchCreatedPattern = '/batches/:batchId/created';
+  static const String batchHubPattern = '/batches/:batchId';
+  static const String batchSubjectsPattern = '/batches/:batchId/subjects';
+  static const String batchSubjectResourcesPattern =
+      '/batches/:batchId/subjects/:subjectId';
 
   static String batchCreated(String batchId) => '/batches/$batchId/created';
+
+  /// The hub of one batch.
+  static String batchHub(String batchId) =>
+      '/batches/${Uri.encodeComponent(batchId)}';
+
+  /// The subject list of one batch.
+  static String batchSubjects(String batchId) =>
+      '${batchHub(batchId)}/subjects';
+
+  /// The resources inside one subject.
+  static String batchSubjectResources(String batchId, String subjectId) =>
+      '${batchSubjects(batchId)}/${Uri.encodeComponent(subjectId)}';
   static const String hifz = '/hifz';
   static const String hifzSetup = '/hifz/setup';
   static const String glossary = '/glossary';
@@ -274,6 +293,25 @@ final GoRouter appRouter = GoRouter(
       path: ZakerRoutes.batchCreatedPattern,
       builder: (context, state) => BatchCreatedScreen(
         batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchHubPattern,
+      builder: (context, state) => BatchHubScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchSubjectsPattern,
+      builder: (context, state) => BatchSubjectsScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchSubjectResourcesPattern,
+      builder: (context, state) => SubjectResourcesScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        subjectId: state.pathParameters['subjectId'] ?? '',
       ),
     ),
     GoRoute(

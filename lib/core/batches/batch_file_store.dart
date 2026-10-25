@@ -6,6 +6,7 @@
 library;
 
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
@@ -217,6 +218,25 @@ class BatchFileStore {
   }) async {
     _requireRelative(relativePath);
     return fileInBatch(uid, batchId, relativePath).exists();
+  }
+
+  /// Reads a private file, returning null when it is absent or unreadable.
+  ///
+  /// Used for thumbnails, where a missing file is a normal state rather than
+  /// an error the screen should surface.
+  Future<Uint8List?> readBytes({
+    required String uid,
+    required String batchId,
+    required String relativePath,
+  }) async {
+    _requireRelative(relativePath);
+    final file = fileInBatch(uid, batchId, relativePath);
+    try {
+      if (!await file.exists()) return null;
+      return await file.readAsBytes();
+    } on FileSystemException {
+      return null;
+    }
   }
 
   /// Removes the whole batch directory.
