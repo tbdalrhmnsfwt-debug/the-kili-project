@@ -36,7 +36,6 @@ import '../../widgets/common.dart';
 import '../pdf/pdf_library_screen.dart';
 import '../pdf/widgets/pdf_document_card.dart';
 import '../pdf/widgets/pdf_import_button.dart';
-import 'pdf_viewer_screen.dart';
 import 'scan_screen.dart';
 import '../../widgets/tr_text.dart';
 
@@ -117,10 +116,11 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
     }
   }
 
-  /// Opens the on-device PDF reader.
+  /// Opens «ملفاتي», where PDFs are imported, picked and read.
   void _openViewer() {
-    Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => const PdfViewerScreen()));
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const PdfLibraryScreen()));
   }
 
   /// Opens the scan / OCR pipeline, which also exports its pages as a PDF.

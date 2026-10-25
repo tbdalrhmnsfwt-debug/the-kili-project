@@ -399,6 +399,7 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => PdfViewerScreen(
         path: state.uri.queryParameters['path'],
         title: state.uri.queryParameters['title'],
+        docId: state.uri.queryParameters['docId'],
       ),
     ),
     GoRoute(
