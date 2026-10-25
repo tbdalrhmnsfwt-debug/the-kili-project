@@ -9,10 +9,13 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import '../lib/core/key_value_store.dart';
 import '../lib/core/pdf/pdf_library_index.dart';
 import '../lib/core/pdf/pdf_library_repository.dart';
+import '../lib/core/pdf/pdf_library_store.dart';
 import '../lib/core/pdf/pdf_page_geometry.dart';
 import '../lib/models/pdf_document.dart';
 
@@ -67,6 +70,7 @@ Future<void> main() async {
   _index();
   await _repository();
   _geometry();
+  await _storeAsync();
 
   if (_failures.isEmpty) {
     // ignore: avoid_print
@@ -297,6 +301,86 @@ void _geometry() {
   final negative = PdfPageGeometry.unrotateSource(rect, -1);
   checkClose(negative.left, thrice.left, 'negative turns wrap to three');
   checkClose(negative.top, thrice.top, 'negative turns wrap the top edge');
+}
+
+Future<void> _storeAsync() async {
+  final root = Directory.systemTemp.createTempSync('zaker_pdf_root_');
+  final cache = Directory.systemTemp.createTempSync('zaker_pdf_cache_');
+  try {
+    final store = PdfLibraryStore(rootDir: root, cacheDir: cache);
+    await store.ensureReady();
+
+    check(
+      PdfLibraryStore.looksLikePdf('%PDF-1.7'.codeUnits),
+      'the PDF header is recognised',
+    );
+    check(
+      !PdfLibraryStore.looksLikePdf('hello'.codeUnits),
+      'unrelated bytes are rejected',
+    );
+    check(
+      !PdfLibraryStore.looksLikePdf(const [37, 50]),
+      'a short header is rejected',
+    );
+
+    final payload = '%PDF-1.7\nbody'.codeUnits;
+    final written = await store.copyIn(Stream.value(payload), 'doc1');
+    check(written == payload.length, 'copyIn reports the byte count');
+    check(store.baseFile('doc1').existsSync(), 'copyIn writes the base file');
+    check(
+      store.baseFile('doc1').readAsBytesSync().join(',') == payload.join(','),
+      'copyIn preserves every byte',
+    );
+
+    var failure = PdfImportFailure.invalidHeader;
+    try {
+      await store.copyIn(const Stream<List<int>>.empty(), 'empty');
+    } on PdfImportException catch (error) {
+      failure = error.failure;
+    }
+    check(failure == PdfImportFailure.empty, 'an empty stream reports empty');
+    check(
+      !store.baseFile('empty').existsSync(),
+      'an empty import writes nothing',
+    );
+
+    failure = PdfImportFailure.empty;
+    try {
+      await store.copyIn(Stream.value('hello'.codeUnits), 'bad');
+    } on PdfImportException catch (error) {
+      failure = error.failure;
+    }
+    check(
+      failure == PdfImportFailure.invalidHeader,
+      'a bad header reports invalidHeader',
+    );
+    check(!store.baseFile('bad').existsSync(), 'a bad import writes nothing');
+
+    await store.writeThumbnail('a', Uint8List.fromList([1, 2, 3]));
+    await store.writeThumbnail('ab', Uint8List.fromList([4]));
+    await store.copyIn(Stream.value(payload), 'ab');
+    await store.deleteEntry('a');
+    check(!store.baseFile('a').existsSync(), 'delete removes the base file');
+    check(!store.thumbFile('a').existsSync(), 'delete removes the thumbnail');
+    check(store.baseFile('ab').existsSync(), 'delete leaves neighbours alone');
+    check(
+      store.thumbFile('ab').existsSync(),
+      'delete leaves neighbouring thumbnails alone',
+    );
+
+    final temp = store.sessionTempFile('session');
+    await temp.parent.create(recursive: true);
+    await temp.writeAsBytes(payload);
+    await store.sweepTemp();
+    check(!temp.existsSync(), 'sweep removes session temp files');
+    check(
+      store.baseFile('doc1').existsSync(),
+      'sweep leaves library files alone',
+    );
+  } finally {
+    root.deleteSync(recursive: true);
+    cache.deleteSync(recursive: true);
+  }
 }
 
 Future<void> _repository() async {
