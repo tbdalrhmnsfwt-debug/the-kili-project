@@ -85,46 +85,52 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
           text: 'الإعدادات بتتحفظ على الجهاز ده وبتطبق على العضويات المحلية.',
         ),
         const SizedBox(height: ZakerSpacing.md),
-        Container(
-          decoration: BoxDecoration(
-            color: theme.cardTheme.color,
-            borderRadius: ZakerRadius.card,
-            border: Border.all(
-              color: theme.colorScheme.primary.withValues(alpha: 0.14),
+        Material(
+          color: theme.cardTheme.color,
+          borderRadius: ZakerRadius.card,
+          clipBehavior: Clip.antiAlias,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.14),
+              ),
+              borderRadius: ZakerRadius.card,
             ),
-          ),
-          child: Column(
-            children: [
-              SwitchListTile.adaptive(
-                value: _uploadsAdminOnly,
-                onChanged: (value) => setState(() => _uploadsAdminOnly = value),
-                title: const TrText('الرفع للمسؤول بس'),
-                subtitle: const TrText(
-                  'لما يتقفل، الأعضاء النشطين يقدروا يرفعوا ملفاتهم.',
+            child: Column(
+              children: [
+                SwitchListTile.adaptive(
+                  value: _uploadsAdminOnly,
+                  onChanged: (value) =>
+                      setState(() => _uploadsAdminOnly = value),
+                  title: const TrText('الرفع للمسؤول بس'),
+                  subtitle: const TrText(
+                    'لما يتقفل، الأعضاء النشطين يقدروا يرفعوا ملفاتهم.',
+                  ),
                 ),
-              ),
-              const Divider(height: 1),
-              SwitchListTile.adaptive(
-                value: _requireApproval,
-                onChanged: (value) => setState(() => _requireApproval = value),
-                title: const TrText('الانضمام محتاج موافقة'),
-                subtitle: const TrText(
-                  'القرار بيتحفظ للمستقبل. الموافقة الفعلية بين الأجهزة '
-                  'محتاجة سيرفر، فمفيش موافقة وهمية دلوقتي.',
+                const Divider(height: 1),
+                SwitchListTile.adaptive(
+                  value: _requireApproval,
+                  onChanged: (value) =>
+                      setState(() => _requireApproval = value),
+                  title: const TrText('الانضمام محتاج موافقة'),
+                  subtitle: const TrText(
+                    'القرار بيتحفظ للمستقبل. الموافقة الفعلية بين الأجهزة '
+                    'محتاجة سيرفر، فمفيش موافقة وهمية دلوقتي.',
+                  ),
                 ),
-              ),
-              const Divider(height: 1),
-              SwitchListTile.adaptive(
-                value: _allowMemberReminders,
-                onChanged: (value) =>
-                    setState(() => _allowMemberReminders = value),
-                title: const TrText('تذكيرات المواعيد للأعضاء'),
-                subtitle: const TrText(
-                  'التذكيرات بتتجدول على الجهاز ده بس، ومش بتوصل لأجهزة '
-                  'الأعضاء التانيين.',
+                const Divider(height: 1),
+                SwitchListTile.adaptive(
+                  value: _allowMemberReminders,
+                  onChanged: (value) =>
+                      setState(() => _allowMemberReminders = value),
+                  title: const TrText('تذكيرات المواعيد للأعضاء'),
+                  subtitle: const TrText(
+                    'التذكيرات بتتجدول على الجهاز ده بس، ومش بتوصل لأجهزة '
+                    'الأعضاء التانيين.',
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         const SizedBox(height: ZakerSpacing.lg),
