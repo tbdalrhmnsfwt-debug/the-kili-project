@@ -333,6 +333,7 @@ void main() {
       find.byType(TextField).first,
       'مراجعة رياضيات متقدمة',
     );
+    await tester.ensureVisible(find.text('حفظ الحصة'));
     await tester.tap(find.text('حفظ الحصة'));
     await tester.pumpAndSettle();
 
