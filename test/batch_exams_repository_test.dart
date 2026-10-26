@@ -577,7 +577,7 @@ void main() {
     );
   });
 
-  test('an account outside the batch reads no attempts', () async {
+  test('an account outside the workspace reads no attempts', () async {
     final open = await publish(exam());
     final attempt = await repository.startAttempt(uid, batch.id, open.id);
     await repository.submitAttempt(
@@ -590,7 +590,7 @@ void main() {
     );
     await expectLater(
       repository.loadExamAttempts('guest-other', batch.id),
-      throwsA(failure(BatchFailureCode.notAuthorized)),
+      throwsA(failure(BatchFailureCode.notFound)),
     );
   });
 
