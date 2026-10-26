@@ -34,6 +34,10 @@ import '../features/batches/subjects/interactive_test_screen.dart';
 import '../features/batches/subjects/mind_map_screen.dart';
 import '../features/batches/subjects/study_tools_screen.dart';
 import '../features/batches/subjects/subject_resources_screen.dart';
+import '../features/batches/exams/batch_exams_screen.dart';
+import '../features/batches/exams/exam_editor_screen.dart';
+import '../features/batches/exams/exam_result_screen.dart';
+import '../features/batches/exams/exam_taking_screen.dart';
 import '../features/batches/updates/batch_updates_screen.dart';
 import '../features/batches/updates/update_detail_screen.dart';
 import '../features/batches/updates/update_editor_screen.dart';
@@ -91,6 +95,7 @@ import '../features/weakness/weakness_screen.dart';
 import '../features/weekly/weekly_screen.dart';
 import '../features/whiteboard/whiteboard_screen.dart';
 import '../features/words/words_screen.dart';
+import '../models/batch_exam.dart';
 import '../models/batch_update.dart';
 import '../models/manhaji.dart';
 import '../widgets/tr_text.dart';
@@ -124,6 +129,13 @@ class ZakerRoutes {
       '/batches/:batchId/updates/:updateId';
   static const String batchUpdateEditPattern =
       '/batches/:batchId/updates/:updateId/edit';
+  static const String batchExamsPattern = '/batches/:batchId/exams';
+  static const String batchExamNewPattern = '/batches/:batchId/exams/new';
+  static const String batchExamEditPattern =
+      '/batches/:batchId/exams/:examId/edit';
+  static const String batchExamResultPattern =
+      '/batches/:batchId/exams/:examId/result';
+  static const String batchExamPattern = '/batches/:batchId/exams/:examId';
   static const String batchAudioResourcePattern =
       '/batches/:batchId/audio/:resourceId';
   static const String batchStudyToolsPattern =
@@ -174,6 +186,24 @@ class ZakerRoutes {
   /// The editor for an existing update.
   static String batchUpdateEdit(String batchId, String updateId) =>
       '${batchUpdate(batchId, updateId)}/edit';
+
+  /// The exams tab of one batch.
+  static String batchExams(String batchId) => '${batchHub(batchId)}/exams';
+
+  /// The authoring screen for a new exam.
+  static String batchExamNew(String batchId) => '${batchExams(batchId)}/new';
+
+  /// The editor for a draft exam.
+  static String batchExamEdit(String batchId, String examId) =>
+      '${batchExam(batchId, examId)}/edit';
+
+  /// One exam: start, resume or review.
+  static String batchExam(String batchId, String examId) =>
+      '${batchExams(batchId)}/${Uri.encodeComponent(examId)}';
+
+  /// The result of a submitted attempt.
+  static String batchExamResult(String batchId, String examId) =>
+      '${batchExam(batchId, examId)}/result';
 
   /// The local player for one audio resource.
   static String batchAudioResource(String batchId, String resourceId) =>
@@ -436,6 +466,39 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => UpdateDetailScreen(
         batchId: state.pathParameters['batchId'] ?? '',
         updateId: state.pathParameters['updateId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchExamsPattern,
+      builder: (context, state) => BatchExamsScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchExamNewPattern,
+      builder: (context, state) => ExamEditorScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchExamEditPattern,
+      builder: (context, state) => ExamEditorScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        original: state.extra as BatchExam?,
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchExamResultPattern,
+      builder: (context, state) => ExamResultScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        examId: state.pathParameters['examId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchExamPattern,
+      builder: (context, state) => ExamTakingScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        examId: state.pathParameters['examId'] ?? '',
       ),
     ),
     GoRoute(

@@ -592,6 +592,7 @@ class _HubSections extends ConsumerWidget {
       countLabel: data.exams.isEmpty
           ? 'مفيش امتحانات'
           : '${arabicDigits(data.exams.length)} امتحان',
+      onTap: () => context.push(ZakerRoutes.batchExams(batchId)),
     );
   }
 }

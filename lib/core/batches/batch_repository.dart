@@ -7,6 +7,7 @@ library;
 
 import '../../models/batch.dart';
 import '../../models/batch_chat.dart';
+import '../../models/batch_exam.dart';
 import '../../models/batch_resource.dart';
 import '../../models/batch_schedule.dart';
 import '../../models/batch_update.dart';
@@ -181,6 +182,45 @@ abstract interface class BatchRepository {
     String batchId,
     String updateId,
   );
+
+  /// Published exams for readers; managers also see drafts.
+  Future<List<BatchExam>> loadExams(String uid, String batchId);
+
+  /// Creates or updates a draft. A published exam is never rewritten.
+  Future<BatchExam> saveExam(String uid, String batchId, BatchExam exam);
+
+  /// Makes a draft visible to members. Idempotent for a published exam.
+  Future<BatchExam> publishExam(String uid, String batchId, String examId);
+
+  /// This account's attempts, newest first, for one exam or the whole batch.
+  Future<List<ExamAttempt>> loadExamAttempts(
+    String uid,
+    String batchId, {
+    String? examId,
+  });
+
+  /// Starts a new attempt, or resumes the running one.
+  Future<ExamAttempt> startAttempt(String uid, String batchId, String examId);
+
+  /// Saves answers while the attempt runs, so a restart does not lose them.
+  Future<ExamAttempt> saveAttemptAnswers(
+    String uid,
+    String batchId,
+    String examId,
+    String attemptId,
+    Map<String, int> answers,
+  );
+
+  /// Scores and closes an attempt. A second submit is a no-op.
+  Future<ExamAttempt> submitAttempt(
+    String uid,
+    String batchId,
+    String examId,
+    String attemptId, {
+    required Map<String, int> answers,
+    required String clientKey,
+    bool auto = false,
+  });
 
   /// The newest chat messages older than [before].
   Future<ChatPage> loadChat(

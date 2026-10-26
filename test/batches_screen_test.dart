@@ -10,6 +10,7 @@ import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/features/batches/batches_screen.dart';
 import 'package:zaker_ai/models/batch.dart';
 import 'package:zaker_ai/models/batch_chat.dart';
+import 'package:zaker_ai/models/batch_exam.dart';
 import 'package:zaker_ai/models/batch_resource.dart';
 import 'package:zaker_ai/models/batch_schedule.dart';
 import 'package:zaker_ai/models/batch_update.dart';
@@ -231,6 +232,60 @@ class _FakeRepository implements BatchRepository {
     String batchId,
     String updateId,
   ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<BatchExam>> loadExams(String uid, String batchId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<BatchExam> saveExam(String uid, String batchId, BatchExam exam) =>
+      throw UnimplementedError();
+
+  @override
+  Future<BatchExam> publishExam(
+    String uid,
+    String batchId,
+    String examId,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<ExamAttempt>> loadExamAttempts(
+    String uid,
+    String batchId, {
+    String? examId,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ExamAttempt> startAttempt(
+    String uid,
+    String batchId,
+    String examId,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ExamAttempt> saveAttemptAnswers(
+    String uid,
+    String batchId,
+    String examId,
+    String attemptId,
+    Map<String, int> answers,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ExamAttempt> submitAttempt(
+    String uid,
+    String batchId,
+    String examId,
+    String attemptId, {
+    required Map<String, int> answers,
+    required String clientKey,
+    bool auto = false,
+  }) =>
       throw UnimplementedError();
 }
 

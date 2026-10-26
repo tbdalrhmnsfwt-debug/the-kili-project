@@ -6,9 +6,11 @@ import 'dart:io';
 
 import '../../models/batch.dart';
 import '../../models/batch_chat.dart';
+import '../../models/batch_exam.dart';
 import '../../models/batch_resource.dart';
 import '../../models/batch_schedule.dart';
 import '../../models/batch_update.dart';
+import '../../models/exam.dart';
 import '../key_value_store.dart';
 import 'batch_access.dart';
 import 'batch_code_service.dart';
@@ -881,6 +883,634 @@ class LocalBatchRepository implements BatchRepository {
       );
     }
     return clean;
+  }
+
+  // ------------------------------------------------------------------- exams
+
+  static const int maxExams = 100;
+  static const int maxExamQuestions = 50;
+  static const int maxExamTitleLength = 120;
+  static const int maxExamDescriptionChars = 2000;
+  static const int maxExamMinutes = 180;
+  static const int maxQuestionPromptChars = 500;
+  static const int maxQuestionOptionChars = 240;
+  static const int maxQuestionExplanationChars = 1000;
+  static const int maxQuestionExcerptChars = 500;
+  static const int minExamOptions = 2;
+  static const int maxExamOptions = 6;
+  static const int maxAttemptsPerExam = 20;
+
+  @override
+  Future<List<BatchExam>> loadExams(String uid, String batchId) async {
+    final snapshot = await _authorize(uid, batchId, BatchAction.viewExams);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final exams = await _loadExamDocument(store);
+    final role = _membershipOf(snapshot, uid)?.role;
+    final includeDrafts =
+        role != null && BatchAccess.can(role, BatchAction.createExam);
+    final visible = [
+      for (final exam in exams)
+        if (includeDrafts || exam.isPublished) exam,
+    ]..sort(_newestExamFirst);
+    return List.unmodifiable(visible);
+  }
+
+  @override
+  Future<BatchExam> saveExam(
+    String uid,
+    String batchId,
+    BatchExam exam,
+  ) async {
+    final snapshot = await _authorize(uid, batchId, BatchAction.createExam);
+    if (exam.batchId.isNotEmpty && exam.batchId != batchId) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'batchId',
+      );
+    }
+    if (exam.subjectId.isNotEmpty &&
+        !snapshot.batch.subjects.any((item) => item.id == exam.subjectId)) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'subjectId',
+      );
+    }
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final exams = await _loadExamDocument(store);
+    final index = exams.indexWhere((item) => item.id == exam.id);
+    final existing = index < 0 ? null : exams[index];
+    if (existing != null && existing.isPublished) {
+      throw const BatchFailure(BatchFailureCode.conflict, field: 'exam');
+    }
+    final now = _clock();
+    final id = exam.id.isEmpty ? newEntityId('exam') : exam.id;
+    if (!_entityIdPattern.hasMatch(id)) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'examId',
+      );
+    }
+    if (existing == null && exams.length >= maxExams) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'exams',
+      );
+    }
+    final clean = _cleanExam(
+      exam,
+      batchId: batchId,
+      id: id,
+      createdBy: existing?.createdBy ?? uid,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    );
+    if (existing == null) {
+      exams.add(clean);
+    } else {
+      exams[index] = clean;
+    }
+    await store.exams.save(exams);
+    await _appendAudit(
+      store: store,
+      batchId: batchId,
+      actorUid: uid,
+      action: 'examSaved',
+    );
+    return clean;
+  }
+
+  @override
+  Future<BatchExam> publishExam(
+    String uid,
+    String batchId,
+    String examId,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.publishExam);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final exams = await _loadExamDocument(store);
+    final index = exams.indexWhere((item) => item.id == examId);
+    if (index < 0) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'examId');
+    }
+    final exam = exams[index];
+    if (exam.isPublished) return exam;
+    if (exam.questions.isEmpty) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'questions',
+      );
+    }
+    if (!exam.hasValidWindow) {
+      throw const BatchFailure(
+        BatchFailureCode.examWindowInvalid,
+        field: 'window',
+      );
+    }
+    final now = _clock();
+    if (exam.closesAt != null && !now.isBefore(exam.closesAt!)) {
+      throw const BatchFailure(
+        BatchFailureCode.examWindowInvalid,
+        field: 'closesAt',
+      );
+    }
+    final published = exam.copyWith(publishedAt: now, updatedAt: now);
+    exams[index] = published;
+    await store.exams.save(exams);
+    await _appendAudit(
+      store: store,
+      batchId: batchId,
+      actorUid: uid,
+      action: 'examPublished',
+    );
+    return published;
+  }
+
+  @override
+  Future<List<ExamAttempt>> loadExamAttempts(
+    String uid,
+    String batchId, {
+    String? examId,
+  }) async {
+    await _authorize(uid, batchId, BatchAction.viewResults);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final attempts = await _loadAttempts(
+      store,
+      examId: examId,
+      uid: uid,
+      batchId: batchId,
+    );
+    return List.unmodifiable(attempts);
+  }
+
+  @override
+  Future<ExamAttempt> startAttempt(
+    String uid,
+    String batchId,
+    String examId,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.takeExam);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final exam = await _requireExam(store, examId, batchId);
+    final now = _clock();
+    if (!exam.isPublished) {
+      throw const BatchFailure(BatchFailureCode.examNotOpen);
+    }
+    if (!exam.hasValidWindow) {
+      throw const BatchFailure(BatchFailureCode.examWindowInvalid);
+    }
+    if (exam.opensAt != null && now.isBefore(exam.opensAt!)) {
+      throw const BatchFailure(BatchFailureCode.examNotOpen);
+    }
+    if (exam.closesAt != null && !now.isBefore(exam.closesAt!)) {
+      throw const BatchFailure(BatchFailureCode.examClosed);
+    }
+
+    final attempts = await _loadAttempts(
+      store,
+      examId: examId,
+      uid: uid,
+      batchId: batchId,
+    );
+    for (var index = 0; index < attempts.length; index++) {
+      final attempt = attempts[index];
+      if (attempt.isSubmitted) continue;
+      if (!attempt.isExpired(now)) return attempt;
+      // The saved answers close the abandoned attempt; a restart resumes with
+      // a fresh one only when the policy still allows it.
+      attempts[index] = await _closeAttempt(
+        store: store,
+        exam: exam,
+        attempt: attempt,
+        answers: attempt.answers,
+        auto: true,
+        clientKey: 'auto:${attempt.id}',
+        audit: false,
+      );
+    }
+
+    final cap = exam.attemptCap;
+    if (cap > 0 && attempts.where((item) => item.isSubmitted).length >= cap) {
+      throw const BatchFailure(BatchFailureCode.conflict, field: 'attempts');
+    }
+
+    final attempt = ExamAttempt(
+      id: newEntityId('attempt'),
+      examId: examId,
+      batchId: batchId,
+      uid: uid,
+      startedAt: now,
+      deadlineAt: exam.deadlineFor(now),
+    );
+    await store.attempt(examId: examId, attemptId: attempt.id).save(attempt);
+    await _appendAudit(
+      store: store,
+      batchId: batchId,
+      actorUid: uid,
+      action: 'examAttemptStarted',
+    );
+    return attempt;
+  }
+
+  @override
+  Future<ExamAttempt> saveAttemptAnswers(
+    String uid,
+    String batchId,
+    String examId,
+    String attemptId,
+    Map<String, int> answers,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.takeExam);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final exam = await _requireExam(store, examId, batchId);
+    final attempt = await _requireAttempt(store, exam, attemptId, uid);
+    if (attempt.isSubmitted) return attempt;
+    final now = _clock();
+    if (attempt.isExpired(now) ||
+        (exam.closesAt != null && !now.isBefore(exam.closesAt!))) {
+      throw const BatchFailure(BatchFailureCode.examClosed);
+    }
+    final updated = attempt.copyWith(answers: _cleanAnswers(exam, answers));
+    await store.attempt(examId: examId, attemptId: attempt.id).save(updated);
+    return updated;
+  }
+
+  @override
+  Future<ExamAttempt> submitAttempt(
+    String uid,
+    String batchId,
+    String examId,
+    String attemptId, {
+    required Map<String, int> answers,
+    required String clientKey,
+    bool auto = false,
+  }) async {
+    await _authorize(uid, batchId, BatchAction.takeExam);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final exam = await _requireExam(store, examId, batchId);
+    final attempt = await _requireAttempt(store, exam, attemptId, uid);
+    if (attempt.isSubmitted) return attempt;
+    return _closeAttempt(
+      store: store,
+      exam: exam,
+      attempt: attempt,
+      answers: _cleanAnswers(exam, answers),
+      auto: auto,
+      clientKey: clientKey,
+      audit: true,
+    );
+  }
+
+  Future<ExamAttempt> _closeAttempt({
+    required BatchStore store,
+    required BatchExam exam,
+    required ExamAttempt attempt,
+    required Map<String, int> answers,
+    required bool auto,
+    required String clientKey,
+    required bool audit,
+  }) async {
+    final total = exam.questions.length;
+    var correct = 0;
+    for (final question in exam.questions) {
+      if (question.correctIndex != null &&
+          answers[question.id] == question.correctIndex) {
+        correct++;
+      }
+    }
+    final score = total == 0 ? 0.0 : (correct * 100 / total).roundToDouble();
+    final status = auto && answers.isEmpty
+        ? ExamAttemptStatus.expired
+        : ExamAttemptStatus.submitted;
+    final closed = attempt.copyWith(
+      answers: answers,
+      submittedAt: _clock(),
+      autoSubmitted: auto,
+      correctCount: correct,
+      total: total,
+      scorePercent: score,
+      status: status,
+      clientKey: clientKey,
+    );
+    await store.attempt(examId: exam.id, attemptId: attempt.id).save(closed);
+    await _pruneAttemptFiles(store, examId: exam.id, uid: attempt.uid);
+    if (audit) {
+      await _appendAudit(
+        store: store,
+        batchId: exam.batchId,
+        actorUid: attempt.uid,
+        action: 'examAttemptSubmitted',
+      );
+    }
+    return closed;
+  }
+
+  /// Keeps the newest [maxAttemptsPerExam] attempt files for one student.
+  Future<void> _pruneAttemptFiles(
+    BatchStore store, {
+    required String examId,
+    required String uid,
+  }) async {
+    final attempts = await _loadAttempts(
+      store,
+      examId: examId,
+      uid: uid,
+      batchId: null,
+    );
+    for (final attempt in attempts.skip(maxAttemptsPerExam)) {
+      final document = store.attempt(examId: examId, attemptId: attempt.id);
+      if (await document.exists()) await document.delete();
+    }
+  }
+
+  Future<BatchExam> _requireExam(
+    BatchStore store,
+    String examId,
+    String batchId,
+  ) async {
+    final exams = await _loadExamDocument(store);
+    for (final exam in exams) {
+      if (exam.id == examId && exam.batchId == batchId) return exam;
+    }
+    throw const BatchFailure(BatchFailureCode.notFound, field: 'examId');
+  }
+
+  Future<ExamAttempt> _requireAttempt(
+    BatchStore store,
+    BatchExam exam,
+    String attemptId,
+    String uid,
+  ) async {
+    final load =
+        await store.attempt(examId: exam.id, attemptId: attemptId).load();
+    if (!load.isUsable || load.value == null) {
+      throw load.failure ??
+          const BatchFailure(BatchFailureCode.notFound, field: 'attemptId');
+    }
+    final attempt = load.value!;
+    if (attempt.uid != uid ||
+        attempt.examId != exam.id ||
+        attempt.batchId != exam.batchId) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'attemptId');
+    }
+    return attempt;
+  }
+
+  Future<List<BatchExam>> _loadExamDocument(BatchStore store) async {
+    final load = await store.exams.load();
+    if (!load.isUsable && !load.isMissing) {
+      throw load.failure ??
+          const BatchFailure(
+            BatchFailureCode.corruptStore,
+            detail: 'exam document unreadable',
+          );
+    }
+    return [...?load.value];
+  }
+
+  /// Stored attempts for one account, newest start first.
+  Future<List<ExamAttempt>> _loadAttempts(
+    BatchStore store, {
+    String? examId,
+    String? uid,
+    String? batchId,
+  }) async {
+    final directories = <String, String>{};
+    if (examId != null) {
+      directories[examId] = '${store.attemptsDirectory.path}/$examId';
+    } else if (await store.attemptsDirectory.exists()) {
+      await for (final entity in store.attemptsDirectory.list()) {
+        if (entity is Directory) {
+          directories[_lastSegment(entity.path)] = entity.path;
+        }
+      }
+    }
+    final attempts = <ExamAttempt>[];
+    for (final entry in directories.entries) {
+      final directory = Directory(entry.value);
+      if (!await directory.exists()) continue;
+      await for (final entity in directory.list()) {
+        if (entity is! File || !entity.path.endsWith('.json')) continue;
+        final attemptId =
+            _lastSegment(entity.path).replaceFirst(RegExp(r'\.json$'), '');
+        if (!_entityIdPattern.hasMatch(attemptId)) continue;
+        final load =
+            await store.attempt(examId: entry.key, attemptId: attemptId).load();
+        if (!load.isUsable) {
+          if (load.isMissing) continue;
+          throw load.failure ??
+              const BatchFailure(
+                BatchFailureCode.corruptStore,
+                detail: 'attempt document unreadable',
+              );
+        }
+        final attempt = load.value;
+        if (attempt == null) continue;
+        if (attempt.examId != entry.key) continue;
+        if (uid != null && attempt.uid != uid) continue;
+        if (batchId != null && attempt.batchId != batchId) continue;
+        attempts.add(attempt);
+      }
+    }
+    attempts.sort((a, b) {
+      final byStart = b.startedAt.compareTo(a.startedAt);
+      return byStart != 0 ? byStart : b.id.compareTo(a.id);
+    });
+    return attempts;
+  }
+
+  static String _lastSegment(String path) {
+    final normalized = path.replaceAll('\\', '/');
+    final index = normalized.lastIndexOf('/');
+    return index < 0 ? normalized : normalized.substring(index + 1);
+  }
+
+  /// Validates one exam snapshot and returns the normalized record.
+  BatchExam _cleanExam(
+    BatchExam exam, {
+    required String batchId,
+    required String id,
+    required String createdBy,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) {
+    final title = exam.title.trim();
+    if (title.isEmpty || title.runes.length > maxExamTitleLength) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'title',
+      );
+    }
+    final description = exam.description.trim();
+    if (description.runes.length > maxExamDescriptionChars) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'description',
+      );
+    }
+    if (exam.durationMinutes < 0 || exam.durationMinutes > maxExamMinutes) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'durationMinutes',
+      );
+    }
+    if (exam.opensAt != null &&
+        exam.closesAt != null &&
+        !exam.opensAt!.isBefore(exam.closesAt!)) {
+      throw const BatchFailure(
+        BatchFailureCode.examWindowInvalid,
+        field: 'window',
+      );
+    }
+    if (exam.resultsMode == BatchExamResultsMode.afterClose &&
+        exam.closesAt == null) {
+      throw const BatchFailure(
+        BatchFailureCode.examWindowInvalid,
+        field: 'closesAt',
+      );
+    }
+    if (!exam.hasValidAttemptPolicy) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'maxAttempts',
+      );
+    }
+    if (exam.questions.isEmpty || exam.questions.length > maxExamQuestions) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'questions',
+      );
+    }
+    final questions = <ExamQuestion>[];
+    final ids = <String>{};
+    for (final question in exam.questions) {
+      final prompt = question.prompt.trim();
+      if (prompt.isEmpty || prompt.runes.length > maxQuestionPromptChars) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'prompt',
+        );
+      }
+      final options = [
+        for (final option in question.options) option.trim(),
+      ];
+      if (options.length < minExamOptions || options.length > maxExamOptions) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'options',
+        );
+      }
+      if (options.any((option) =>
+          option.isEmpty || option.runes.length > maxQuestionOptionChars)) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'options',
+        );
+      }
+      if (options.map((option) => option.toLowerCase()).toSet().length !=
+          options.length) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'options',
+        );
+      }
+      final correct = question.correctIndex;
+      if (correct == null || correct < 0 || correct >= options.length) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'correctIndex',
+        );
+      }
+      final explanation = question.explanation.trim();
+      if (explanation.isEmpty ||
+          explanation.runes.length > maxQuestionExplanationChars) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'explanation',
+        );
+      }
+      final excerpt = question.sourceExcerpt.trim();
+      if (excerpt.runes.length > maxQuestionExcerptChars) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'sourceExcerpt',
+        );
+      }
+      final questionId =
+          question.id.isEmpty ? newEntityId('question') : question.id;
+      if (!_entityIdPattern.hasMatch(questionId) || !ids.add(questionId)) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'questions',
+        );
+      }
+      questions.add(
+        ExamQuestion(
+          id: questionId,
+          prompt: prompt,
+          answerKind: AnswerKind.multipleChoice,
+          options: options,
+          correctIndex: correct,
+          explanation: explanation,
+          source: 'local',
+          sourcePage: question.sourcePage,
+          sourcePageEnd: question.sourcePageEnd,
+          sourceExcerpt: excerpt,
+          difficulty: question.difficulty,
+        ),
+      );
+    }
+    return BatchExam(
+      id: id,
+      batchId: batchId,
+      subjectId: exam.subjectId,
+      title: title,
+      description: description,
+      durationMinutes: exam.durationMinutes,
+      questions: List.unmodifiable(questions),
+      opensAt: exam.opensAt,
+      closesAt: exam.closesAt,
+      resultsMode: exam.resultsMode,
+      attemptPolicy: exam.attemptPolicy,
+      maxAttempts: switch (exam.attemptPolicy) {
+        BatchExamAttemptPolicy.single => 1,
+        BatchExamAttemptPolicy.limited => exam.maxAttempts,
+        BatchExamAttemptPolicy.unlimited => 0,
+      },
+      sourceResourceId: exam.sourceResourceId,
+      createdBy: createdBy,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
+
+  /// Rejects an answer map that names an unknown question or option.
+  Map<String, int> _cleanAnswers(BatchExam exam, Map<String, int> answers) {
+    final byId = {for (final question in exam.questions) question.id: question};
+    final clean = <String, int>{};
+    for (final entry in answers.entries) {
+      final question = byId[entry.key];
+      if (question == null) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'answers',
+        );
+      }
+      final index = entry.value;
+      if (index < 0 || index >= question.options.length) {
+        throw const BatchFailure(
+          BatchFailureCode.validationFailed,
+          field: 'answers',
+        );
+      }
+      clean[entry.key] = index;
+    }
+    return Map.unmodifiable(clean);
+  }
+
+  /// Drafts and the newest update first, newest updated first.
+  static int _newestExamFirst(BatchExam a, BatchExam b) {
+    final byTime = b.updatedAt.compareTo(a.updatedAt);
+    return byTime != 0 ? byTime : b.id.compareTo(a.id);
   }
 
   // -------------------------------------------------------------------- chat

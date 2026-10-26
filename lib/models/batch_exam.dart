@@ -6,8 +6,15 @@ import 'exam.dart';
 /// When the student may see the answer key and score.
 enum BatchExamResultsMode { immediately, afterClose }
 
+/// How many times one student may submit an exam.
+enum BatchExamAttemptPolicy { single, limited, unlimited }
+
 /// The lifecycle position of an exam at a given instant.
 enum BatchExamStatus { draft, scheduled, open, closed }
+
+/// Where a stored attempt sits: still running, submitted, or closed with no
+/// answer at all.
+enum ExamAttemptStatus { active, submitted, expired }
 
 /// A multiple-choice exam published inside one batch subject.
 ///
@@ -30,6 +37,9 @@ class BatchExam {
     this.closesAt,
     this.publishedAt,
     this.resultsMode = BatchExamResultsMode.afterClose,
+    this.attemptPolicy = BatchExamAttemptPolicy.single,
+    this.maxAttempts = 1,
+    this.sourceResourceId = '',
   });
 
   final String id;
@@ -45,11 +55,29 @@ class BatchExam {
   final DateTime? closesAt;
   final DateTime? publishedAt;
   final BatchExamResultsMode resultsMode;
+  final BatchExamAttemptPolicy attemptPolicy;
+
+  /// Used only by [BatchExamAttemptPolicy.limited]; zero otherwise.
+  final int maxAttempts;
+
+  /// The PDF this exam was generated from, when it was.
+  final String sourceResourceId;
   final String createdBy;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   bool get isPublished => publishedAt != null;
+
+  /// The number of submissions allowed, or zero for unlimited.
+  int get attemptCap => switch (attemptPolicy) {
+        BatchExamAttemptPolicy.single => 1,
+        BatchExamAttemptPolicy.limited => maxAttempts,
+        BatchExamAttemptPolicy.unlimited => 0,
+      };
+
+  bool get hasValidAttemptPolicy =>
+      attemptPolicy != BatchExamAttemptPolicy.limited ||
+      (maxAttempts >= 1 && maxAttempts <= 10);
 
   bool get hasValidWindow {
     if (!isPublished) return true;
@@ -81,11 +109,13 @@ class BatchExam {
   }
 
   /// The instant this attempt must be submitted, capped by the close time.
-  DateTime deadlineFor(DateTime startedAt) {
+  ///
+  /// Null when neither a time limit nor a close time bounds the attempt.
+  DateTime? deadlineFor(DateTime startedAt) {
     final limit = durationMinutes > 0
         ? startedAt.add(Duration(minutes: durationMinutes))
         : null;
-    if (limit == null) return closesAt ?? startedAt;
+    if (limit == null) return closesAt;
     if (closesAt != null && closesAt!.isBefore(limit)) return closesAt!;
     return limit;
   }
@@ -102,9 +132,14 @@ class BatchExam {
     int? durationMinutes,
     List<ExamQuestion>? questions,
     DateTime? opensAt,
+    bool clearOpensAt = false,
     DateTime? closesAt,
+    bool clearClosesAt = false,
     DateTime? publishedAt,
     BatchExamResultsMode? resultsMode,
+    BatchExamAttemptPolicy? attemptPolicy,
+    int? maxAttempts,
+    String? sourceResourceId,
     DateTime? updatedAt,
   }) =>
       BatchExam(
@@ -115,10 +150,13 @@ class BatchExam {
         description: description ?? this.description,
         durationMinutes: durationMinutes ?? this.durationMinutes,
         questions: questions ?? this.questions,
-        opensAt: opensAt ?? this.opensAt,
-        closesAt: closesAt ?? this.closesAt,
+        opensAt: clearOpensAt ? null : opensAt ?? this.opensAt,
+        closesAt: clearClosesAt ? null : closesAt ?? this.closesAt,
         publishedAt: publishedAt ?? this.publishedAt,
         resultsMode: resultsMode ?? this.resultsMode,
+        attemptPolicy: attemptPolicy ?? this.attemptPolicy,
+        maxAttempts: maxAttempts ?? this.maxAttempts,
+        sourceResourceId: sourceResourceId ?? this.sourceResourceId,
         createdBy: createdBy,
         createdAt: createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -136,6 +174,9 @@ class BatchExam {
         if (closesAt != null) 'closesAt': closesAt!.toIso8601String(),
         if (publishedAt != null) 'publishedAt': publishedAt!.toIso8601String(),
         'resultsMode': resultsMode.name,
+        'attemptPolicy': attemptPolicy.name,
+        'maxAttempts': maxAttempts,
+        if (sourceResourceId.isNotEmpty) 'sourceResourceId': sourceResourceId,
         'createdBy': createdBy,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
@@ -159,6 +200,12 @@ class BatchExam {
         resultsMode: json['resultsMode'] == 'immediately'
             ? BatchExamResultsMode.immediately
             : BatchExamResultsMode.afterClose,
+        attemptPolicy: BatchExamAttemptPolicy.values.firstWhere(
+          (policy) => policy.name == json['attemptPolicy'],
+          orElse: () => BatchExamAttemptPolicy.single,
+        ),
+        maxAttempts: (json['maxAttempts'] as num?)?.toInt() ?? 1,
+        sourceResourceId: json['sourceResourceId'] as String? ?? '',
         createdBy: json['createdBy'] as String? ?? '',
         createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0),
@@ -176,13 +223,15 @@ class ExamAttempt {
     required this.batchId,
     required this.uid,
     required this.startedAt,
-    required this.deadlineAt,
+    this.deadlineAt,
     this.submittedAt,
     this.autoSubmitted = false,
     this.answers = const {},
     this.correctCount = 0,
     this.total = 0,
     this.scorePercent = 0,
+    this.status = ExamAttemptStatus.active,
+    this.clientKey = '',
   });
 
   final String id;
@@ -190,7 +239,9 @@ class ExamAttempt {
   final String batchId;
   final String uid;
   final DateTime startedAt;
-  final DateTime deadlineAt;
+
+  /// The instant this attempt must be submitted, or null when unbounded.
+  final DateTime? deadlineAt;
   final DateTime? submittedAt;
   final bool autoSubmitted;
 
@@ -199,10 +250,45 @@ class ExamAttempt {
   final int correctCount;
   final int total;
   final double scorePercent;
+  final ExamAttemptStatus status;
+
+  /// The submit call this attempt belongs to. A retry with the same key is a
+  /// no-op.
+  final String clientKey;
 
   bool get isSubmitted => submittedAt != null;
 
-  bool isExpired(DateTime now) => !now.isBefore(deadlineAt);
+  bool get isActive => !isSubmitted;
+
+  bool isExpired(DateTime now) =>
+      deadlineAt != null && !now.isBefore(deadlineAt!);
+
+  ExamAttempt copyWith({
+    Map<String, int>? answers,
+    DateTime? submittedAt,
+    bool? autoSubmitted,
+    int? correctCount,
+    int? total,
+    double? scorePercent,
+    ExamAttemptStatus? status,
+    String? clientKey,
+  }) =>
+      ExamAttempt(
+        id: id,
+        examId: examId,
+        batchId: batchId,
+        uid: uid,
+        startedAt: startedAt,
+        deadlineAt: deadlineAt,
+        submittedAt: submittedAt ?? this.submittedAt,
+        autoSubmitted: autoSubmitted ?? this.autoSubmitted,
+        answers: answers ?? this.answers,
+        correctCount: correctCount ?? this.correctCount,
+        total: total ?? this.total,
+        scorePercent: scorePercent ?? this.scorePercent,
+        status: status ?? this.status,
+        clientKey: clientKey ?? this.clientKey,
+      );
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -210,34 +296,50 @@ class ExamAttempt {
         'batchId': batchId,
         'uid': uid,
         'startedAt': startedAt.toIso8601String(),
-        'deadlineAt': deadlineAt.toIso8601String(),
+        if (deadlineAt != null) 'deadlineAt': deadlineAt!.toIso8601String(),
         if (submittedAt != null) 'submittedAt': submittedAt!.toIso8601String(),
         'autoSubmitted': autoSubmitted,
         'answers': answers,
         'correctCount': correctCount,
         'total': total,
         'scorePercent': scorePercent,
+        'status': status.name,
+        if (clientKey.isNotEmpty) 'clientKey': clientKey,
       };
 
-  factory ExamAttempt.fromJson(Map<String, dynamic> json) => ExamAttempt(
-        id: json['id'] as String? ?? '',
-        examId: json['examId'] as String? ?? '',
-        batchId: json['batchId'] as String? ?? '',
-        uid: json['uid'] as String? ?? '',
-        startedAt: DateTime.tryParse(json['startedAt'] as String? ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0),
-        deadlineAt: DateTime.tryParse(json['deadlineAt'] as String? ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0),
-        submittedAt: DateTime.tryParse(json['submittedAt'] as String? ?? ''),
-        autoSubmitted: json['autoSubmitted'] as bool? ?? false,
-        answers: {
-          if (json['answers'] is Map)
-            for (final entry in (json['answers'] as Map).entries)
-              if (entry.value is num)
-                '${entry.key}': (entry.value as num).toInt(),
-        },
-        correctCount: (json['correctCount'] as num?)?.toInt() ?? 0,
-        total: (json['total'] as num?)?.toInt() ?? 0,
-        scorePercent: (json['scorePercent'] as num?)?.toDouble() ?? 0,
-      );
+  factory ExamAttempt.fromJson(Map<String, dynamic> json) {
+    final submittedAt = DateTime.tryParse(json['submittedAt'] as String? ?? '');
+    final answers = {
+      if (json['answers'] is Map)
+        for (final entry in (json['answers'] as Map).entries)
+          if (entry.value is num) '${entry.key}': (entry.value as num).toInt(),
+    };
+    final autoSubmitted = json['autoSubmitted'] as bool? ?? false;
+    final status = ExamAttemptStatus.values.firstWhere(
+      (item) => item.name == json['status'],
+      orElse: () {
+        if (submittedAt == null) return ExamAttemptStatus.active;
+        return autoSubmitted && answers.isEmpty
+            ? ExamAttemptStatus.expired
+            : ExamAttemptStatus.submitted;
+      },
+    );
+    return ExamAttempt(
+      id: json['id'] as String? ?? '',
+      examId: json['examId'] as String? ?? '',
+      batchId: json['batchId'] as String? ?? '',
+      uid: json['uid'] as String? ?? '',
+      startedAt: DateTime.tryParse(json['startedAt'] as String? ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      deadlineAt: DateTime.tryParse(json['deadlineAt'] as String? ?? ''),
+      submittedAt: submittedAt,
+      autoSubmitted: autoSubmitted,
+      answers: answers,
+      correctCount: (json['correctCount'] as num?)?.toInt() ?? 0,
+      total: (json['total'] as num?)?.toInt() ?? 0,
+      scorePercent: (json['scorePercent'] as num?)?.toDouble() ?? 0,
+      status: status,
+      clientKey: json['clientKey'] as String? ?? '',
+    );
+  }
 }

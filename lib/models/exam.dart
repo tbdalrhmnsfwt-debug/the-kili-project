@@ -38,6 +38,7 @@ class ExamQuestion {
     this.sourceSectionTitle = '',
     this.sourcePageEnd,
     this.modelAnswer = '',
+    this.sourceExcerpt = '',
     this.difficulty = 'medium',
   });
 
@@ -72,14 +73,17 @@ class ExamQuestion {
   /// answers.
   final String modelAnswer;
 
+  /// A verbatim excerpt from the source page, shown after submission.
+  final String sourceExcerpt;
+
   /// `easy`, `medium` or `hard`.
   final String difficulty;
 
   String get difficultyLabel => switch (difficulty) {
-    'easy' => 'سهل',
-    'hard' => 'متقدم',
-    _ => 'متوسط',
-  };
+        'easy' => 'سهل',
+        'hard' => 'متقدم',
+        _ => 'متوسط',
+      };
 
   /// True when the question is backed by an official extracted passage.
   bool get hasOfficialSource => sourceBookId.isNotEmpty && sourcePage != null;
@@ -95,9 +99,8 @@ class ExamQuestion {
   }
 
   factory ExamQuestion.fromJson(Map<String, dynamic> json) {
-    final kind = switch (json['kind'] as String? ??
-        json['type'] as String? ??
-        '') {
+    final kind =
+        switch (json['kind'] as String? ?? json['type'] as String? ?? '') {
       'freeText' || 'free_text' || 'text' => AnswerKind.freeText,
       _ => AnswerKind.multipleChoice,
     };
@@ -106,8 +109,7 @@ class ExamQuestion {
       prompt: json['prompt'] as String? ?? json['q'] as String? ?? '',
       answerKind: kind,
       options: (json['options'] as List?)?.cast<String>() ?? const [],
-      correctIndex:
-          (json['correctIndex'] as num?)?.toInt() ??
+      correctIndex: (json['correctIndex'] as num?)?.toInt() ??
           (json['correct'] as num?)?.toInt(),
       explanation: json['explanation'] as String? ?? '',
       lessonNumber: (json['lesson'] as num?)?.toInt(),
@@ -119,28 +121,31 @@ class ExamQuestion {
       sourceSectionId: json['source_section_id'] as String? ?? '',
       sourceSectionTitle: json['source_section_title'] as String? ?? '',
       modelAnswer: json['model_answer'] as String? ?? '',
+      sourceExcerpt: json['source_excerpt'] as String? ?? '',
       difficulty: json['difficulty'] as String? ?? 'medium',
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'prompt': prompt,
-    'kind': answerKind.name,
-    if (options.isNotEmpty) 'options': options,
-    if (correctIndex != null) 'correctIndex': correctIndex,
-    if (explanation.isNotEmpty) 'explanation': explanation,
-    if (lessonNumber != null) 'lesson': lessonNumber,
-    'source': source,
-    if (sourcePage != null) 'source_page': sourcePage,
-    if (sourcePageEnd != null) 'source_page_end': sourcePageEnd,
-    if (sourceBookId.isNotEmpty) 'source_book_id': sourceBookId,
-    if (sourceBookTitle.isNotEmpty) 'source_book_title': sourceBookTitle,
-    if (sourceSectionId.isNotEmpty) 'source_section_id': sourceSectionId,
-    if (sourceSectionTitle.isNotEmpty) 'source_section_title': sourceSectionTitle,
-    if (modelAnswer.isNotEmpty) 'model_answer': modelAnswer,
-    'difficulty': difficulty,
-  };
+        'id': id,
+        'prompt': prompt,
+        'kind': answerKind.name,
+        if (options.isNotEmpty) 'options': options,
+        if (correctIndex != null) 'correctIndex': correctIndex,
+        if (explanation.isNotEmpty) 'explanation': explanation,
+        if (lessonNumber != null) 'lesson': lessonNumber,
+        'source': source,
+        if (sourcePage != null) 'source_page': sourcePage,
+        if (sourcePageEnd != null) 'source_page_end': sourcePageEnd,
+        if (sourceBookId.isNotEmpty) 'source_book_id': sourceBookId,
+        if (sourceBookTitle.isNotEmpty) 'source_book_title': sourceBookTitle,
+        if (sourceSectionId.isNotEmpty) 'source_section_id': sourceSectionId,
+        if (sourceSectionTitle.isNotEmpty)
+          'source_section_title': sourceSectionTitle,
+        if (modelAnswer.isNotEmpty) 'model_answer': modelAnswer,
+        if (sourceExcerpt.isNotEmpty) 'source_excerpt': sourceExcerpt,
+        'difficulty': difficulty,
+      };
 
   /// Builds a question from a lesson figure's narrative text.
   factory ExamQuestion.fromFigure(Figure figure, {required int index}) {
@@ -170,20 +175,20 @@ class AnswerResult {
   final String feedback;
 
   factory AnswerResult.fromJson(Map<String, dynamic> json) => AnswerResult(
-    questionId: json['questionId'] as String? ?? '',
-    isCorrect: json['isCorrect'] as bool? ?? false,
-    givenAnswer: json['given'] as String? ?? '',
-    correctAnswer: json['correct'] as String? ?? '',
-    feedback: json['feedback'] as String? ?? '',
-  );
+        questionId: json['questionId'] as String? ?? '',
+        isCorrect: json['isCorrect'] as bool? ?? false,
+        givenAnswer: json['given'] as String? ?? '',
+        correctAnswer: json['correct'] as String? ?? '',
+        feedback: json['feedback'] as String? ?? '',
+      );
 
   Map<String, dynamic> toJson() => {
-    'questionId': questionId,
-    'isCorrect': isCorrect,
-    'given': givenAnswer,
-    'correct': correctAnswer,
-    if (feedback.isNotEmpty) 'feedback': feedback,
-  };
+        'questionId': questionId,
+        'isCorrect': isCorrect,
+        'given': givenAnswer,
+        'correct': correctAnswer,
+        if (feedback.isNotEmpty) 'feedback': feedback,
+      };
 }
 
 /// An exam session: a set of questions plus the collected answers.
@@ -220,14 +225,14 @@ class ExamSession {
 
   /// Serialises the session for persistence / sharing.
   String encode() => jsonEncode({
-    'id': id,
-    'title': title,
-    'bookId': bookId,
-    'subject': subject,
-    'startedAt': startedAt?.toIso8601String(),
-    'questions': questions.map((q) => q.toJson()).toList(),
-    'answers': answers.values.map((a) => a.toJson()).toList(),
-  });
+        'id': id,
+        'title': title,
+        'bookId': bookId,
+        'subject': subject,
+        'startedAt': startedAt?.toIso8601String(),
+        'questions': questions.map((q) => q.toJson()).toList(),
+        'answers': answers.values.map((a) => a.toJson()).toList(),
+      });
 
   /// Restores a session previously produced by [encode].
   static ExamSession decode(String raw) {
@@ -270,20 +275,20 @@ class QuestionBank {
   int get length => questions.length;
 
   factory QuestionBank.fromJson(Map<String, dynamic> json) => QuestionBank(
-    id: json['id'] as String? ?? '',
-    title: json['title'] as String? ?? '',
-    subject: json['subject'] as String?,
-    bookId: json['bookId'] as String?,
-    questions: ((json['questions'] as List?) ?? const [])
-        .map((e) => ExamQuestion.fromJson(e as Map<String, dynamic>))
-        .toList(growable: false),
-  );
+        id: json['id'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        subject: json['subject'] as String?,
+        bookId: json['bookId'] as String?,
+        questions: ((json['questions'] as List?) ?? const [])
+            .map((e) => ExamQuestion.fromJson(e as Map<String, dynamic>))
+            .toList(growable: false),
+      );
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    if (subject != null) 'subject': subject,
-    if (bookId != null) 'bookId': bookId,
-    'questions': questions.map((q) => q.toJson()).toList(),
-  };
+        'id': id,
+        'title': title,
+        if (subject != null) 'subject': subject,
+        if (bookId != null) 'bookId': bookId,
+        'questions': questions.map((q) => q.toJson()).toList(),
+      };
 }
