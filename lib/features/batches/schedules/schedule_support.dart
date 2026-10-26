@@ -4,44 +4,9 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../core/batches/batch_failure.dart';
-import '../../../core/theme.dart';
 import '../../../widgets/common.dart';
 import '../../../widgets/tr_text.dart';
 import '../batch_error_text.dart';
-
-/// One honest line about the schedule, on a tinted local surface.
-class ScheduleBanner extends StatelessWidget {
-  const ScheduleBanner({super.key, required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(ZakerSpacing.md),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(ZakerRadius.md),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: theme.colorScheme.primary),
-          const SizedBox(width: ZakerSpacing.sm),
-          Expanded(
-            child: TrText(
-              text,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// A failure while reading the timetable, with one retry action.
 class ScheduleErrorView extends StatelessWidget {

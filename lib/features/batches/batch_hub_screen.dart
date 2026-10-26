@@ -568,6 +568,7 @@ class _HubSections extends ConsumerWidget {
           ? 'مفيش مستجدات'
           : '${arabicDigits(data.updates.length)} مستجد',
       badge: unread,
+      onTap: () => context.push(ZakerRoutes.batchUpdates(batchId)),
     );
   }
 

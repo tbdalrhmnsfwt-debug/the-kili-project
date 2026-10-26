@@ -8,6 +8,7 @@ import '../../models/batch.dart';
 import '../../models/batch_chat.dart';
 import '../../models/batch_resource.dart';
 import '../../models/batch_schedule.dart';
+import '../../models/batch_update.dart';
 import '../key_value_store.dart';
 import 'batch_access.dart';
 import 'batch_code_service.dart';
@@ -707,6 +708,179 @@ class LocalBatchRepository implements BatchRepository {
       actorUid: uid,
       action: 'scheduleDeleted',
     );
+  }
+
+  // ----------------------------------------------------------------- updates
+
+  static const int maxUpdates = 200;
+  static const int maxUpdateTitleLength = 120;
+  static const int maxUpdateBodyChars = 20000;
+
+  @override
+  Future<List<BatchUpdate>> loadUpdates(String uid, String batchId) async {
+    await _authorize(uid, batchId, BatchAction.viewUpdates);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final updates = await _loadUpdateDocument(store);
+    return List.unmodifiable(updates..sort(_newestUpdateFirst));
+  }
+
+  @override
+  Future<BatchUpdate> publishUpdate(
+    String uid,
+    String batchId, {
+    required String title,
+    required String body,
+  }) async {
+    final snapshot = await _authorize(uid, batchId, BatchAction.postUpdate);
+    final cleanTitle = _cleanUpdateTitle(title);
+    final cleanBody = _cleanUpdateBody(body);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final updates = await _loadUpdateDocument(store);
+    if (updates.length >= maxUpdates) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'updates',
+      );
+    }
+    final membership = _membershipOf(snapshot, uid);
+    final update = BatchUpdate(
+      id: newEntityId('update'),
+      batchId: batchId,
+      authorUid: uid,
+      authorName: membership?.displayName ?? '',
+      title: cleanTitle,
+      body: cleanBody,
+      createdAt: _clock(),
+      kind: BatchUpdateKind.announcement,
+    );
+    updates.add(update);
+    await store.updates.save(updates);
+    await _appendAudit(
+      store: store,
+      batchId: batchId,
+      actorUid: uid,
+      action: 'updatePublished',
+    );
+    return update;
+  }
+
+  @override
+  Future<BatchUpdate> editUpdate(
+    String uid,
+    String batchId,
+    String updateId, {
+    required String title,
+    required String body,
+  }) async {
+    await _authorize(uid, batchId, BatchAction.editAnyUpdate);
+    final cleanTitle = _cleanUpdateTitle(title);
+    final cleanBody = _cleanUpdateBody(body);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final updates = await _loadUpdateDocument(store);
+    final index = updates.indexWhere((item) => item.id == updateId);
+    if (index < 0) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'updateId');
+    }
+    final updated = updates[index].copyWith(
+      title: cleanTitle,
+      body: cleanBody,
+      editedAt: _clock(),
+    );
+    updates[index] = updated;
+    await store.updates.save(updates);
+    await _appendAudit(
+      store: store,
+      batchId: batchId,
+      actorUid: uid,
+      action: 'updateEdited',
+    );
+    return updated;
+  }
+
+  @override
+  Future<void> deleteUpdate(
+    String uid,
+    String batchId,
+    String updateId,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.deleteAnyUpdate);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final updates = await _loadUpdateDocument(store);
+    final index = updates.indexWhere((item) => item.id == updateId);
+    if (index < 0) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'updateId');
+    }
+    updates.removeAt(index);
+    await store.updates.save(updates);
+    await _appendAudit(
+      store: store,
+      batchId: batchId,
+      actorUid: uid,
+      action: 'updateDeleted',
+    );
+  }
+
+  @override
+  Future<BatchUpdate> markUpdateRead(
+    String uid,
+    String batchId,
+    String updateId,
+  ) async {
+    await _authorize(uid, batchId, BatchAction.viewUpdates);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final updates = await _loadUpdateDocument(store);
+    final index = updates.indexWhere((item) => item.id == updateId);
+    if (index < 0) {
+      throw const BatchFailure(BatchFailureCode.notFound, field: 'updateId');
+    }
+    final existing = updates[index];
+    if (existing.isReadBy(uid)) return existing;
+    final updated = existing.copyWith(readBy: {...existing.readBy, uid});
+    updates[index] = updated;
+    await store.updates.save(updates);
+    return updated;
+  }
+
+  /// Reads `updates.json`, refusing a corrupt document instead of replacing it.
+  Future<List<BatchUpdate>> _loadUpdateDocument(BatchStore store) async {
+    final load = await store.updates.load();
+    if (!load.isUsable && !load.isMissing) {
+      throw load.failure ??
+          const BatchFailure(
+            BatchFailureCode.corruptStore,
+            detail: 'update document unreadable',
+          );
+    }
+    return [...?load.value];
+  }
+
+  /// Pinned posts float above the rest; within each group newest first.
+  static int _newestUpdateFirst(BatchUpdate a, BatchUpdate b) {
+    if (a.pinned != b.pinned) return a.pinned ? -1 : 1;
+    final byTime = b.createdAt.compareTo(a.createdAt);
+    return byTime != 0 ? byTime : b.id.compareTo(a.id);
+  }
+
+  String _cleanUpdateTitle(String title) {
+    final clean = title.trim();
+    if (clean.isEmpty || clean.runes.length > maxUpdateTitleLength) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'title',
+      );
+    }
+    return clean;
+  }
+
+  String _cleanUpdateBody(String body) {
+    final clean = body.trim();
+    if (clean.runes.length > maxUpdateBodyChars) {
+      throw const BatchFailure(
+        BatchFailureCode.validationFailed,
+        field: 'body',
+      );
+    }
+    return clean;
   }
 
   // -------------------------------------------------------------------- chat

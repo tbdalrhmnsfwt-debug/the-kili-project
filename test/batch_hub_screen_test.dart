@@ -181,6 +181,11 @@ void main() {
           builder: (context, state) =>
               const Scaffold(body: Center(child: Text('المواعيد هنا'))),
         ),
+        GoRoute(
+          path: '/batches/:batchId/updates',
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('المستجدات هنا'))),
+        ),
       ],
     );
     return ProviderScope(
@@ -340,6 +345,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('المواعيد هنا'), findsOneWidget);
+  });
+
+  testWidgets('opens the updates timeline from the updates card',
+      (tester) async {
+    await tallScreen(tester);
+    await tester.pumpWidget(
+      app(
+        detail: snapshot(),
+        data: hub(updates: [update('u1', 'مراجعة')]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('المستجدات'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('المستجدات هنا'), findsOneWidget);
   });
 
   testWidgets('hides the owner code from a non-owner', (tester) async {

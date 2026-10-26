@@ -1,6 +1,8 @@
 /// Small formatters shared by the batch screens.
 library;
 
+import '../../../models/batch_update.dart';
+
 const List<String> _arabicDigits = [
   '٠',
   '١',
@@ -79,6 +81,13 @@ String scheduleFieldLabel(String field) => switch (field) {
       'dayOfWeek' => 'اليوم',
       'title' => 'العنوان',
       _ => field,
+    };
+
+/// The kind of post an update is.
+String updateKindLabel(BatchUpdateKind kind) => switch (kind) {
+      BatchUpdateKind.announcement => 'إعلان',
+      BatchUpdateKind.resource => 'ملف',
+      BatchUpdateKind.schedule => 'جدول',
     };
 
 /// Human file size. Files are never described with a fake precision.

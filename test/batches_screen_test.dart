@@ -12,6 +12,7 @@ import 'package:zaker_ai/models/batch.dart';
 import 'package:zaker_ai/models/batch_chat.dart';
 import 'package:zaker_ai/models/batch_resource.dart';
 import 'package:zaker_ai/models/batch_schedule.dart';
+import 'package:zaker_ai/models/batch_update.dart';
 import 'package:zaker_ai/providers/app_providers.dart';
 import 'package:zaker_ai/providers/batch_providers.dart';
 
@@ -194,6 +195,41 @@ class _FakeRepository implements BatchRepository {
     String uid,
     String batchId,
     String draftId,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<BatchUpdate>> loadUpdates(String uid, String batchId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<BatchUpdate> publishUpdate(
+    String uid,
+    String batchId, {
+    required String title,
+    required String body,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<BatchUpdate> editUpdate(
+    String uid,
+    String batchId,
+    String updateId, {
+    required String title,
+    required String body,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteUpdate(String uid, String batchId, String updateId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<BatchUpdate> markUpdateRead(
+    String uid,
+    String batchId,
+    String updateId,
   ) =>
       throw UnimplementedError();
 }

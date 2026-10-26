@@ -20,6 +20,7 @@ import '../../../widgets/common.dart';
 import '../../../widgets/tr_text.dart';
 import '../batch_error_text.dart';
 import '../widgets/batch_labels.dart';
+import '../widgets/batch_notice.dart';
 import 'schedule_access.dart';
 import 'schedule_photo_picker.dart';
 import 'schedule_support.dart';
@@ -130,7 +131,7 @@ class _BatchSchedulesScreenState extends ConsumerState<BatchSchedulesScreen> {
           ),
           const SizedBox(height: ZakerSpacing.md),
         ],
-        const ScheduleBanner(
+        const BatchNotice(
           icon: Icons.phonelink_lock_rounded,
           text: 'صور الجدول بتتقرا على الجهاز وبتتحفظ في مساحة الدفعة. '
               'مفيش رفع لسيرفر.',

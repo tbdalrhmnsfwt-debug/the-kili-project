@@ -9,6 +9,7 @@ import '../../models/batch.dart';
 import '../../models/batch_chat.dart';
 import '../../models/batch_resource.dart';
 import '../../models/batch_schedule.dart';
+import '../../models/batch_update.dart';
 import 'batch_failure.dart';
 import 'batch_store.dart';
 
@@ -150,6 +151,35 @@ abstract interface class BatchRepository {
     String uid,
     String batchId,
     String draftId,
+  );
+
+  /// Every update the reader may see, pinned first and newest first.
+  Future<List<BatchUpdate>> loadUpdates(String uid, String batchId);
+
+  /// Posts an announcement authored by [uid].
+  Future<BatchUpdate> publishUpdate(
+    String uid,
+    String batchId, {
+    required String title,
+    required String body,
+  });
+
+  /// Rewrites an existing update and records the edit time.
+  Future<BatchUpdate> editUpdate(
+    String uid,
+    String batchId,
+    String updateId, {
+    required String title,
+    required String body,
+  });
+
+  Future<void> deleteUpdate(String uid, String batchId, String updateId);
+
+  /// Marks the update read by [uid]. Repeating it changes nothing.
+  Future<BatchUpdate> markUpdateRead(
+    String uid,
+    String batchId,
+    String updateId,
   );
 
   /// The newest chat messages older than [before].

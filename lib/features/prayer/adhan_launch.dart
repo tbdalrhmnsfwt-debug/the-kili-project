@@ -10,6 +10,20 @@ import 'dart:convert';
 
 import '../../core/router.dart';
 
+final RegExp _batchIdPattern = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
+
+/// The timetable location a batch reminder opens, or null for any other
+/// payload.
+///
+/// A batch reminder carries only ids. The class title, room and the private
+/// photo path never appear in the notification, so nothing here can leak them.
+String? batchScheduleLocation(Map<String, dynamic> data) {
+  if (data['type'] != 'batch_schedule') return null;
+  final batchId = data['batchId'];
+  if (batchId is! String || !_batchIdPattern.hasMatch(batchId)) return null;
+  return ZakerRoutes.batchSchedules(batchId);
+}
+
 void handleNotificationPayload(String? payload) {
   if (payload == null || payload.isEmpty) return;
   if (payload == 'tasks') {
@@ -23,6 +37,12 @@ void handleNotificationPayload(String? payload) {
 
   final data = _decode(payload);
   if (data == null) return;
+
+  final scheduleLocation = batchScheduleLocation(data);
+  if (scheduleLocation != null) {
+    appRouter.go(scheduleLocation);
+    return;
+  }
 
   switch (data['type']) {
     case 'salat':

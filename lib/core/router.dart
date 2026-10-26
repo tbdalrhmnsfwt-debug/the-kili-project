@@ -34,6 +34,9 @@ import '../features/batches/subjects/interactive_test_screen.dart';
 import '../features/batches/subjects/mind_map_screen.dart';
 import '../features/batches/subjects/study_tools_screen.dart';
 import '../features/batches/subjects/subject_resources_screen.dart';
+import '../features/batches/updates/batch_updates_screen.dart';
+import '../features/batches/updates/update_detail_screen.dart';
+import '../features/batches/updates/update_editor_screen.dart';
 import '../features/challenges/challenges_screen.dart';
 import '../features/calculator/calc_pro_screen.dart';
 import '../features/courses/course_list_screen.dart';
@@ -88,6 +91,7 @@ import '../features/weakness/weakness_screen.dart';
 import '../features/weekly/weekly_screen.dart';
 import '../features/whiteboard/whiteboard_screen.dart';
 import '../features/words/words_screen.dart';
+import '../models/batch_update.dart';
 import '../models/manhaji.dart';
 import '../widgets/tr_text.dart';
 
@@ -114,6 +118,12 @@ class ZakerRoutes {
   static const String batchSchedulesPattern = '/batches/:batchId/schedules';
   static const String batchScheduleDraftPattern =
       '/batches/:batchId/schedules/:draftId';
+  static const String batchUpdatesPattern = '/batches/:batchId/updates';
+  static const String batchUpdateNewPattern = '/batches/:batchId/updates/new';
+  static const String batchUpdatePattern =
+      '/batches/:batchId/updates/:updateId';
+  static const String batchUpdateEditPattern =
+      '/batches/:batchId/updates/:updateId/edit';
   static const String batchAudioResourcePattern =
       '/batches/:batchId/audio/:resourceId';
   static const String batchStudyToolsPattern =
@@ -149,6 +159,21 @@ class ZakerRoutes {
   /// One timetable draft, for review, edits and publishing.
   static String batchScheduleDraft(String batchId, String draftId) =>
       '${batchSchedules(batchId)}/${Uri.encodeComponent(draftId)}';
+
+  /// The local updates timeline of one batch.
+  static String batchUpdates(String batchId) => '${batchHub(batchId)}/updates';
+
+  /// The composer for a new update.
+  static String batchUpdateNew(String batchId) =>
+      '${batchUpdates(batchId)}/new';
+
+  /// One update.
+  static String batchUpdate(String batchId, String updateId) =>
+      '${batchUpdates(batchId)}/${Uri.encodeComponent(updateId)}';
+
+  /// The editor for an existing update.
+  static String batchUpdateEdit(String batchId, String updateId) =>
+      '${batchUpdate(batchId, updateId)}/edit';
 
   /// The local player for one audio resource.
   static String batchAudioResource(String batchId, String resourceId) =>
@@ -385,6 +410,32 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => ScheduleDraftScreen(
         batchId: state.pathParameters['batchId'] ?? '',
         draftId: state.pathParameters['draftId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchUpdatesPattern,
+      builder: (context, state) => BatchUpdatesScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchUpdateNewPattern,
+      builder: (context, state) => UpdateEditorScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchUpdateEditPattern,
+      builder: (context, state) => UpdateEditorScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        original: state.extra as BatchUpdate?,
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchUpdatePattern,
+      builder: (context, state) => UpdateDetailScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        updateId: state.pathParameters['updateId'] ?? '',
       ),
     ),
     GoRoute(

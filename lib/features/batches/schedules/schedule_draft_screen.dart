@@ -19,6 +19,7 @@ import '../../../widgets/common.dart';
 import '../../../widgets/tr_text.dart';
 import '../batch_error_text.dart';
 import '../widgets/batch_labels.dart';
+import '../widgets/batch_notice.dart';
 import 'schedule_access.dart';
 import 'schedule_entry_editor.dart';
 import 'schedule_support.dart';
@@ -132,14 +133,14 @@ class _ScheduleDraftScreenState extends ConsumerState<ScheduleDraftScreen> {
       ),
       children: [
         if (published) ...[
-          const ScheduleBanner(
+          const BatchNotice(
             icon: Icons.check_circle_outline_rounded,
             text: 'الجدول منشور. أي حد يفتح الدفعة على الجهاز ده هيشوفه.',
           ),
           const SizedBox(height: ZakerSpacing.md),
         ],
         if (!canEdit) ...[
-          const ScheduleBanner(
+          const BatchNotice(
             icon: Icons.visibility_outlined,
             text:
                 'انت بتشوف الجدول بس. التعديل والنشر لصاحب الدفعة أو المسؤول.',
