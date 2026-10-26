@@ -273,4 +273,7 @@ abstract interface class BatchRepository {
   Future<void> deleteBatch(String uid, String batchId);
 
   Future<int> storageUsed(String uid, String batchId);
+
+  /// The newest local audit entries, or an empty list when none was written.
+  Future<List<AuditEntry>> loadAudit(String uid, String batchId);
 }

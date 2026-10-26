@@ -17,6 +17,7 @@ import '../../widgets/tr_text.dart';
 import '../../widgets/zaker_visuals.dart';
 import '../home/shell_screen.dart';
 import 'batch_error_text.dart';
+import 'tutorial/batch_tutorial_overlay.dart';
 
 /// Lists the batches stored under the active uid.
 class BatchesScreen extends ConsumerWidget {
@@ -26,12 +27,16 @@ class BatchesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final batches = ref.watch(batchListProvider);
     final uid = ref.watch(authUserProvider)?.uid ?? '';
-
     return Scaffold(
       appBar: AppBar(
         leading: shellMenuLeading(context),
         title: const TrText('الدفعات'),
         actions: [
+          IconButton(
+            tooltip: 'جولة في الدفعات',
+            onPressed: () => openBatchListTutorial(context, ref),
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
           IconButton(
             tooltip: 'عندك كود دعوة؟',
             onPressed: () => context.push(ZakerRoutes.batchJoin),

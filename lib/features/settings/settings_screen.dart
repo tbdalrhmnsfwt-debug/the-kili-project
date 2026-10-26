@@ -17,6 +17,7 @@ import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
+import '../batches/tutorial/batch_tutorial_overlay.dart';
 
 /// The settings screen.
 class SettingsScreen extends ConsumerWidget {
@@ -82,6 +83,12 @@ class SettingsScreen extends ConsumerWidget {
                 ? 'شغالة — متصدرين وتحديات مشتركة'
                 : 'متوقفة — شغّلها من الحساب',
             onTap: () => context.push(ZakerRoutes.account),
+          ),
+          _Tile(
+            icon: Icons.tour_rounded,
+            title: 'جولة في الدفعات',
+            subtitle: 'شرح الإنشاء والأقسام والدعوة',
+            onTap: () => openBatchListTutorial(context, ref),
           ),
           _Tile(
             icon: Icons.language_rounded,

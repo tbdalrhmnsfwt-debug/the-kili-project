@@ -19,6 +19,10 @@ import '../features/azkar/azkar_settings_screen.dart';
 import '../features/azkar/azkar_tasbih_screen.dart';
 import '../features/azkar/kahf_screen.dart';
 import '../features/azkar/salat_counter_screen.dart';
+import '../features/batches/admin/batch_admin_screen.dart';
+import '../features/batches/admin/batch_settings_screen.dart';
+import '../features/batches/admin/join_requests_screen.dart';
+import '../features/batches/admin/members_screen.dart';
 import '../features/batches/batch_created_screen.dart';
 import '../features/batches/batch_hub_screen.dart';
 import '../features/batches/batches_screen.dart';
@@ -136,6 +140,13 @@ class ZakerRoutes {
   static const String batchExamResultPattern =
       '/batches/:batchId/exams/:examId/result';
   static const String batchExamPattern = '/batches/:batchId/exams/:examId';
+  static const String batchAdminPattern = '/batches/:batchId/admin';
+  static const String batchAdminSettingsPattern =
+      '/batches/:batchId/admin/settings';
+  static const String batchAdminMembersPattern =
+      '/batches/:batchId/admin/members';
+  static const String batchAdminRequestsPattern =
+      '/batches/:batchId/admin/requests';
   static const String batchAudioResourcePattern =
       '/batches/:batchId/audio/:resourceId';
   static const String batchStudyToolsPattern =
@@ -204,6 +215,21 @@ class ZakerRoutes {
   /// The result of a submitted attempt.
   static String batchExamResult(String batchId, String examId) =>
       '${batchExam(batchId, examId)}/result';
+
+  /// Local administration for one batch.
+  static String batchAdmin(String batchId) => '${batchHub(batchId)}/admin';
+
+  /// Owner-only policies and storage maintenance.
+  static String batchAdminSettings(String batchId) =>
+      '${batchAdmin(batchId)}/settings';
+
+  /// Members stored on this device.
+  static String batchAdminMembers(String batchId) =>
+      '${batchAdmin(batchId)}/members';
+
+  /// The blocked join-request queue.
+  static String batchAdminRequests(String batchId) =>
+      '${batchAdmin(batchId)}/requests';
 
   /// The local player for one audio resource.
   static String batchAudioResource(String batchId, String resourceId) =>
@@ -499,6 +525,30 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => ExamTakingScreen(
         batchId: state.pathParameters['batchId'] ?? '',
         examId: state.pathParameters['examId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchAdminSettingsPattern,
+      builder: (context, state) => BatchSettingsScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchAdminMembersPattern,
+      builder: (context, state) => BatchMembersScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchAdminRequestsPattern,
+      builder: (context, state) => BatchJoinRequestsScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchAdminPattern,
+      builder: (context, state) => BatchAdminScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
       ),
     ),
     GoRoute(

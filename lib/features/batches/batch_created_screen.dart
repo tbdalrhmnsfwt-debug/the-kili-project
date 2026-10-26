@@ -14,9 +14,12 @@ import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/batch.dart';
 import '../../providers/batch_providers.dart';
+import '../../providers/tutorial_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import 'batch_error_text.dart';
+import 'tutorial/batch_tutorial_overlay.dart';
+import 'tutorial/batch_tutorial_steps.dart';
 
 class BatchCreatedScreen extends ConsumerWidget {
   const BatchCreatedScreen({super.key, required this.batchId});
@@ -40,18 +43,20 @@ class BatchCreatedScreen extends ConsumerWidget {
   }
 }
 
-class _CreatedBody extends StatelessWidget {
+class _CreatedBody extends ConsumerWidget {
   const _CreatedBody({required this.snapshot});
 
   final BatchSnapshot snapshot;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final batch = snapshot.batch;
     final code = batch.codeState;
     final grouped = BatchCodeService.format(code.code);
     final creator = _memberName(snapshot, batch.ownerUid);
+    final tutorial = ref.watch(batchTutorialControllerProvider);
+    final offerContinuation = tutorial.mode == BatchTutorialMode.gettingStarted;
 
     return ListView(
       padding: const EdgeInsets.all(ZakerSpacing.lg),
@@ -189,6 +194,19 @@ class _CreatedBody extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded),
           label: const TrText('رجوع للدفعات'),
         ),
+        if (offerContinuation) ...[
+          const SizedBox(height: ZakerSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () => showBatchTutorial(
+              context,
+              mode: BatchTutorialMode.full,
+              batchId: batch.id,
+              startStep: 8,
+            ),
+            icon: const Icon(Icons.tour_rounded),
+            label: const TrText('كمّل الجولة'),
+          ),
+        ],
       ],
     );
   }

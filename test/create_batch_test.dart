@@ -269,6 +269,10 @@ class _FakeRepository implements BatchRepository {
       throw UnimplementedError();
 
   @override
+  Future<List<AuditEntry>> loadAudit(String uid, String batchId) =>
+      throw UnimplementedError();
+
+  @override
   Future<List<BatchExam>> loadExams(String uid, String batchId) =>
       throw UnimplementedError();
 

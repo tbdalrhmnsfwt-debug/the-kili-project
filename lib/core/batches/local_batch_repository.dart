@@ -176,6 +176,25 @@ class LocalBatchRepository implements BatchRepository {
   Future<int> storageUsed(String uid, String batchId) =>
       files.storageUsed(uid: uid, batchId: batchId);
 
+  @override
+  Future<List<AuditEntry>> loadAudit(String uid, String batchId) async {
+    await _authorize(uid, batchId, BatchAction.viewAudit);
+    final store = BatchStore(directory: files.batchDir(uid, batchId));
+    final load = await store.audit.load();
+    if (!load.isUsable && !load.isMissing) {
+      throw load.failure ??
+          const BatchFailure(
+            BatchFailureCode.corruptStore,
+            detail: 'audit document unreadable',
+          );
+    }
+    final entries = [...?load.value]..sort((a, b) {
+        final byTime = b.at.compareTo(a.at);
+        return byTime != 0 ? byTime : b.id.compareTo(a.id);
+      });
+    return List.unmodifiable(entries);
+  }
+
   // ------------------------------------------------------------------ writes
 
   @override

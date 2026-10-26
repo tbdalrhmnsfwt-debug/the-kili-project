@@ -14,12 +14,15 @@ import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/batch_chat.dart';
 import '../../models/batch_resource.dart';
+import '../../providers/admin_providers.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/batch_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import '../../widgets/zaker_visuals.dart';
 import 'batch_error_text.dart';
+import 'tutorial/batch_tutorial_overlay.dart';
+import 'tutorial/batch_tutorial_steps.dart';
 import 'widgets/batch_labels.dart';
 import 'widgets/hub_section_card.dart';
 
@@ -32,13 +35,25 @@ class BatchHubScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(batchDetailProvider(batchId));
     final uid = ref.watch(authUserProvider)?.uid ?? '';
+    final snapshot = detail.valueOrNull;
+    final adminAllowed = snapshot != null && canViewBatchAdmin(snapshot, uid);
     return Scaffold(
       appBar: AppBar(
         title: const TrText('الدفعة'),
         actions: [
+          if (adminAllowed)
+            IconButton(
+              tooltip: 'إدارة الدفعة',
+              onPressed: () => context.push(ZakerRoutes.batchAdmin(batchId)),
+              icon: const Icon(Icons.admin_panel_settings_outlined),
+            ),
           IconButton(
-            tooltip: 'عن الدفعة دي',
-            onPressed: () => _showHelp(context),
+            tooltip: 'جولة في الدفعة',
+            onPressed: () => showBatchTutorial(
+              context,
+              mode: BatchTutorialMode.full,
+              batchId: batchId,
+            ),
             icon: const Icon(Icons.help_outline_rounded),
           ),
         ],
@@ -53,62 +68,6 @@ class BatchHubScreen extends ConsumerWidget {
           batchId: batchId,
           snapshot: snapshot,
           uid: uid,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showHelp(BuildContext context) {
-    final theme = Theme.of(context);
-    return showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            ZakerSpacing.lg,
-            0,
-            ZakerSpacing.lg,
-            ZakerSpacing.lg,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TrText(
-                'الدفعة دي على الجهاز ده',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: ZakerSpacing.md),
-              const _HelpLine(
-                icon: Icons.key_rounded,
-                text: 'الكود بيلاقي الدفعة على الجهاز نفسه. هو دعوة مش تسجيل '
-                    'دخول، ومش بيشتغل على جهاز تاني.',
-              ),
-              const SizedBox(height: ZakerSpacing.sm),
-              const _HelpLine(
-                icon: Icons.phonelink_lock_rounded,
-                text: 'الملفات والملاحظات محفوظة في مساحة خاصة بحسابك على '
-                    'الجهاز ده. مفيش رفع لمخزن سحابي.',
-              ),
-              const SizedBox(height: ZakerSpacing.sm),
-              const _HelpLine(
-                icon: Icons.groups_2_outlined,
-                text: 'مفيش أعضاء تانيين ولا مزامنة لحد ما يبقى فيه سيرفر. '
-                    'إدارة الأعضاء والإشعارات الجماعية محتاجة سيرفر.',
-              ),
-              const SizedBox(height: ZakerSpacing.lg),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.of(sheetContext).pop(),
-                  child: const TrText('تمام'),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -677,31 +636,6 @@ class _InfoLine extends StatelessWidget {
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HelpLine extends StatelessWidget {
-  const _HelpLine({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: theme.colorScheme.primary),
-        const SizedBox(width: ZakerSpacing.sm),
-        Expanded(
-          child: TrText(
-            text,
-            style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
           ),
         ),
       ],

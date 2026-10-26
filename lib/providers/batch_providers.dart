@@ -361,6 +361,15 @@ class BatchController {
   Future<int> storageUsed(String batchId) =>
       _repository.storageUsed(_uid, batchId);
 
+  /// Removes extracted-text and thumbnail caches. Originals are untouched.
+  Future<void> pruneCaches(String batchId) async {
+    await _ref.read(batchFileStoreProvider).pruneCaches(
+          uid: _uid,
+          batchId: batchId,
+        );
+    _refreshStorage(batchId);
+  }
+
   void refresh() => _ref.invalidate(batchListProvider);
 
   void _refresh(String batchId) {
