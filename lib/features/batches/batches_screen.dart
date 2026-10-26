@@ -440,7 +440,7 @@ class _UnreadBadge extends StatelessWidget {
       child: TrText(
         '$count جديد',
         style: theme.textTheme.labelSmall?.copyWith(
-          color: Colors.white,
+          color: theme.colorScheme.onPrimary,
           fontWeight: FontWeight.w700,
         ),
       ),

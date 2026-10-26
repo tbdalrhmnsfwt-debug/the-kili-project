@@ -153,6 +153,7 @@ void main() {
     required String initialLocation,
     String viewerUid = uid,
     List<AuditEntry> audit = const [],
+    double textScale = 1,
   }) {
     final router = GoRouter(
       initialLocation: initialLocation,
@@ -225,7 +226,12 @@ void main() {
         routerConfig: router,
         builder: (context, child) => Directionality(
           textDirection: TextDirection.rtl,
-          child: child ?? const SizedBox.shrink(),
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(textScale),
+            ),
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );
@@ -463,5 +469,28 @@ void main() {
     expect(find.textContaining('الدعوة والكتم والإزالة محتاجين سيرفر'),
         findsOneWidget);
     expect(find.text('ادعُ عضو'), findsNothing);
+  });
+
+  testWidgets('administration fits a narrow RTL screen with large text',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app(
+        repository: _FakeAdminRepository(snapshot()),
+        initialLocation: '/batches/$batchId/admin',
+        textScale: 1.5,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('إدارة الدفعة'), findsOneWidget);
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, -2000));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 }

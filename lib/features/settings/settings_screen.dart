@@ -222,6 +222,14 @@ class SettingsScreen extends ConsumerWidget {
                     Navigator.of(dialogContext).pop();
                   },
                 ),
+                const SizedBox(height: ZakerSpacing.sm),
+                TrText(
+                  'الإنجليزية متاحة لمعظم الشاشات، وبعض نصوص الدفعات لسه '
+                  'بتظهر بالعربي.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        height: 1.5,
+                      ),
+                ),
               ],
             ),
           );

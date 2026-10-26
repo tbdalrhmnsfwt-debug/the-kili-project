@@ -437,6 +437,7 @@ class _LevelMeter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final level = (amplitude / 32767).clamp(0.0, 1.0);
     final scale = 0.15 + 0.85 * math.sqrt(level);
     return SizedBox(
@@ -449,7 +450,9 @@ class _LevelMeter extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 3),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 120),
+                duration: reduceMotion
+                    ? Duration.zero
+                    : const Duration(milliseconds: 120),
                 width: 7,
                 height: 8 + 32 * factor * scale,
                 decoration: BoxDecoration(

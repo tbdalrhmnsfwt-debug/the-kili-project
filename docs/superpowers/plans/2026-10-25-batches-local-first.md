@@ -183,3 +183,12 @@ device checklist. Report exactly what ran locally and what ran in CI.
   screens; no screen reads files directly.
 - Review Focus tests are placed in Phases 1, 2, 4, 5, 6, 8.
 - Deliberately omitted: seeded content, server simulation, fake live challenge.
+
+## Status (2026-10-26)
+
+All ten phases are implemented on `main`. Phase 9's first CI attempt exposed a
+Flutter ListTile ink assertion in the settings card; the fix moved the card
+onto a `Material` surface and passed on the next run. The final report,
+blocked-feature checklist, caps and manual device checklist live in
+[`docs/batches-local-first-report.md`](../../batches-local-first-report.md).
+
