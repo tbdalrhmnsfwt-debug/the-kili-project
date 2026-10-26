@@ -82,6 +82,13 @@ class NotificationService {
   static const String _hifzChannelDescription =
       'تنبيه بموعد مراجعة الجزء اللي حفظته، على حسب جدول المراجعة.';
 
+  // -------------------------------------------------- batch schedule channel
+
+  static const String _batchScheduleChannelId = 'zaker_batch_schedules';
+  static const String _batchScheduleChannelName = 'تذكير الحصص';
+  static const String _batchScheduleChannelDescription =
+      'تنبيه قبل بداية حصة في جدول الدفعة.';
+
   static const int _adhanIdBase = 4000;
   static const int _reminderIdBase = 5000;
 
@@ -291,6 +298,82 @@ class NotificationService {
       details: _hifzDetails(body),
       payload: payload,
     );
+  }
+
+  /// Creates the channel used by timetable reminders.
+  Future<void> ensureBatchScheduleChannel() async {
+    await init();
+    if (!_initialized) return;
+    final android = _android;
+    if (android == null) return;
+    try {
+      await android.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _batchScheduleChannelId,
+          _batchScheduleChannelName,
+          description: _batchScheduleChannelDescription,
+          importance: Importance.high,
+          enableVibration: true,
+          showBadge: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint('notifications: could not create the schedule channel ($e)');
+    }
+  }
+
+  /// Schedules one timetable reminder. The caller owns the id range and has
+  /// already cancelled the previous window.
+  Future<bool> scheduleBatchReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    required String payload,
+  }) async {
+    await init();
+    if (!_initialized) return false;
+    try {
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tz.TZDateTime.from(when, tz.local),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _batchScheduleChannelId,
+            _batchScheduleChannelName,
+            channelDescription: _batchScheduleChannelDescription,
+            importance: Importance.high,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.reminder,
+            channelShowBadge: true,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: payload,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('notifications: could not schedule a schedule reminder ($e)');
+      return false;
+    }
+  }
+
+  /// Every notification id currently queued with the system.
+  Future<List<int>> pendingNotificationIds() async {
+    await init();
+    if (!_initialized) return const [];
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      return [for (final request in pending) request.id];
+    } catch (e) {
+      debugPrint('notifications: could not read pending ids ($e)');
+      return const [];
+    }
   }
 
   /// Cancels hifz review reminders, leaving every other schedule untouched.

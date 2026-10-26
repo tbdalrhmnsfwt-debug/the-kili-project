@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/batches/schedule_reminder_service.dart';
 import '../../../core/theme.dart';
 import '../../../models/batch.dart';
 import '../../../models/batch_schedule.dart';
@@ -35,7 +36,13 @@ class _ScheduleEntryEditorState extends State<ScheduleEntryEditor> {
   late int _start;
   late int _end;
   late String _subjectId;
+  late bool _reminder;
   String? _error;
+
+  /// A reminder needs a real basis: a weekly rule, or an anchored one-off.
+  bool get _canRemind =>
+      widget.original.recurrence == TimetableRecurrence.weekly ||
+      widget.original.weekAnchorDate != null;
 
   @override
   void initState() {
@@ -47,6 +54,7 @@ class _ScheduleEntryEditorState extends State<ScheduleEntryEditor> {
     _start = widget.original.startMinutes;
     _end = widget.original.endMinutes;
     _subjectId = widget.original.subjectId ?? '';
+    _reminder = widget.original.reminderEnabled && _canRemind;
   }
 
   @override
@@ -118,8 +126,8 @@ class _ScheduleEntryEditorState extends State<ScheduleEntryEditor> {
         uncertainFields: uncertain,
         recurrence: widget.original.recurrence,
         weekAnchorDate: widget.original.weekAnchorDate,
-        timeZoneId: widget.original.timeZoneId,
-        reminderEnabled: widget.original.reminderEnabled,
+        timeZoneId: _reminder ? deviceTimeZoneMarker(DateTime.now()) : null,
+        reminderEnabled: _reminder,
         allDay: widget.original.allDay,
       ),
     );
@@ -238,8 +246,28 @@ class _ScheduleEntryEditorState extends State<ScheduleEntryEditor> {
               ],
             ),
             const SizedBox(height: ZakerSpacing.sm),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              value: _reminder,
+              onChanged: _canRemind
+                  ? (value) => setState(() => _reminder = value)
+                  : null,
+              title: const TrText(
+                'ذكّرني قبل الحصة',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: TrText(
+                _canRemind
+                    ? 'التنبيه بييجي قبل البداية بـ ١٠ دقايق بعد نشر الجدول. بيتحجز ٤ أسابيع وبيتجدّد لما تفتح المواعيد.'
+                    : 'الحصة دي مفيهاش يوم أو تاريخ واضح، فمش هنقدر نظبط تذكير.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
             TrText(
-              'الوقت بتوقيت جهازك. مفيش منطقة زمنية أو تاريخ محفوظ من الصورة.',
+              'الوقت بتوقيت جهازك. مفيش منطقة زمنية أو تاريخ محفوظ من الصورة. '
+              'التذكير مربوط بتوقيت الجهاز دلوقتي.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

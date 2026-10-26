@@ -9,7 +9,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/batches/batch_failure.dart';
 import '../core/batches/batch_repository.dart';
+import '../core/batches/schedule_notification_sink.dart';
 import '../core/batches/schedule_ocr_service.dart';
+import '../core/batches/schedule_reminder_service.dart';
+import '../core/notification_service.dart';
 import '../models/batch_schedule.dart';
 import 'app_providers.dart';
 import 'batch_providers.dart';
@@ -18,6 +21,20 @@ String _currentUid(Ref ref) => ref.watch(authUserProvider)?.uid ?? '';
 
 final scheduleOcrServiceProvider = Provider<ScheduleOcrService>((ref) {
   return ScheduleOcrService(files: ref.watch(batchFileStoreProvider));
+});
+
+/// Where timetable reminders are handed to the operating system.
+final scheduleReminderSinkProvider = Provider<ScheduleReminderSink>((ref) {
+  return NotificationServiceScheduleSink(NotificationService.instance);
+});
+
+final scheduleReminderServiceProvider = Provider<ScheduleReminderService>((
+  ref,
+) {
+  return ScheduleReminderService(
+    repository: ref.watch(batchRepositoryProvider),
+    notifications: ref.watch(scheduleReminderSinkProvider),
+  );
 });
 
 /// Every draft and published timetable the reader may see, newest first.
@@ -197,6 +214,13 @@ class ScheduleController {
   Future<void> delete(String batchId, String draftId) async {
     await _repository.deleteScheduleDraft(_uid, batchId, draftId);
     _refresh(batchId);
+  }
+
+  /// Rebuilds the device's timetable reminder queue after a change.
+  Future<ScheduleReminderSyncResult> syncReminders(String batchId) {
+    return _ref
+        .read(scheduleReminderServiceProvider)
+        .sync(uid: _uid, batchId: batchId);
   }
 
   void _refresh(String batchId) {

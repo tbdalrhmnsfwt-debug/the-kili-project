@@ -306,6 +306,8 @@ class _ScheduleDraftScreenState extends ConsumerState<ScheduleDraftScreen> {
     List<TimetableEntry> entries,
   ) async {
     if (_busy) return;
+    final hadReminders = draft.entries.any((item) => item.reminderEnabled);
+    final hasReminders = entries.any((item) => item.reminderEnabled);
     setState(() => _busy = true);
     try {
       await ref.read(scheduleControllerProvider).saveDraft(
@@ -313,6 +315,7 @@ class _ScheduleDraftScreenState extends ConsumerState<ScheduleDraftScreen> {
             draft.copyWith(entries: List.unmodifiable(entries)),
           );
       _snack('اتحفظ الجدول.');
+      if (hadReminders || hasReminders) await _syncReminders();
     } on BatchFailure catch (failure) {
       _snack(batchErrorText(failure));
     } finally {
@@ -322,12 +325,14 @@ class _ScheduleDraftScreenState extends ConsumerState<ScheduleDraftScreen> {
 
   Future<void> _publish(TimetableDraft draft) async {
     if (_busy) return;
+    final hasReminders = draft.entries.any((item) => item.reminderEnabled);
     setState(() => _busy = true);
     try {
       await ref
           .read(scheduleControllerProvider)
           .publish(widget.batchId, draft.id);
       _snack('الجدول اتنشر.');
+      if (hasReminders) await _syncReminders();
     } on BatchFailure catch (failure) {
       _snack(
         failure.field == 'entries'
@@ -336,6 +341,34 @@ class _ScheduleDraftScreenState extends ConsumerState<ScheduleDraftScreen> {
       );
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Rebuilds the device's reminder queue and explains the two honest
+  /// failure modes: notifications are off, or the device zone changed.
+  Future<void> _syncReminders() async {
+    try {
+      final result = await ref
+          .read(scheduleControllerProvider)
+          .syncReminders(widget.batchId);
+      if (result.permissionDenied) {
+        _snack('الإشعارات مقفولة من إعدادات الجهاز، فالتذكير مش هيوصل.');
+      } else if (result.timeZoneMismatch > 0) {
+        _snack(
+          'توقيت الجهاز اتغيّر. افتح الحصة واحفظها تاني عشان التذكير يرجع.',
+        );
+      }
+    } on Object {
+      _snack('التذكير مش اتظبط دلوقتي. جرّب تحفظ تاني.');
+    }
+  }
+
+  /// Cancelling reminders must never make a successful delete look failed.
+  Future<void> _resyncRemindersQuietly() async {
+    try {
+      await ref.read(scheduleControllerProvider).syncReminders(widget.batchId);
+    } on Object {
+      // The rows are already gone; the next successful save retries the queue.
     }
   }
 
@@ -360,11 +393,13 @@ class _ScheduleDraftScreenState extends ConsumerState<ScheduleDraftScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
+    final hadReminders = draft.entries.any((item) => item.reminderEnabled);
     setState(() => _busy = true);
     try {
       await ref
           .read(scheduleControllerProvider)
           .delete(widget.batchId, draft.id);
+      if (hadReminders) await _resyncRemindersQuietly();
       if (mounted) Navigator.of(context).pop();
     } on BatchFailure catch (failure) {
       _snack(batchErrorText(failure));
@@ -480,6 +515,7 @@ class _EntryTile extends StatelessWidget {
                     ),
                   if (entry.confidence > 0 && entry.confidence < 0.6)
                     _Tag(text: 'قراءة مش مؤكدة'),
+                  if (entry.reminderEnabled) _Tag(text: 'تذكير قبل الحصة'),
                 ],
               ),
               const SizedBox(height: ZakerSpacing.sm),

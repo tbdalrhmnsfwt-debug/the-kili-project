@@ -5,6 +5,7 @@ import 'package:zaker_ai/core/auth_service.dart';
 import 'package:zaker_ai/core/batches/batch_failure.dart';
 import 'package:zaker_ai/core/batches/batch_repository.dart';
 import 'package:zaker_ai/core/batches/batch_store.dart';
+import 'package:zaker_ai/core/batches/schedule_reminder_service.dart';
 import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/features/batches/schedules/schedule_draft_screen.dart';
 import 'package:zaker_ai/models/batch.dart';
@@ -77,6 +78,34 @@ class _FakeRepository implements BatchRepository {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeSink implements ScheduleReminderSink {
+  final List<int> scheduled = [];
+
+  @override
+  Future<void> ensureChannel() async {}
+
+  @override
+  Future<bool> requestPermission() async => true;
+
+  @override
+  Future<Set<int>> pendingIds() async => {};
+
+  @override
+  Future<bool> schedule({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    required String payload,
+  }) async {
+    scheduled.add(id);
+    return true;
+  }
+
+  @override
+  Future<void> cancel(int id) async {}
 }
 
 void main() {
@@ -156,6 +185,7 @@ void main() {
     WidgetTester tester, {
     required _FakeRepository repository,
     required BatchSnapshot detail,
+    ScheduleReminderSink? reminders,
   }) async {
     final navigatorKey = GlobalKey<NavigatorState>();
     await tester.pumpWidget(
@@ -169,6 +199,9 @@ void main() {
             (ref, id) async => [...repository.drafts],
           ),
           batchRepositoryProvider.overrideWithValue(repository),
+          scheduleReminderSinkProvider.overrideWithValue(
+            reminders ?? _FakeSink(),
+          ),
         ],
         child: MaterialApp(
           theme: ZakerTheme.light(),
@@ -308,6 +341,35 @@ void main() {
     expect(saved.uncertainFields, isNot(contains('title')));
     expect(saved.uncertainFields, contains('endMinutes'));
     expect(find.text('اتحفظ الجدول.'), findsOneWidget);
+  });
+
+  testWidgets('a writer can enable a reminder on a row', (tester) async {
+    final repository = _FakeRepository([draft()]);
+    await openDraft(
+      tester,
+      repository: repository,
+      detail: snapshot(),
+      reminders: _FakeSink(),
+    );
+
+    await tester.tap(find.text('مراجعة رياضيات'));
+    await tester.pumpAndSettle();
+
+    final toggle = find.byType(SwitchListTile);
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    final save = find.text('حفظ الحصة');
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    final saved = repository.savedEntries.single;
+    expect(saved.reminderEnabled, isTrue);
+    expect(saved.timeZoneId, isNotNull);
+    expect(saved.timeZoneId, startsWith('device:'));
+    expect(find.text('تذكير قبل الحصة'), findsOneWidget);
   });
 
   testWidgets('deleting asks first, then removes the draft and returns', (

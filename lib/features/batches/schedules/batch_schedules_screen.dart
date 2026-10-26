@@ -38,6 +38,32 @@ class _BatchSchedulesScreenState extends ConsumerState<BatchSchedulesScreen> {
   bool _picking = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _renewReminders());
+  }
+
+  /// Reopening the list renews the rolling reminder window. Failures stay
+  /// silent: the list itself already reports read errors, and stale reminders
+  /// are safer than a surprise snack about a secondary feature.
+  Future<void> _renewReminders() async {
+    if (!mounted) return;
+    try {
+      final drafts =
+          await ref.read(scheduleDraftsProvider(widget.batchId).future);
+      final hasReminders = drafts.any(
+        (draft) =>
+            draft.status == TimetableDraftStatus.published &&
+            draft.entries.any((entry) => entry.reminderEnabled),
+      );
+      if (!hasReminders) return;
+      await ref.read(scheduleControllerProvider).syncReminders(widget.batchId);
+    } on Object {
+      // The rows stay readable; the next save retries the queue.
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final detail = ref.watch(batchDetailProvider(widget.batchId));
     final drafts = ref.watch(scheduleDraftsProvider(widget.batchId));
