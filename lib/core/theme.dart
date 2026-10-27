@@ -121,6 +121,14 @@ Color cardSurfaceOf(ThemeData theme) =>
 Color cardAccentOf(Color accent, ThemeData theme) =>
     readableTextColor(accent, cardSurfaceOf(theme));
 
+final ZakerFeatureAccents _fallbackAccents =
+    ZakerTheme.light().extension<ZakerFeatureAccents>()!;
+
+/// [theme]'s feature accents, or the light palette's when a bare [ThemeData]
+/// (a test harness, a dialog outside the app theme) carries none.
+ZakerFeatureAccents featureAccentsOf(ThemeData theme) =>
+    theme.extension<ZakerFeatureAccents>() ?? _fallbackAccents;
+
 /// The app's spacing scale (4pt grid).
 class ZakerSpacing {
   const ZakerSpacing._();
@@ -309,27 +317,26 @@ class ZakerTheme {
   static ThemeData forStyle(ZakerThemeStyle style) => _build(paletteFor(style));
 
   static ZakerPalette paletteFor(ZakerThemeStyle style) => switch (style) {
-    ZakerThemeStyle.light => _lightPalette,
-    ZakerThemeStyle.dark => _darkPalette,
-    ZakerThemeStyle.blackGold => _blackGoldPalette,
-    ZakerThemeStyle.deepBlue => _deepBluePalette,
-  };
+        ZakerThemeStyle.light => _lightPalette,
+        ZakerThemeStyle.dark => _darkPalette,
+        ZakerThemeStyle.blackGold => _blackGoldPalette,
+        ZakerThemeStyle.deepBlue => _deepBluePalette,
+      };
 
   static ThemeData _build(ZakerPalette palette) {
-    final scheme =
-        ColorScheme.fromSeed(
-          seedColor: palette.seed,
-          brightness: palette.style.brightness,
-        ).copyWith(
-          primary: palette.primary,
-          onPrimary: palette.onPrimary,
-          secondary: palette.secondary,
-          onSecondary: palette.onSecondary,
-          surface: palette.surface,
-          surfaceTint: Colors.transparent,
-          onSurface: palette.onSurface,
-          outline: palette.border,
-        );
+    final scheme = ColorScheme.fromSeed(
+      seedColor: palette.seed,
+      brightness: palette.style.brightness,
+    ).copyWith(
+      primary: palette.primary,
+      onPrimary: palette.onPrimary,
+      secondary: palette.secondary,
+      onSecondary: palette.onSecondary,
+      surface: palette.surface,
+      surfaceTint: Colors.transparent,
+      onSurface: palette.onSurface,
+      outline: palette.border,
+    );
 
     final base = ThemeData(
       useMaterial3: true,
