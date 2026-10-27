@@ -32,6 +32,8 @@ void main() {
       find.byKey(const Key('rafiq-splash')),
     );
     expect(overlay.opacity, 1);
+    // Drain the gate's timers so none outlive the widget tree.
+    await tester.pump(const Duration(milliseconds: 1600));
   });
 
   testWidgets('reduced motion finishes fast and never animates forever', (
