@@ -246,7 +246,7 @@ class _ReferralCard extends StatelessWidget {
           const SizedBox(height: ZakerSpacing.md),
           FilledButton.icon(
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.white,
+              backgroundColor: theme.colorScheme.onPrimary,
               foregroundColor: theme.colorScheme.primary,
             ),
             onPressed: () => Share.share(

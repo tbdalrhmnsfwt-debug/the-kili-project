@@ -192,7 +192,6 @@ class _TajweedScreenState extends State<TajweedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final chapters = _visible;
 
     return Scaffold(
@@ -208,7 +207,7 @@ class _TajweedScreenState extends State<TajweedScreen> {
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
                 colors: [
-                  theme.colorScheme.primary,
+                  ZakerColors.navy,
                   ZakerColors.primaryDark,
                 ],
               ),

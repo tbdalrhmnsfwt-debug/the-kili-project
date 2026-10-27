@@ -302,7 +302,7 @@ class _DailyChallengeCard extends ConsumerWidget {
             const SizedBox(height: ZakerSpacing.md),
             FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
+                backgroundColor: theme.colorScheme.onPrimary,
                 foregroundColor: theme.colorScheme.primary,
               ),
               onPressed: done ? null : () => _play(context, ref, daily!),

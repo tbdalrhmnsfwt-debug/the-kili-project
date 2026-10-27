@@ -86,7 +86,7 @@ class FeatureTile extends StatelessWidget {
                   HapticFeedback.selectionClick();
                   onTap!();
                 },
-          borderRadius: BorderRadius.circular(ZakerRadius.md),
+          borderRadius: ZakerRadius.card,
           child: Container(
             padding: const EdgeInsets.all(ZakerSpacing.md),
             decoration: BoxDecoration(
@@ -95,6 +95,7 @@ class FeatureTile extends StatelessWidget {
               border: Border.all(
                 color: theme.dividerTheme.color ?? Colors.black12,
               ),
+              boxShadow: ZakerShadows.card,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
