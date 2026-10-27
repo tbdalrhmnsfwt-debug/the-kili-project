@@ -31,14 +31,15 @@ void main() {
     await tester
         .pumpWidget(_host(ShellBottomNav(selected: 1, onSelect: (_) {})));
     expect(find.text('الرئيسية'), findsOneWidget);
-    expect(find.text('المكتبة الدراسية'), findsOneWidget);
+    expect(find.text('شنطتي'), findsOneWidget);
     expect(find.text('الاختبار'), findsOneWidget);
     expect(find.text('القرآن'), findsOneWidget);
     expect(find.text('الدفعات'), findsOneWidget);
+    expect(find.text('المكتبة الدراسية'), findsNothing);
     expect(find.byKey(const Key('nav-selected-dot')), findsOneWidget);
 
     final theme = Theme.of(tester.element(find.text('الاختبار')));
-    final label = tester.widget<Text>(find.text('المكتبة الدراسية'));
+    final label = tester.widget<Text>(find.text('شنطتي'));
     expect(label.style?.color, theme.colorScheme.onPrimary);
   });
 
