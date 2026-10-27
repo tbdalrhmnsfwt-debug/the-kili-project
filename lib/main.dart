@@ -1,4 +1,4 @@
-/// Zakerly — ذاكرلي
+/// رفيق الطالب
 ///
 /// A Flutter study companion for Egyptian students: the "manhaji" textbook
 /// library, exams and question banks, Quran and adhkar tools, a focus timer
@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
 
 import 'core/adhan_platform.dart';
+import 'core/brand/rafiq_brand.dart';
 import 'core/adhan_voices.dart';
 import 'core/appearance.dart';
 import 'core/local_store.dart';
@@ -104,8 +105,8 @@ class ZakerlyApp extends ConsumerWidget {
                 Localizations.of<AppLocalizations>(
                   context,
                   AppLocalizations,
-                )?.t('ذاكرلي') ??
-                'ذاكرلي',
+                )?.t(RafiqBrand.appName) ??
+                RafiqBrand.appName,
             debugShowCheckedModeBanner: false,
             theme: ZakerTheme.forStyle(appearance.themeStyle),
             themeMode: ThemeMode.light,

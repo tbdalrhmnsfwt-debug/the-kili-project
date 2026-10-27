@@ -1184,7 +1184,7 @@ class NotificationService {
       await _plugin.zonedSchedule(
         dailyReminderId,
         'وقت المذاكرة 📚',
-        'يلا نبدأ جلسة تركيز قصيرة — افتح ذاكرلي وكمّل هدف النهارده.',
+        'يلا نبدأ جلسة تركيز قصيرة — افتح رفيق الطالب وكمّل هدف النهارده.',
         // `tz.local` defaults to UTC; converting the local DateTime keeps its
         // absolute instant, so the notification fires at the device's own
         // [hour]:[minute] without needing a timezone database.
@@ -1248,7 +1248,7 @@ class NotificationService {
     if (!await requestPermission()) return false;
 
     final body = (notes == null || notes.trim().isEmpty)
-        ? 'مهمتك مستنياك — افتح ذاكرلي وخلصها.'
+        ? 'مهمتك مستنياك — افتح رفيق الطالب وخلصها.'
         : notes.trim();
     try {
       final id = taskReminderId(taskId);

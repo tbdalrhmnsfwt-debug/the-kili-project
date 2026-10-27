@@ -250,7 +250,7 @@ class _ReferralCard extends StatelessWidget {
               foregroundColor: theme.colorScheme.primary,
             ),
             onPressed: () => Share.share(
-              'جرّب «ذاكرلي» — تطبيق مذاكرة بالذكاء الاصطناعي 📚\n\n'
+              'جرّب «رفيق الطالب» — تطبيق مذاكرة بالذكاء الاصطناعي 📚\n\n'
               'استخدم كود الدعوة بتاعي وإنت بتعمل حساب:\n'
               '${referral.code}',
             ),

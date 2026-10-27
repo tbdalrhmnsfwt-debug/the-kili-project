@@ -331,7 +331,7 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen>
                       ),
                       const SizedBox(height: 6),
                       TrText(
-                        'افتح إعدادات الجهاز ← التطبيقات ← ذاكرلي، وفعّل '
+                        'افتح إعدادات الجهاز ← التطبيقات ← رفيق الطالب، وفعّل '
                         '«التشغيل التلقائي» و«السماح بالتشغيل في الخلفية». '
                         'دي إعدادات خاصة بكل شركة ومش بتتفتح من التطبيق.',
                         style: TextStyle(

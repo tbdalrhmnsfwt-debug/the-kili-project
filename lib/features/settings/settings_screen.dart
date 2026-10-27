@@ -104,14 +104,14 @@ class SettingsScreen extends ConsumerWidget {
           ),
           _Tile(
             icon: Icons.info_outline_rounded,
-            title: 'عن ذاكرلي',
+            title: 'عن رفيق الطالب',
             subtitle: 'عن التطبيق',
             onTap: () => _showAbout(context),
           ),
           const SizedBox(height: ZakerSpacing.xl),
           Center(
             child: TrText(
-              'ذاكرلي — النسخة 1.1.0 (86)',
+              'رفيق الطالب — النسخة 1.1.0 (86)',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -282,7 +282,7 @@ class SettingsScreen extends ConsumerWidget {
   void _showAbout(BuildContext context) {
     showAboutDialog(
       context: context,
-      applicationName: 'ذاكرلي',
+      applicationName: 'رفيق الطالب',
       applicationVersion: '1.1.0 (86)',
       applicationLegalese:
           'نسخة عربية للطلاب — مناهج، اختبارات، تركيز، ومعلم AI.',

@@ -90,7 +90,7 @@ class WeeklyScreen extends ConsumerWidget {
   /// Shares the week's headline numbers, falling back to the clipboard.
   Future<void> _share(BuildContext context, WeeklyReport report) async {
     final text =
-        'تقريري الأسبوعي في ذاكرلي:\n'
+        'تقريري الأسبوعي في رفيق الطالب:\n'
         '${report.totalMinutes} دقيقة مذاكرة • '
         '${report.totalPoints} نقطة • '
         '${report.activeDayCount} يوم نشاط.\n'

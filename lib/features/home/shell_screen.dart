@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import '../../core/brand/rafiq_brand.dart';
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
@@ -245,13 +246,13 @@ class _Sidebar extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       TrText(
-                        'ذاكرلي',
+                        RafiqBrand.appName,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       TrText(
-                        'رفيق الطالب',
+                        RafiqBrand.studio,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.labelSmall?.copyWith(

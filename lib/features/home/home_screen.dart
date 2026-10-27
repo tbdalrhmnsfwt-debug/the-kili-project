@@ -2074,7 +2074,7 @@ class _AllToolsSection extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: TrText(
-            'كل حاجة في ذاكرلي على بُعد ضغطة واحدة.',
+            'كل حاجة في رفيق الطالب على بُعد ضغطة واحدة.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
