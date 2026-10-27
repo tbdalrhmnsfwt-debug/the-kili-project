@@ -13,6 +13,7 @@ import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
 
 import 'core/adhan_platform.dart';
 import 'core/brand/rafiq_brand.dart';
+import 'core/brand/rafiq_splash_gate.dart';
 import 'core/adhan_voices.dart';
 import 'core/appearance.dart';
 import 'core/local_store.dart';
@@ -100,40 +101,42 @@ class ZakerlyApp extends ConsumerWidget {
     return AzkarSyncHost(
       child: AdhanSyncHost(
         child: HifzSyncHost(
-          child: MaterialApp.router(
-            onGenerateTitle: (context) =>
-                Localizations.of<AppLocalizations>(
-                  context,
-                  AppLocalizations,
-                )?.t(RafiqBrand.appName) ??
-                RafiqBrand.appName,
-            debugShowCheckedModeBanner: false,
-            theme: ZakerTheme.forStyle(appearance.themeStyle),
-            themeMode: ThemeMode.light,
-            routerConfig: appRouter,
-            locale: ref.watch(localeProvider),
-            supportedLocales: const [Locale('ar'), Locale('en')],
-            localizationsDelegates: const [
-              AppLocalizationsDelegate(),
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            builder: (context, child) {
-              // The app is Arabic-first: force RTL for the Arabic locale.
-              final locale = Localizations.localeOf(context);
-              // shadcn_ui components read their colours and typography from a
-              // ShadTheme; provide one that mirrors the selected appearance.
-              return Directionality(
-                textDirection: locale.languageCode == 'ar'
-                    ? TextDirection.rtl
-                    : TextDirection.ltr,
-                child: ShadTheme(
-                  data: ZakerShadTheme.forStyle(appearance.themeStyle),
-                  child: child ?? const SizedBox.shrink(),
-                ),
-              );
-            },
+          child: RafiqSplashGate(
+            child: MaterialApp.router(
+              onGenerateTitle: (context) =>
+                  Localizations.of<AppLocalizations>(
+                    context,
+                    AppLocalizations,
+                  )?.t(RafiqBrand.appName) ??
+                  RafiqBrand.appName,
+              debugShowCheckedModeBanner: false,
+              theme: ZakerTheme.forStyle(appearance.themeStyle),
+              themeMode: ThemeMode.light,
+              routerConfig: appRouter,
+              locale: ref.watch(localeProvider),
+              supportedLocales: const [Locale('ar'), Locale('en')],
+              localizationsDelegates: const [
+                AppLocalizationsDelegate(),
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              builder: (context, child) {
+                // The app is Arabic-first: force RTL for the Arabic locale.
+                final locale = Localizations.localeOf(context);
+                // shadcn_ui components read their colours and typography from a
+                // ShadTheme; provide one that mirrors the selected appearance.
+                return Directionality(
+                  textDirection: locale.languageCode == 'ar'
+                      ? TextDirection.rtl
+                      : TextDirection.ltr,
+                  child: ShadTheme(
+                    data: ZakerShadTheme.forStyle(appearance.themeStyle),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
