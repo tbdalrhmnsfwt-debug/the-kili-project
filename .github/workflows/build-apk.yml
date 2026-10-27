@@ -70,6 +70,16 @@ jobs:
           --no-pub
           .
 
+      # The app's launch surface and label are committed resources. The
+      # generation step above must never replace them; fail loudly if it does.
+      - name: Verify brand resources survived project generation
+        run: |
+          grep -q '@drawable/launch_background' android/app/src/main/res/values/styles.xml
+          grep -q 'rafiq_navy' android/app/src/main/res/values/styles.xml
+          grep -q 'رفيق الطالب' android/app/src/main/AndroidManifest.xml
+          test -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          echo "brand resources intact"
+
       # flutter_local_notifications schedules with java.time, so the app module
       # must enable core-library desugaring (the plugin enables it for its own
       # module, but AGP also requires the consuming app to opt in). The Gradle
