@@ -610,6 +610,17 @@ class _NavItem extends StatelessWidget {
                       : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (selected)
+                Container(
+                  key: const Key('nav-selected-dot'),
+                  width: 4,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 3),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onPrimary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
             ],
           ),
         ),
