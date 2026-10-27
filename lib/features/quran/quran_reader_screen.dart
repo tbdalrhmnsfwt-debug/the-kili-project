@@ -201,7 +201,6 @@ class _ReaderHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(ZakerSpacing.lg),
@@ -210,7 +209,7 @@ class _ReaderHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [theme.colorScheme.primary, ZakerColors.primaryDark],
+          colors: ZakerColors.navyGradient,
         ),
       ),
       child: Row(

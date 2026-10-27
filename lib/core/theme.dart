@@ -64,6 +64,13 @@ class ZakerColors {
   /// Accent used for streaks / achievements.
   static const Color accent = gold;
 
+  /// The navy surface used by banners and highlight cards.
+  ///
+  /// These cards keep white or light foregrounds in every appearance, so the
+  /// gradient must stay navy rather than follow `colorScheme.primary` (which
+  /// is gold in the three dark appearances).
+  static const List<Color> navyGradient = [navy, navyLight, navyDeep];
+
   /// Error colour.
   static const Color danger = Color(0xFFDC2626);
 
@@ -101,6 +108,18 @@ Color readableTextColor(Color color, Color background) {
   }
   return toward;
 }
+
+/// The card surface the theme paints behind content.
+Color cardSurfaceOf(ThemeData theme) =>
+    theme.cardTheme.color ?? theme.colorScheme.surface;
+
+/// [accent] adapted for use as text or an indicator on the active card.
+///
+/// Static brand navy is invisible on the dark cards, and the light palette's
+/// gold is too light on a white card; both are lifted to a readable shade
+/// without losing the hue where it already passes.
+Color cardAccentOf(Color accent, ThemeData theme) =>
+    readableTextColor(accent, cardSurfaceOf(theme));
 
 /// The app's spacing scale (4pt grid).
 class ZakerSpacing {

@@ -114,10 +114,10 @@ class _SectionTitle extends StatelessWidget {
     final theme = Theme.of(context);
     return Row(
       children: [
-        const HugeIcon(
+        HugeIcon(
           icon: HugeIcons.strokeRoundedMosqueLocation,
           size: 20,
-          color: ZakerColors.primary,
+          color: theme.colorScheme.primary,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -351,7 +351,7 @@ class NextPrayerCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0B5F59).withValues(alpha: 0.32),
+            color: ZakerColors.navyDeep.withValues(alpha: 0.32),
             blurRadius: 26,
             offset: const Offset(0, 12),
           ),
@@ -367,7 +367,7 @@ class NextPrayerCard extends StatelessWidget {
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
                 colors: [
-                  Color(0xFF0B5F59),
+                  ZakerColors.navyDeep,
                   ZakerColors.navy,
                   ZakerColors.navyLight,
                 ],

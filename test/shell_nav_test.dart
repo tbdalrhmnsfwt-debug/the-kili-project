@@ -8,15 +8,13 @@ Widget _host(
   Widget child, {
   ZakerThemeStyle style = ZakerThemeStyle.light,
   double textScale = 1,
-  double width = 360,
 }) {
   return MaterialApp(
     theme: ZakerTheme.forStyle(style),
     builder: (context, inner) => MediaQuery(
       data: MediaQuery.of(
         context,
-      ).copyWith(
-          size: Size(width, 800), textScaler: TextScaler.linear(textScale)),
+      ).copyWith(textScaler: TextScaler.linear(textScale)),
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: inner ?? const SizedBox.shrink(),
@@ -56,6 +54,13 @@ void main() {
   testWidgets('no overflow at 320 dp and 2.0x text in any appearance', (
     tester,
   ) async {
+    // The logical surface, not just a MediaQuery value: layout constraints
+    // come from the view, so this is what actually forces 320 dp.
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     for (final style in ZakerThemeStyle.values) {
       await tester.pumpWidget(
         _host(
@@ -72,18 +77,18 @@ void main() {
           ),
           style: style,
           textScale: 2,
-          width: 320,
         ),
       );
+      expect(tester.takeException(), isNull, reason: '${style.id} sidebar');
+
       await tester.pumpWidget(
         _host(
           ShellBottomNav(selected: 3, onSelect: (_) {}),
           style: style,
           textScale: 2,
-          width: 320,
         ),
       );
-      expect(tester.takeException(), isNull, reason: style.id);
+      expect(tester.takeException(), isNull, reason: '${style.id} bottom bar');
     }
   });
 }

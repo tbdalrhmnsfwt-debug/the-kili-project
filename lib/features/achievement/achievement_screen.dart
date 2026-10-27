@@ -184,7 +184,7 @@ class _ReferralCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: ZakerRadius.card,
         gradient: LinearGradient(
-          colors: [theme.colorScheme.primary, ZakerColors.primaryLight],
+          colors: ZakerColors.navyGradient,
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
@@ -246,8 +246,8 @@ class _ReferralCard extends StatelessWidget {
           const SizedBox(height: ZakerSpacing.md),
           FilledButton.icon(
             style: FilledButton.styleFrom(
-              backgroundColor: theme.colorScheme.onPrimary,
-              foregroundColor: theme.colorScheme.primary,
+              backgroundColor: Colors.white,
+              foregroundColor: ZakerColors.navy,
             ),
             onPressed: () => Share.share(
               'جرّب «رفيق الطالب» — تطبيق مذاكرة بالذكاء الاصطناعي 📚\n\n'

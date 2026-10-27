@@ -199,7 +199,7 @@ class _OfficialLibraryEntry extends ConsumerWidget {
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
               colors: [
-                ZakerColors.primary.withValues(alpha: 0.13),
+                theme.colorScheme.primary.withValues(alpha: 0.13),
                 theme.colorScheme.surface,
               ],
             ),
@@ -211,12 +211,12 @@ class _OfficialLibraryEntry extends ConsumerWidget {
                 height: 46,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: ZakerColors.primary.withValues(alpha: 0.14),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(ZakerRadius.md),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.verified_rounded,
-                  color: ZakerColors.primary,
+                  color: theme.colorScheme.primary,
                   size: 24,
                 ),
               ),
@@ -469,6 +469,7 @@ class _GradeCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final accent = _stageColor(stage);
+    final barColor = cardAccentOf(accent, theme);
     final subjects = studySubjects(
       grade,
       read,
@@ -570,7 +571,7 @@ class _GradeCard extends StatelessWidget {
                       child: ProgressBar(
                         value: progress,
                         height: 5,
-                        color: accent,
+                        color: barColor,
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -579,10 +580,7 @@ class _GradeCard extends StatelessWidget {
                       textDirection: TextDirection.ltr,
                       style: theme.textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: readableTextColor(
-                          accent,
-                          theme.colorScheme.surface,
-                        ),
+                        color: barColor,
                         fontSize: 10,
                       ),
                     ),

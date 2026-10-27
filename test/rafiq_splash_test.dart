@@ -26,6 +26,14 @@ void main() {
     expect(find.text('home'), findsOneWidget);
   });
 
+  testWidgets('the overlay is opaque on the very first frame', (tester) async {
+    await tester.pumpWidget(_app());
+    final overlay = tester.widget<AnimatedOpacity>(
+      find.byKey(const Key('rafiq-splash')),
+    );
+    expect(overlay.opacity, 1);
+  });
+
   testWidgets('reduced motion finishes fast and never animates forever', (
     tester,
   ) async {

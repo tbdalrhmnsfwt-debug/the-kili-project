@@ -96,7 +96,9 @@ class AzkarHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark ? ZakerColors.primaryLight : ZakerColors.primary;
+    // Static navy disappears on the dark tinted surface; the palette primary
+    // is gold in the dark appearances and navy in the light one.
+    final primary = isDark ? theme.colorScheme.primary : ZakerColors.primary;
     final ink = isDark ? Colors.white : theme.colorScheme.onSurface;
     final muted = isDark
         ? Colors.white.withValues(alpha: 0.70)

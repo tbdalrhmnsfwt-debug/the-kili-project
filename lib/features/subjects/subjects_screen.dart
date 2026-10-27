@@ -471,6 +471,7 @@ class _SubjectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final accent = cardAccentOf(subject.color, theme);
     final books = curriculumBooks(
       grade: grade,
       subject: subject,
@@ -605,7 +606,7 @@ class _SubjectCard extends StatelessWidget {
                       child: ProgressBar(
                         value: progress,
                         height: 5,
-                        color: subject.color,
+                        color: accent,
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -614,7 +615,7 @@ class _SubjectCard extends StatelessWidget {
                       textDirection: TextDirection.ltr,
                       style: theme.textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: subject.color,
+                        color: accent,
                         fontSize: 10,
                       ),
                     ),

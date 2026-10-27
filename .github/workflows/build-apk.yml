@@ -78,6 +78,14 @@ jobs:
           grep -q 'rafiq_navy' android/app/src/main/res/values/styles.xml
           grep -q 'رفيق الطالب' android/app/src/main/AndroidManifest.xml
           test -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          # API 21-30 prefer drawable-v21; if the template created it, the
+          # launch surface is white even though drawable/ is navy.
+          test -f android/app/src/main/res/drawable-v21/launch_background.xml
+          grep -q 'rafiq_navy' android/app/src/main/res/drawable-v21/launch_background.xml
+          if grep -q '?android:colorBackground' android/app/src/main/res/drawable-v21/launch_background.xml; then
+            echo "generated white launch drawable shadowed the brand" >&2
+            exit 1
+          fi
           echo "brand resources intact"
 
       # flutter_local_notifications schedules with java.time, so the app module

@@ -203,7 +203,6 @@ class _BankHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(ZakerSpacing.lg),
       decoration: BoxDecoration(
@@ -211,7 +210,7 @@ class _BankHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [theme.colorScheme.primary, ZakerColors.primaryDark],
+          colors: ZakerColors.navyGradient,
         ),
       ),
       child: Row(

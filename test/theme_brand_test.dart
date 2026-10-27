@@ -121,6 +121,7 @@ void main() {
       '134E4A',
       '0D4F4A',
       '0B4F49',
+      '0B5F59',
       '062F2B',
       '2DD4BF',
       '99F6E4',
@@ -138,6 +139,60 @@ void main() {
       }
     }
     expect(offenders, isEmpty);
+  });
+
+  test('hero cards keep a navy surface so white text stays readable', () {
+    for (final stop in ZakerColors.navyGradient) {
+      expect(
+        contrastRatio(Colors.white, stop),
+        greaterThanOrEqualTo(4.5),
+        reason: 'white on hero stop $stop',
+      );
+    }
+  });
+
+  test('no gradient starts at the palette primary', () {
+    final offenders = <String>[];
+    // A bare primary stop, not a low-alpha primary tint like
+    // `theme.colorScheme.primary.withValues(alpha: 0.10)`.
+    final gradientAtPrimary = RegExp(
+      r'colors:\s*\[\s*theme\.colorScheme\.primary\s*,',
+    );
+    for (final entity in Directory('lib').listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      if (gradientAtPrimary.hasMatch(entity.readAsStringSync())) {
+        offenders.add(entity.path);
+      }
+    }
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          'colorScheme.primary is gold in the dark appearances; a gradient '
+          'starting there cannot carry white text',
+    );
+  });
+
+  test('card accents stay readable on every appearance', () {
+    for (final style in ZakerThemeStyle.values) {
+      final theme = ZakerTheme.forStyle(style);
+      final card = cardSurfaceOf(theme);
+      expect(
+        contrastRatio(cardAccentOf(ZakerColors.navy, theme), card),
+        greaterThanOrEqualTo(4.5),
+        reason: '${style.id} navy accent on card',
+      );
+      expect(
+        contrastRatio(cardAccentOf(ZakerColors.gold, theme), card),
+        greaterThanOrEqualTo(4.5),
+        reason: '${style.id} gold accent on card',
+      );
+      expect(
+        contrastRatio(theme.colorScheme.primary, card),
+        greaterThanOrEqualTo(4.5),
+        reason: '${style.id} palette primary on card',
+      );
+    }
   });
 }
 

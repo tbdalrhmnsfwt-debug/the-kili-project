@@ -41,7 +41,11 @@ class _RafiqSplashGateState extends State<RafiqSplashGate> {
   late final Duration _fadeOut;
 
   Duration _fadeDuration = Duration.zero;
-  double _opacity = 0;
+
+  /// The overlay paints navy from the very first frame so the app underneath
+  /// never flashes between the native launch screen and the brand.
+  double _overlayOpacity = 1;
+  double _contentOpacity = 0;
   bool _done = false;
 
   @override
@@ -63,14 +67,15 @@ class _RafiqSplashGateState extends State<RafiqSplashGate> {
 
   Future<void> _run() async {
     if (!mounted) return;
-    setState(() => _opacity = 1);
+    // The mark and copy fade in over the always-opaque navy surface.
+    setState(() => _contentOpacity = 1);
     await Future<void>.delayed(_fadeIn);
     if (!mounted) return;
     await Future<void>.delayed(_hold);
     if (!mounted) return;
     setState(() {
       _fadeDuration = _fadeOut;
-      _opacity = 0;
+      _overlayOpacity = 0;
     });
     await Future<void>.delayed(_fadeOut);
     if (!mounted) return;
@@ -89,13 +94,18 @@ class _RafiqSplashGateState extends State<RafiqSplashGate> {
               child: AbsorbPointer(
                 child: AnimatedOpacity(
                   key: const Key('rafiq-splash'),
-                  opacity: _opacity,
+                  opacity: _overlayOpacity,
                   duration: _fadeDuration,
                   curve: Curves.easeOut,
-                  child: _SplashBody(
-                    reducedMotion: _reducedMotion,
-                    progress: _opacity,
-                    fadeDuration: _fadeDuration,
+                  child: AnimatedOpacity(
+                    opacity: _contentOpacity,
+                    duration: _fadeIn,
+                    curve: Curves.easeOut,
+                    child: _SplashBody(
+                      reducedMotion: _reducedMotion,
+                      progress: _contentOpacity,
+                      fadeDuration: _fadeIn,
+                    ),
                   ),
                 ),
               ),
