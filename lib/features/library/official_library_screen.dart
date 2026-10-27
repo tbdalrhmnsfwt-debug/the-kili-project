@@ -277,7 +277,7 @@ class _OfficialHero extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [Color(0xFF0F766E), Color(0xFF0D9488), Color(0xFF115E59)],
+          colors: [ZakerColors.navy, ZakerColors.navyLight, ZakerColors.navyDeep],
         ),
         boxShadow: [
           BoxShadow(

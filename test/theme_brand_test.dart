@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zaker_ai/core/theme.dart';
@@ -109,15 +111,43 @@ void main() {
       ZakerColors.goldLight,
     );
   });
+
+  test('no legacy teal literal survives under lib/', () {
+    const banned = [
+      '0F766E',
+      '14B8A6',
+      '115E59',
+      '0D9488',
+      '134E4A',
+      '0D4F4A',
+      '0B4F49',
+      '062F2B',
+      '2DD4BF',
+      '99F6E4',
+      'CCFBF1',
+      'F0FDFA',
+      '9FE3D4',
+      '5EEAD4',
+    ];
+    final offenders = <String>[];
+    for (final entity in Directory('lib').listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      final text = entity.readAsStringSync().toUpperCase();
+      for (final hex in banned) {
+        if (text.contains(hex)) offenders.add('${entity.path}: $hex');
+      }
+    }
+    expect(offenders, isEmpty);
+  });
 }
 
 List<Color> _accentValues(ZakerFeatureAccents a) => [
-  a.assistant,
-  a.study,
-  a.tasks,
-  a.islamic,
-  a.prayer,
-  a.qibla,
-  a.azkar,
-  a.hifz,
-];
+      a.assistant,
+      a.study,
+      a.tasks,
+      a.islamic,
+      a.prayer,
+      a.qibla,
+      a.azkar,
+      a.hifz,
+    ];

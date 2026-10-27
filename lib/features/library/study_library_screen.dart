@@ -175,7 +175,7 @@ IconData _stageIcon(StudyStage stage) => switch (stage) {
 Color _stageColor(StudyStage stage) => switch (stage) {
   StudyStage.primary => const Color(0xFF0891B2),
   StudyStage.preparatory => const Color(0xFF7C3AED),
-  StudyStage.secondary => const Color(0xFF0F766E),
+  StudyStage.secondary => ZakerColors.navy,
 };
 
 /// The teal hero card at the top of the library.
@@ -284,7 +284,7 @@ class _LibraryHero extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [Color(0xFF0F766E), Color(0xFF0D9488), Color(0xFF115E59)],
+          colors: [ZakerColors.navy, ZakerColors.navyLight, ZakerColors.navyDeep],
         ),
         boxShadow: [
           BoxShadow(

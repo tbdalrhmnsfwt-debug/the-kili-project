@@ -169,8 +169,8 @@ class _Display extends StatelessWidget {
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
           colors: isDark
-              ? const [Color(0xFF134E4A), Color(0xFF0F172A)]
-              : const [Color(0xFF0F766E), Color(0xFF0D9488)],
+              ? const [ZakerColors.navyDeep, Color(0xFF0F172A)]
+              : const [ZakerColors.navy, ZakerColors.navyLight],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
@@ -189,13 +189,13 @@ class _Display extends StatelessWidget {
               const HugeIcon(
                 icon: HugeIcons.strokeRoundedCalculator01,
                 size: 18,
-                color: Color(0xFF99F6E4),
+                color: ZakerColors.goldLight,
               ),
               const SizedBox(width: 8),
               TrText(
                 'احسب بسرعة',
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color: const Color(0xFFCCFBF1),
+                  color: const Color(0xFFF2E4B0),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -235,7 +235,7 @@ class _Display extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: error != null
                       ? const Color(0xFFFDE68A)
-                      : const Color(0xFF99F6E4),
+                      : ZakerColors.goldLight,
                 ),
               ),
             ),

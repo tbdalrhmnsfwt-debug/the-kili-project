@@ -368,8 +368,8 @@ class NextPrayerCard extends StatelessWidget {
                 end: Alignment.bottomLeft,
                 colors: [
                   Color(0xFF0B5F59),
-                  Color(0xFF0F766E),
-                  Color(0xFF0D9488),
+                  ZakerColors.navy,
+                  ZakerColors.navyLight,
                 ],
                 stops: [0, 0.55, 1],
               ),

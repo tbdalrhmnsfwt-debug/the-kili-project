@@ -114,7 +114,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                         gradient: const LinearGradient(
                           begin: Alignment.topRight,
                           end: Alignment.bottomLeft,
-                          colors: [ZakerColors.primary, Color(0xFF0D9488)],
+                          colors: [ZakerColors.navy, ZakerColors.navyLight],
                         ),
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: [

@@ -8,6 +8,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'theme.dart';
+
 import '../models/manhaji.dart';
 import '../models/official_book.dart';
 import 'official_subject_index.dart';
@@ -209,7 +211,7 @@ List<Grade> studyGradesInStage(List<Grade> grades, StudyStage stage) {
       .toList(growable: false);
 }
 
-const _teal = Color(0xFF0F766E);
+const _brand = ZakerColors.navy;
 const _blue = Color(0xFF2563EB);
 const _indigo = Color(0xFF4F46E5);
 const _violet = Color(0xFF7C3AED);
@@ -228,15 +230,15 @@ const _slate = Color(0xFF475569);
 /// names get a neutral book icon so a newly bundled subject still renders.
 ({IconData icon, Color color}) studySubjectVisual(String name) {
   return switch (name) {
-    'اللغة العربية' => (icon: Icons.menu_book_rounded, color: _teal),
+    'اللغة العربية' => (icon: Icons.menu_book_rounded, color: _brand),
     'اللغة الإنجليزية' => (icon: Icons.translate_rounded, color: _blue),
     'اللغة الفرنسية' => (icon: Icons.language_rounded, color: _indigo),
     'اللغة الألمانية' => (icon: Icons.language_rounded, color: _amber),
     'اللغة الإسبانية' => (icon: Icons.language_rounded, color: _rose),
     'اللغة الإيطالية' => (icon: Icons.language_rounded, color: _emerald),
     'اللغة الصينية' => (icon: Icons.language_rounded, color: _rose),
-    'الرياضيات' => (icon: Icons.functions_rounded, color: _teal),
-    'الرياضيات البحتة' => (icon: Icons.functions_rounded, color: _teal),
+    'الرياضيات' => (icon: Icons.functions_rounded, color: _brand),
+    'الرياضيات البحتة' => (icon: Icons.functions_rounded, color: _brand),
     'الرياضيات التطبيقية' => (icon: Icons.calculate_rounded, color: _cyan),
     'الإحصاء' => (icon: Icons.bar_chart_rounded, color: _cyan),
     'العلوم' => (icon: Icons.science_rounded, color: _violet),
@@ -252,7 +254,7 @@ const _slate = Color(0xFF475569);
     'علم النفس والاجتماع' => (icon: Icons.psychology_rounded, color: _violet),
     'التربية الدينية الإسلامية' => (icon: Icons.mosque_rounded, color: _green),
     'التربية الوطنية' => (icon: Icons.flag_rounded, color: _green),
-    'المواطنة وحقوق الإنسان' => (icon: Icons.gavel_rounded, color: _teal),
+    'المواطنة وحقوق الإنسان' => (icon: Icons.gavel_rounded, color: _brand),
     'تكنولوجيا المعلومات' => (icon: Icons.computer_rounded, color: _slate),
     'البرمجة والذكاء الاصطناعي' => (icon: Icons.code_rounded, color: _violet),
     'إدارة الأعمال' => (icon: Icons.business_center_rounded, color: _amber),
@@ -265,6 +267,6 @@ const _slate = Color(0xFF475569);
     'التربية المسرحية' => (icon: Icons.theater_comedy_rounded, color: _amber),
     'المجالات الزراعية' => (icon: Icons.agriculture_rounded, color: _green),
     'المجالات الصناعية' => (icon: Icons.factory_rounded, color: _slate),
-    _ => (icon: Icons.auto_stories_rounded, color: _teal),
+    _ => (icon: Icons.auto_stories_rounded, color: _brand),
   };
 }

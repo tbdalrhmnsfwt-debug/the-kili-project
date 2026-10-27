@@ -333,7 +333,7 @@ class _SessionHeader extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [Color(0xFF0F766E), Color(0xFF115E59), Color(0xFF0D4F4A)],
+          colors: [ZakerColors.navy, ZakerColors.navyLight, ZakerColors.navyDeep],
         ),
       ),
       child: Column(

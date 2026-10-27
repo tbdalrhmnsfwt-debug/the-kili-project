@@ -412,7 +412,7 @@ class _Hero extends StatelessWidget {
                 TrText(
                   'المرفوعات والمنصوبات والمجرورات والتوابع — بأمثلة معربة.',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFFCCFBF1),
+                    color: const Color(0xFFE8EDF6),
                     height: 1.5,
                   ),
                 ),

@@ -101,7 +101,7 @@ class _AuroraPainter extends CustomPainter {
   static const List<Color> _palette = [
     Color(0xFF7C3AED),
     Color(0xFF2563EB),
-    Color(0xFF0D9488),
+    ZakerColors.gold,
     Color(0xFFDB2777),
   ];
 

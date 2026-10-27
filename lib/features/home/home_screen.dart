@@ -239,7 +239,7 @@ class _HeroBannerState extends ConsumerState<_HeroBanner>
     final greeting = hour < 12 ? 'صباح الخير' : 'مساء الخير';
     final openDrawer = shellDrawerOpener(context);
     final radius = BorderRadius.circular(28);
-    const softWhite = Color(0xFFF0FDFA);
+    const softWhite = Color(0xFFEDF1F8);
 
     return Container(
       clipBehavior: Clip.antiAlias,

@@ -10,6 +10,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'theme.dart';
+
 import '../models/manhaji.dart';
 
 /// A selectable branch or track within a secondary grade.
@@ -103,7 +105,7 @@ class CurriculumGrade {
       tracks.isEmpty ? null : tracks.first;
 }
 
-const _teal = Color(0xFF0F766E);
+const _brand = ZakerColors.navy;
 const _blue = Color(0xFF2563EB);
 const _indigo = Color(0xFF4F46E5);
 const _violet = Color(0xFF7C3AED);
@@ -121,7 +123,7 @@ const _arabic = CurriculumSubject(
   title: 'اللغة العربية',
   assetSubjects: ['اللغة العربية'],
   icon: Icons.menu_book_rounded,
-  color: _teal,
+  color: _brand,
   subtitle: 'نصوص، نحو، قصة وقراءة',
 );
 
@@ -242,7 +244,7 @@ const _math = CurriculumSubject(
     'الرياضيات التطبيقية',
   ],
   icon: Icons.functions_rounded,
-  color: _teal,
+  color: _brand,
   subtitle: 'جبر، هندسة وتفاضل',
 );
 
@@ -262,7 +264,7 @@ const _grade10Subjects = <CurriculumSubject>[
     title: 'الرياضيات',
     assetSubjects: ['الرياضيات'],
     icon: Icons.functions_rounded,
-    color: _teal,
+    color: _brand,
     subtitle: 'جبر وحساب مثلثات',
   ),
   CurriculumSubject(
@@ -452,7 +454,7 @@ const _grade11Subjects = <CurriculumSubject>[
     title: 'المواطنة وحقوق الإنسان',
     assetSubjects: ['المواطنة وحقوق الإنسان'],
     icon: Icons.gavel_rounded,
-    color: _teal,
+    color: _brand,
     subtitle: 'حقوق وواجبات',
     tracks: [_science, _literary],
   ),
@@ -495,7 +497,7 @@ const _grade12Subjects = <CurriculumSubject>[
     title: 'الرياضيات البحتة',
     assetSubjects: ['الرياضيات البحتة'],
     icon: Icons.functions_rounded,
-    color: _teal,
+    color: _brand,
     subtitle: 'Pure Mathematics',
     tracks: [_sciMath, _sciScience],
   ),

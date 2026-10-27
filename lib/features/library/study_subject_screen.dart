@@ -216,7 +216,7 @@ class _SubjectHeader extends StatelessWidget {
           colors: [
             Color.lerp(visual.color, Colors.black, 0.3)!,
             visual.color.withValues(alpha: 0.85),
-            const Color(0xFF115E59),
+            ZakerColors.navyDeep,
           ],
         ),
         boxShadow: [
