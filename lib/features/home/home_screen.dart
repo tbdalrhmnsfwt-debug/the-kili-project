@@ -22,13 +22,11 @@ import 'package:shadcn_ui/shadcn_ui.dart'
     show ShadDecoration, ShadIconButton, ShadInput;
 
 import '../../core/appearance.dart';
-import '../../core/curriculum.dart';
 import '../../core/hijri_date.dart';
 import '../../core/prayer_formats.dart';
 import '../../core/router.dart';
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
-import '../../models/manhaji.dart';
 import '../../models/schedule.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
@@ -93,11 +91,9 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final grades = ref.watch(gradesProvider);
     final stats = ref.watch(studyStatsProvider);
     final user = ref.watch(authUserProvider);
     final notificationsOn = ref.watch(notificationsEnabledProvider);
-    final gradeId = ref.watch(selectedGradeProvider);
     final schedule = ref.watch(taskScheduleProvider);
     final pending = schedule.forDay().where((e) => !e.done).toList();
     final nextDeadline = _nextDeadline(schedule.entries);
@@ -135,8 +131,6 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: 26),
                 const _DailyTools(),
                 const SizedBox(height: 26),
-                _LibrarySection(grades: grades, gradeId: gradeId),
-                const SizedBox(height: 26),
                 const _AllToolsSection(),
               ],
             ),
@@ -149,9 +143,10 @@ class HomeScreen extends ConsumerWidget {
   /// The nearest task still ahead of us, or the most recent overdue one.
   static ScheduleEntry? _nextDeadline(List<ScheduleEntry> entries) {
     final now = DateTime.now();
-    final dated =
-        entries.where((e) => !e.done && e.dueAt != null).toList(growable: false)
-          ..sort((a, b) => a.dueAt!.compareTo(b.dueAt!));
+    final dated = entries
+        .where((e) => !e.done && e.dueAt != null)
+        .toList(growable: false)
+      ..sort((a, b) => a.dueAt!.compareTo(b.dueAt!));
     if (dated.isEmpty) return null;
     for (final entry in dated) {
       if (!entry.dueAt!.isBefore(now)) return entry;
@@ -1088,9 +1083,8 @@ class _ActionCards extends StatelessWidget {
         icon: HugeIcons.strokeRoundedTaskDone01,
         accent: _Accents.blue,
         title: 'مهامي',
-        subtitle: streakDays == 0
-            ? 'رتب مهام يومك'
-            : 'مذاكرة $streakDays يوم متواصل',
+        subtitle:
+            streakDays == 0 ? 'رتب مهام يومك' : 'مذاكرة $streakDays يوم متواصل',
         onTap: () => context.push(ZakerRoutes.tasks),
       ),
     ];
@@ -1254,8 +1248,7 @@ class _IslamicHubCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final accent =
-        theme.extension<ZakerFeatureAccents>()?.islamic ??
+    final accent = theme.extension<ZakerFeatureAccents>()?.islamic ??
         theme.colorScheme.primary;
     final surface = theme.cardTheme.color ?? theme.colorScheme.surface;
     final muted = theme.colorScheme.onSurfaceVariant;
@@ -1458,8 +1451,8 @@ class _CountdownBanner extends StatelessWidget {
     final dateLabel = due == null
         ? null
         : '${due.day} ${_months[due.month - 1]} · '
-              '${due.hour.toString().padLeft(2, '0')}:'
-              '${due.minute.toString().padLeft(2, '0')}';
+            '${due.hour.toString().padLeft(2, '0')}:'
+            '${due.minute.toString().padLeft(2, '0')}';
 
     return _Pressable3D(
       accent: _Accents.amber,
@@ -1665,54 +1658,51 @@ class _DailyTools extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tools =
-        <
-          ({
-            List<List<dynamic>> icon,
-            String label,
-            Color accent,
-            VoidCallback onTap,
-          })
-        >[
-          (
-            icon: HugeIcons.strokeRoundedCalculator01,
-            label: 'الآلة الحاسبة',
-            accent: _Accents.blue,
-            onTap: () => context.push(ZakerRoutes.calculator),
-          ),
-          (
-            icon: HugeIcons.strokeRoundedPen01,
-            label: 'الإعراب',
-            accent: _Accents.amber,
-            onTap: () => context.push(ZakerRoutes.irab),
-          ),
-          (
-            icon: HugeIcons.strokeRoundedCalendar03,
-            label: 'خطة المذاكرة',
-            accent: _Accents.green,
-            onTap: () => context.push(ZakerRoutes.planner),
-          ),
-          (
-            icon: HugeIcons.strokeRoundedTimer01,
-            label: 'إدارة الوقت',
-            accent: _Accents.purple,
-            onTap: () => Navigator.of(context).push(
+    final tools = <({
+      List<List<dynamic>> icon,
+      String label,
+      Color accent,
+      VoidCallback onTap,
+    })>[
+      (
+        icon: HugeIcons.strokeRoundedCalculator01,
+        label: 'الآلة الحاسبة',
+        accent: _Accents.blue,
+        onTap: () => context.push(ZakerRoutes.calculator),
+      ),
+      (
+        icon: HugeIcons.strokeRoundedPen01,
+        label: 'الإعراب',
+        accent: _Accents.amber,
+        onTap: () => context.push(ZakerRoutes.irab),
+      ),
+      (
+        icon: HugeIcons.strokeRoundedCalendar03,
+        label: 'خطة المذاكرة',
+        accent: _Accents.green,
+        onTap: () => context.push(ZakerRoutes.planner),
+      ),
+      (
+        icon: HugeIcons.strokeRoundedTimer01,
+        label: 'إدارة الوقت',
+        accent: _Accents.purple,
+        onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const FocusScreen()),
             ),
-          ),
-          (
-            icon: HugeIcons.strokeRoundedAnalytics01,
-            label: 'متابعة التقدم',
-            accent: _Accents.rose,
-            onTap: () => context.push(ZakerRoutes.weekly),
-          ),
-          (
-            icon: HugeIcons.strokeRoundedTarget01,
-            label: 'مراجعات',
-            accent: _Accents.sky,
-            onTap: () => context.push(ZakerRoutes.recall),
-          ),
-        ];
+      ),
+      (
+        icon: HugeIcons.strokeRoundedAnalytics01,
+        label: 'متابعة التقدم',
+        accent: _Accents.rose,
+        onTap: () => context.push(ZakerRoutes.weekly),
+      ),
+      (
+        icon: HugeIcons.strokeRoundedTarget01,
+        label: 'مراجعات',
+        accent: _Accents.sky,
+        onTap: () => context.push(ZakerRoutes.recall),
+      ),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1810,251 +1800,6 @@ class _ToolTile extends StatelessWidget {
   }
 }
 
-// ------------------------------------------------------------------- subjects
-
-/// The selected grade's subjects as tappable cards.
-class _LibrarySection extends StatelessWidget {
-  const _LibrarySection({required this.grades, required this.gradeId});
-
-  final AsyncValue<List<Grade>> grades;
-  final String gradeId;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        grades.when(
-          loading: () => const _SectionTitle(
-            title: 'موادك',
-            icon: HugeIcons.strokeRoundedBookOpen01,
-          ),
-          error: (_, __) => const _SectionTitle(
-            title: 'موادك',
-            icon: HugeIcons.strokeRoundedBookOpen01,
-          ),
-          data: (list) {
-            final label = list
-                .where((g) => g.id == gradeId)
-                .map((g) => g.label)
-                .firstOrNull;
-            return _SectionTitle(
-              title: 'موادك',
-              icon: HugeIcons.strokeRoundedBookOpen01,
-              badge: label,
-              actionLabel: 'كل المكتبة',
-              onAction: () => context.push(ZakerRoutes.courses),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        grades.when(
-          loading: () => const LoadingBox(),
-          error: (e, _) => EmptyState(
-            icon: Icons.cloud_off_rounded,
-            title: 'مقدرناش نحمّل المواد',
-            message: '$e',
-          ),
-          data: (list) => _SubjectGrid(grades: list, gradeId: gradeId),
-        ),
-      ],
-    );
-  }
-}
-
-class _SubjectGrid extends StatelessWidget {
-  const _SubjectGrid({required this.grades, required this.gradeId});
-
-  final List<Grade> grades;
-  final String gradeId;
-
-  @override
-  Widget build(BuildContext context) {
-    if (grades.isEmpty) {
-      return EmptyState(
-        icon: Icons.library_books_outlined,
-        title: 'مكتبتك فاضية',
-        message: 'افتح أي مادة وابدأ المذاكرة.',
-        action: FilledButton(
-          onPressed: () => context.push(ZakerRoutes.courses),
-          child: const TrText('افتح المكتبة'),
-        ),
-      );
-    }
-
-    final grade = grades.firstWhere(
-      (g) => g.id == gradeId,
-      orElse: () => grades.first,
-    );
-
-    // Several variants can ship for one subject; the card represents the
-    // subject and opens the first book, while the count hints at the rest.
-    final subjects = <String, List<Book>>{};
-    for (final book in grade.books) {
-      subjects.putIfAbsent(book.subject, () => <Book>[]).add(book);
-    }
-
-    if (subjects.isEmpty) {
-      return EmptyState(
-        icon: Icons.menu_book_outlined,
-        title: 'مفيش مواد في الصف ده',
-        message: 'جرّب صف دراسي تاني من «كل المواد».',
-        action: FilledButton(
-          onPressed: () => context.push(ZakerRoutes.courses),
-          child: const TrText('افتح المكتبة'),
-        ),
-      );
-    }
-
-    final entries = subjects.entries.toList(growable: false);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 900
-            ? 4
-            : constraints.maxWidth >= 600
-            ? 3
-            : 2;
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          itemCount: entries.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            mainAxisExtent: 138,
-          ),
-          itemBuilder: (context, index) {
-            final entry = entries[index];
-            final accent = _subjectAccents[index % _subjectAccents.length];
-            return _SubjectCard(
-              subject: entry.key,
-              books: entry.value,
-              accent: accent,
-              onTap: () =>
-                  context.push(_subjectRoute(grade, entry.value.first)),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-/// Routes a subject card of a secondary grade to the curriculum screen; other
-/// grades keep opening the first book directly.
-String _subjectRoute(Grade grade, Book book) {
-  final curriculum = curriculumForGrade(grade.id);
-  if (curriculum != null) {
-    for (final subject in curriculum.subjects) {
-      if (!subject.assetSubjects.contains(book.subject)) continue;
-      final trackId = subject.tracks.isEmpty ? null : subject.tracks.first;
-      return ZakerRoutes.subjectPath(grade.id, subject.id, track: trackId);
-    }
-  }
-  return ZakerRoutes.lessonPath(book);
-}
-
-class _SubjectCard extends StatelessWidget {
-  const _SubjectCard({
-    required this.subject,
-    required this.books,
-    required this.accent,
-    required this.onTap,
-  });
-
-  final String subject;
-  final List<Book> books;
-  final Color accent;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final lessons = books.fold<int>(0, (sum, book) => sum + book.lessons);
-
-    return _Pressable3D(
-      accent: accent,
-      depth: 5,
-      radius: 18,
-      onTap: onTap,
-      semanticLabel: subject,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _hairline(context, accent)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.13),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Center(
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedBookOpen01,
-                      size: 20,
-                      color: accent,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.10),
-                    shape: BoxShape.circle,
-                  ),
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedArrowLeft01,
-                    size: 15,
-                    color: accent,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: TrText(
-                subject,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  height: 1.3,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            TrText(
-              books.length > 1
-                  ? '$lessons درس · ${books.length} كتب'
-                  : '$lessons درس',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ------------------------------------------------------------------ all tools
 
 /// The full feature grid, preserving every entry the app exposes.
@@ -2076,8 +1821,8 @@ class _AllToolsSection extends StatelessWidget {
           child: TrText(
             'كل حاجة في رفيق الطالب على بُعد ضغطة واحدة.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
         ),
         LayoutBuilder(
@@ -2085,8 +1830,8 @@ class _AllToolsSection extends StatelessWidget {
             final columns = constraints.maxWidth >= 980
                 ? 4
                 : constraints.maxWidth >= 620
-                ? 3
-                : 2;
+                    ? 3
+                    : 2;
             final tiles = _tiles(context);
             return GridView.builder(
               shrinkWrap: true,
@@ -2113,165 +1858,165 @@ class _AllToolsSection extends StatelessWidget {
   List<Widget> _tiles(BuildContext context) {
     final tiles =
         <({String title, IconData icon, String? subtitle, VoidCallback onTap})>[
-          (
-            title: 'امتحان',
-            icon: Icons.fact_check_rounded,
-            subtitle: 'اختبار بالدرجات',
-            onTap: () => context.push(ZakerRoutes.exams),
-          ),
-          (
-            title: 'منهج الثانوي',
-            icon: Icons.school_rounded,
-            subtitle: 'مواد ومسارات',
-            onTap: () => context.push(ZakerRoutes.subjects),
-          ),
-          (
-            title: ZakerStrings.s_9cfe0, // بنك الأسئلة
-            icon: Icons.quiz_rounded,
-            subtitle: ZakerStrings.s_d6b7e, // بنك الأسئلة اللي في مكتبتك
-            onTap: () => context.push(ZakerRoutes.questionBank),
-          ),
-          (
-            title: 'تركيز',
-            icon: Icons.timer_rounded,
-            subtitle: 'جلسات مذاكرة',
-            onTap: () => Navigator.of(context).push(
+      (
+        title: 'امتحان',
+        icon: Icons.fact_check_rounded,
+        subtitle: 'اختبار بالدرجات',
+        onTap: () => context.push(ZakerRoutes.exams),
+      ),
+      (
+        title: 'منهج الثانوي',
+        icon: Icons.school_rounded,
+        subtitle: 'مواد ومسارات',
+        onTap: () => context.push(ZakerRoutes.subjects),
+      ),
+      (
+        title: ZakerStrings.s_9cfe0, // بنك الأسئلة
+        icon: Icons.quiz_rounded,
+        subtitle: ZakerStrings.s_d6b7e, // بنك الأسئلة اللي في مكتبتك
+        onTap: () => context.push(ZakerRoutes.questionBank),
+      ),
+      (
+        title: 'تركيز',
+        icon: Icons.timer_rounded,
+        subtitle: 'جلسات مذاكرة',
+        onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const FocusScreen()),
             ),
-          ),
-          (
-            title: 'القرآن الكريم',
-            icon: Icons.menu_book_rounded,
-            subtitle: 'أذكار وتلاوة',
-            onTap: () => context.push(ZakerRoutes.quran),
-          ),
-          (
-            title: 'فهرس المصطلحات',
-            icon: Icons.menu_book_outlined,
-            subtitle: 'معاني الكلمات',
-            onTap: () => context.push(ZakerRoutes.glossary),
-          ),
-          (
-            title: 'أدوات الـPDF',
-            icon: Icons.picture_as_pdf_rounded,
-            subtitle: 'ادمج وحول واطبع',
-            onTap: () => context.push(ZakerRoutes.pdfTools),
-          ),
-          (
-            title: 'المسح الضوئي',
-            icon: Icons.document_scanner_rounded,
-            subtitle: 'صوّر الواجب',
-            onTap: () => context.push(ZakerRoutes.scan),
-          ),
-          (
-            title: 'الآلة الحاسبة',
-            icon: Icons.calculate_rounded,
-            subtitle: 'علمية متقدمة',
-            onTap: () => context.push(ZakerRoutes.calculator),
-          ),
-          (
-            title: 'دليل الإعراب',
-            icon: Icons.spellcheck_rounded,
-            subtitle: 'قواعد وأمثلة',
-            onTap: () => context.push(ZakerRoutes.irab),
-          ),
-          (
-            title: 'استرجاع نشط',
-            icon: Icons.style_rounded,
-            subtitle: 'كارت المراجعة',
-            onTap: () => context.push(ZakerRoutes.recall),
-          ),
-          (
-            title: 'الخريطة الذهنية',
-            icon: Icons.account_tree_rounded,
-            subtitle: 'ارسم أفكارك',
-            onTap: () => context.push(ZakerRoutes.mindMap),
-          ),
-          (
-            title: 'المهام',
-            icon: Icons.checklist_rounded,
-            subtitle: 'واجباتك وتذكيراتك',
-            onTap: () => context.push(ZakerRoutes.tasks),
-          ),
-          (
-            title: 'أهداف اليوم',
-            icon: Icons.flag_rounded,
-            subtitle: 'خطتك النهارده',
-            onTap: () => context.push(ZakerRoutes.planner),
-          ),
-          (
-            title: 'إنجازاتي',
-            icon: Icons.workspace_premium_rounded,
-            subtitle: 'الشارات والدعوة',
-            onTap: () => context.push(ZakerRoutes.achievements),
-          ),
-          (
-            title: 'المتصدرين',
-            icon: Icons.emoji_events_rounded,
-            subtitle: 'نقاطك وسلسلتك',
-            onTap: () => context.push(ZakerRoutes.leaderboard),
-          ),
-          (
-            title: 'دفتر أخطائي',
-            icon: Icons.error_outline_rounded,
-            subtitle: 'غلطاتك ترجعلك',
-            onTap: () => context.push(ZakerRoutes.mistakes),
-          ),
-          (
-            title: ZakerStrings.s_7859a, // ترجمة
-            icon: Icons.translate_rounded,
-            subtitle: 'ترجمة نصوص ومحاضرات',
-            onTap: () => context.push(ZakerRoutes.translate),
-          ),
-          (
-            title: ZakerStrings.s_35563, // كلماتي
-            icon: Icons.translate_rounded,
-            subtitle: 'قاموس الكلمات',
-            onTap: () => context.push(ZakerRoutes.words),
-          ),
-          (
-            title: ZakerStrings.s_5588a, // ملاحظاتي
-            icon: Icons.edit_note_rounded,
-            subtitle: 'دفتر ملاحظاتك',
-            onTap: () => context.push(ZakerRoutes.notebooks),
-          ),
-          (
-            title: ZakerStrings.s_a03b0, // الحديقة
-            icon: Icons.grain_rounded,
-            subtitle: 'بتنمو بالأيام',
-            onTap: () => context.push(ZakerRoutes.garden),
-          ),
-          (
-            title: ZakerStrings.s_feeca, // تحديات
-            icon: Icons.bolt_rounded,
-            subtitle: ZakerStrings.s_1da21, // تحدي مع صحابك
-            onTap: () => context.push(ZakerRoutes.challenges),
-          ),
-          (
-            title: ZakerStrings.s_03af3, // نقاط ضعفي
-            icon: Icons.trending_down_rounded,
-            subtitle: 'راجع نقاط ضعفي',
-            onTap: () => context.push(ZakerRoutes.weakness),
-          ),
-          (
-            title: ZakerStrings.s_97497, // ألعاب المذاكرة
-            icon: Icons.sports_esports_rounded,
-            subtitle: ZakerStrings.s_928ae, // مذاكرة على شكل لعبة…
-            onTap: () => context.push(ZakerRoutes.games),
-          ),
-          (
-            title: ZakerStrings.s_f30a0, // سبورة
-            icon: Icons.draw_rounded,
-            subtitle: ZakerStrings.s_ddb1c, // اشرح الدرس على السبورة
-            onTap: () => context.push(ZakerRoutes.whiteboard),
-          ),
-          (
-            title: ZakerStrings.s_02316, // تقدمي الأسبوعي
-            icon: Icons.insights_rounded,
-            subtitle: ZakerStrings.s_a3f5a, // ملخص أسبوعك…
-            onTap: () => context.push(ZakerRoutes.weekly),
-          ),
-        ];
+      ),
+      (
+        title: 'القرآن الكريم',
+        icon: Icons.menu_book_rounded,
+        subtitle: 'أذكار وتلاوة',
+        onTap: () => context.push(ZakerRoutes.quran),
+      ),
+      (
+        title: 'فهرس المصطلحات',
+        icon: Icons.menu_book_outlined,
+        subtitle: 'معاني الكلمات',
+        onTap: () => context.push(ZakerRoutes.glossary),
+      ),
+      (
+        title: 'أدوات الـPDF',
+        icon: Icons.picture_as_pdf_rounded,
+        subtitle: 'ادمج وحول واطبع',
+        onTap: () => context.push(ZakerRoutes.pdfTools),
+      ),
+      (
+        title: 'المسح الضوئي',
+        icon: Icons.document_scanner_rounded,
+        subtitle: 'صوّر الواجب',
+        onTap: () => context.push(ZakerRoutes.scan),
+      ),
+      (
+        title: 'الآلة الحاسبة',
+        icon: Icons.calculate_rounded,
+        subtitle: 'علمية متقدمة',
+        onTap: () => context.push(ZakerRoutes.calculator),
+      ),
+      (
+        title: 'دليل الإعراب',
+        icon: Icons.spellcheck_rounded,
+        subtitle: 'قواعد وأمثلة',
+        onTap: () => context.push(ZakerRoutes.irab),
+      ),
+      (
+        title: 'استرجاع نشط',
+        icon: Icons.style_rounded,
+        subtitle: 'كارت المراجعة',
+        onTap: () => context.push(ZakerRoutes.recall),
+      ),
+      (
+        title: 'الخريطة الذهنية',
+        icon: Icons.account_tree_rounded,
+        subtitle: 'ارسم أفكارك',
+        onTap: () => context.push(ZakerRoutes.mindMap),
+      ),
+      (
+        title: 'المهام',
+        icon: Icons.checklist_rounded,
+        subtitle: 'واجباتك وتذكيراتك',
+        onTap: () => context.push(ZakerRoutes.tasks),
+      ),
+      (
+        title: 'أهداف اليوم',
+        icon: Icons.flag_rounded,
+        subtitle: 'خطتك النهارده',
+        onTap: () => context.push(ZakerRoutes.planner),
+      ),
+      (
+        title: 'إنجازاتي',
+        icon: Icons.workspace_premium_rounded,
+        subtitle: 'الشارات والدعوة',
+        onTap: () => context.push(ZakerRoutes.achievements),
+      ),
+      (
+        title: 'المتصدرين',
+        icon: Icons.emoji_events_rounded,
+        subtitle: 'نقاطك وسلسلتك',
+        onTap: () => context.push(ZakerRoutes.leaderboard),
+      ),
+      (
+        title: 'دفتر أخطائي',
+        icon: Icons.error_outline_rounded,
+        subtitle: 'غلطاتك ترجعلك',
+        onTap: () => context.push(ZakerRoutes.mistakes),
+      ),
+      (
+        title: ZakerStrings.s_7859a, // ترجمة
+        icon: Icons.translate_rounded,
+        subtitle: 'ترجمة نصوص ومحاضرات',
+        onTap: () => context.push(ZakerRoutes.translate),
+      ),
+      (
+        title: ZakerStrings.s_35563, // كلماتي
+        icon: Icons.translate_rounded,
+        subtitle: 'قاموس الكلمات',
+        onTap: () => context.push(ZakerRoutes.words),
+      ),
+      (
+        title: ZakerStrings.s_5588a, // ملاحظاتي
+        icon: Icons.edit_note_rounded,
+        subtitle: 'دفتر ملاحظاتك',
+        onTap: () => context.push(ZakerRoutes.notebooks),
+      ),
+      (
+        title: ZakerStrings.s_a03b0, // الحديقة
+        icon: Icons.grain_rounded,
+        subtitle: 'بتنمو بالأيام',
+        onTap: () => context.push(ZakerRoutes.garden),
+      ),
+      (
+        title: ZakerStrings.s_feeca, // تحديات
+        icon: Icons.bolt_rounded,
+        subtitle: ZakerStrings.s_1da21, // تحدي مع صحابك
+        onTap: () => context.push(ZakerRoutes.challenges),
+      ),
+      (
+        title: ZakerStrings.s_03af3, // نقاط ضعفي
+        icon: Icons.trending_down_rounded,
+        subtitle: 'راجع نقاط ضعفي',
+        onTap: () => context.push(ZakerRoutes.weakness),
+      ),
+      (
+        title: ZakerStrings.s_97497, // ألعاب المذاكرة
+        icon: Icons.sports_esports_rounded,
+        subtitle: ZakerStrings.s_928ae, // مذاكرة على شكل لعبة…
+        onTap: () => context.push(ZakerRoutes.games),
+      ),
+      (
+        title: ZakerStrings.s_f30a0, // سبورة
+        icon: Icons.draw_rounded,
+        subtitle: ZakerStrings.s_ddb1c, // اشرح الدرس على السبورة
+        onTap: () => context.push(ZakerRoutes.whiteboard),
+      ),
+      (
+        title: ZakerStrings.s_02316, // تقدمي الأسبوعي
+        icon: Icons.insights_rounded,
+        subtitle: ZakerStrings.s_a3f5a, // ملخص أسبوعك…
+        onTap: () => context.push(ZakerRoutes.weekly),
+      ),
+    ];
 
     return [
       FeatureTile(
@@ -2296,19 +2041,10 @@ class _AllToolsSection extends StatelessWidget {
 
 /// A section header with a Hugeicons glyph, matching the mockup.
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({
-    required this.title,
-    required this.icon,
-    this.badge,
-    this.actionLabel,
-    this.onAction,
-  });
+  const _SectionTitle({required this.title, required this.icon});
 
   final String title;
   final List<List<dynamic>> icon;
-  final String? badge;
-  final String? actionLabel;
-  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -2323,30 +2059,6 @@ class _SectionTitle extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        if (badge != null) ...[
-          const SizedBox(width: 8),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: TrText(
-                badge!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
-        const Spacer(),
-        if (actionLabel != null && onAction != null)
-          TextButton(onPressed: onAction, child: TrText(actionLabel!)),
       ],
     );
   }
@@ -2362,11 +2074,8 @@ class _NotificationsSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final enabled = ref.watch(notificationsEnabledProvider);
-    final tasks = ref
-        .watch(taskScheduleProvider)
-        .forDay()
-        .where((e) => !e.done)
-        .toList();
+    final tasks =
+        ref.watch(taskScheduleProvider).forDay().where((e) => !e.done).toList();
 
     return SafeArea(
       child: Padding(

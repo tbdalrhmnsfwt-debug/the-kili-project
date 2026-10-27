@@ -28,10 +28,10 @@ Widget _app({
         path: '/',
         builder: (_, __) => ProviderScope(
           overrides: [bagFolderPreviewProvider.overrideWithValue(folders)],
-          child: const Scaffold(
+          child: Scaffold(
             body: ListView(
-              padding: EdgeInsets.all(16),
-              children: [
+              padding: const EdgeInsets.all(16),
+              children: const [
                 HomeBagPreview(),
                 SizedBox(height: 12),
                 LibraryShortcut(),
