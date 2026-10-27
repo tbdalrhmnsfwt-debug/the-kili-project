@@ -39,28 +39,16 @@ import '../prayer/prayer_onboarding.dart';
 import '../prayer/prayer_providers.dart';
 import 'shell_screen.dart';
 
-/// Accent colours for the tinted cards in the mockup.
-class _Accents {
-  const _Accents._();
-
-  static const Color purple = Color(0xFF7C3AED);
-  static const Color teal = ZakerColors.primary;
-  static const Color blue = Color(0xFF2563EB);
-  static const Color amber = Color(0xFFD97706);
-  static const Color rose = Color(0xFFE11D48);
-  static const Color sky = Color(0xFF0284C7);
-  static const Color green = Color(0xFF059669);
-}
-
-const List<Color> _subjectAccents = [
-  _Accents.blue,
-  _Accents.amber,
-  _Accents.purple,
-  _Accents.green,
-  _Accents.rose,
-  _Accents.sky,
-  _Accents.teal,
-];
+/// The all-tools grid's accent cycle, drawn from the active appearance.
+List<Color> _allToolsAccents(ZakerFeatureAccents accents) => [
+      accents.assistant,
+      accents.study,
+      accents.tasks,
+      accents.islamic,
+      accents.qibla,
+      accents.azkar,
+      accents.hifz,
+    ];
 
 /// A pastel wash of [accent] that still works on the dark theme.
 Color _wash(BuildContext context, Color accent) {
@@ -1064,24 +1052,25 @@ class _ActionCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accents = featureAccentsOf(Theme.of(context));
     final cards = <Widget>[
       _ActionCard(
         aurora: true,
-        accent: _Accents.purple,
+        accent: accents.assistant,
         title: 'المساعد الذكي',
         subtitle: 'أسأل عن أي حاجة',
         onTap: () => context.push(ZakerRoutes.chat),
       ),
       _ActionCard(
         icon: HugeIcons.strokeRoundedBookOpen01,
-        accent: _Accents.teal,
+        accent: accents.study,
         title: 'المكتبة الدراسية',
         subtitle: 'كل الكتب والمناهج',
         onTap: () => context.push(ZakerRoutes.courses),
       ),
       _ActionCard(
         icon: HugeIcons.strokeRoundedTaskDone01,
-        accent: _Accents.blue,
+        accent: accents.tasks,
         title: 'مهامي',
         subtitle:
             streakDays == 0 ? 'رتب مهام يومك' : 'مذاكرة $streakDays يوم متواصل',
@@ -1423,6 +1412,7 @@ class _CountdownBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final accents = featureAccentsOf(theme);
     final entry = nextDeadline;
     final due = entry?.dueAt;
 
@@ -1455,7 +1445,7 @@ class _CountdownBanner extends StatelessWidget {
             '${due.minute.toString().padLeft(2, '0')}';
 
     return _Pressable3D(
-      accent: _Accents.amber,
+      accent: accents.islamic,
       depth: 4,
       radius: 20,
       onTap: onTap,
@@ -1463,9 +1453,9 @@ class _CountdownBanner extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _wash(context, _Accents.amber),
+          color: _wash(context, accents.islamic),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _hairline(context, _Accents.amber)),
+          border: Border.all(color: _hairline(context, accents.islamic)),
         ),
         child: Row(
           children: [
@@ -1473,14 +1463,14 @@ class _CountdownBanner extends StatelessWidget {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: _Accents.amber.withValues(alpha: 0.16),
+                color: accents.islamic.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Center(
+              child: Center(
                 child: HugeIcon(
                   icon: HugeIcons.strokeRoundedHourglass,
                   size: 26,
-                  color: _Accents.amber,
+                  color: accents.islamic,
                 ),
               ),
             ),
@@ -1522,8 +1512,8 @@ class _CountdownBanner extends StatelessWidget {
                 children: [
                   Text(
                     daysText,
-                    style: const TextStyle(
-                      color: _Accents.amber,
+                    style: TextStyle(
+                      color: cardAccentOf(accents.islamic, theme),
                       fontSize: 26,
                       height: 1,
                       fontWeight: FontWeight.w800,
@@ -1545,14 +1535,14 @@ class _CountdownBanner extends StatelessWidget {
                 width: 38,
                 height: 38,
                 padding: EdgeInsets.zero,
-                backgroundColor: _Accents.amber.withValues(alpha: 0.16),
-                hoverBackgroundColor: _Accents.amber.withValues(alpha: 0.24),
+                backgroundColor: accents.islamic.withValues(alpha: 0.16),
+                hoverBackgroundColor: accents.islamic.withValues(alpha: 0.24),
                 decoration: const ShadDecoration(shape: BoxShape.circle),
                 onPressed: onTap,
-                icon: const HugeIcon(
+                icon: HugeIcon(
                   icon: HugeIcons.strokeRoundedArrowLeft01,
                   size: 18,
-                  color: _Accents.amber,
+                  color: accents.islamic,
                 ),
               ),
             ],
@@ -1581,12 +1571,13 @@ class _AdviceBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final accents = featureAccentsOf(theme);
     final now = DateTime.now();
     final dayOfYear = now.difference(DateTime(now.year, 1, 1)).inDays;
     final tip = _tips[dayOfYear % _tips.length];
 
     return _Pressable3D(
-      accent: _Accents.green,
+      accent: accents.tasks,
       depth: 4,
       radius: 20,
       onTap: () => Navigator.of(context)
@@ -1595,9 +1586,9 @@ class _AdviceBanner extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _wash(context, _Accents.green),
+          color: _wash(context, accents.tasks),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _hairline(context, _Accents.green)),
+          border: Border.all(color: _hairline(context, accents.tasks)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1606,14 +1597,14 @@ class _AdviceBanner extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: _Accents.green.withValues(alpha: 0.16),
+                color: accents.tasks.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Center(
+              child: Center(
                 child: HugeIcon(
                   icon: HugeIcons.strokeRoundedIdea01,
                   size: 23,
-                  color: _Accents.green,
+                  color: accents.tasks,
                 ),
               ),
             ),
@@ -1627,7 +1618,7 @@ class _AdviceBanner extends StatelessWidget {
                     'نصيحة النهاردة',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: _Accents.green,
+                      color: cardAccentOf(accents.tasks, theme),
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -1658,6 +1649,7 @@ class _DailyTools extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accents = featureAccentsOf(Theme.of(context));
     final tools = <({
       List<List<dynamic>> icon,
       String label,
@@ -1667,25 +1659,25 @@ class _DailyTools extends StatelessWidget {
       (
         icon: HugeIcons.strokeRoundedCalculator01,
         label: 'الآلة الحاسبة',
-        accent: _Accents.blue,
+        accent: accents.study,
         onTap: () => context.push(ZakerRoutes.calculator),
       ),
       (
         icon: HugeIcons.strokeRoundedPen01,
         label: 'الإعراب',
-        accent: _Accents.amber,
+        accent: accents.azkar,
         onTap: () => context.push(ZakerRoutes.irab),
       ),
       (
         icon: HugeIcons.strokeRoundedCalendar03,
         label: 'خطة المذاكرة',
-        accent: _Accents.green,
+        accent: accents.tasks,
         onTap: () => context.push(ZakerRoutes.planner),
       ),
       (
         icon: HugeIcons.strokeRoundedTimer01,
         label: 'إدارة الوقت',
-        accent: _Accents.purple,
+        accent: accents.qibla,
         onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const FocusScreen()),
             ),
@@ -1693,13 +1685,13 @@ class _DailyTools extends StatelessWidget {
       (
         icon: HugeIcons.strokeRoundedAnalytics01,
         label: 'متابعة التقدم',
-        accent: _Accents.rose,
+        accent: accents.islamic,
         onTap: () => context.push(ZakerRoutes.weekly),
       ),
       (
         icon: HugeIcons.strokeRoundedTarget01,
         label: 'مراجعات',
-        accent: _Accents.sky,
+        accent: accents.hifz,
         onTap: () => context.push(ZakerRoutes.recall),
       ),
     ];
@@ -1856,6 +1848,7 @@ class _AllToolsSection extends StatelessWidget {
   }
 
   List<Widget> _tiles(BuildContext context) {
+    final colors = _allToolsAccents(featureAccentsOf(Theme.of(context)));
     final tiles =
         <({String title, IconData icon, String? subtitle, VoidCallback onTap})>[
       (
@@ -2024,7 +2017,7 @@ class _AllToolsSection extends StatelessWidget {
         subtitle: 'اسأل واشرح',
         icon: Icons.auto_awesome_rounded,
         art: const AuroraAssistantMark(size: 38, radius: ZakerRadius.sm),
-        color: _subjectAccents[0],
+        color: colors[0],
         onTap: () => context.push(ZakerRoutes.chat),
       ),
       for (var i = 0; i < tiles.length; i++)
@@ -2032,7 +2025,7 @@ class _AllToolsSection extends StatelessWidget {
           title: tiles[i].title,
           subtitle: tiles[i].subtitle,
           icon: tiles[i].icon,
-          color: _subjectAccents[(i + 1) % _subjectAccents.length],
+          color: colors[(i + 1) % colors.length],
           onTap: tiles[i].onTap,
         ),
     ];
