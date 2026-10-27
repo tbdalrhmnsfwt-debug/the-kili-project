@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   API 21-30 resolve drawable-v21 before drawable, so this copy must exist and
-  stay navy; without it the Flutter template's own white
-  `?android:colorBackground` drawable wins on those devices.
+  stay navy; without it the Flutter template's own white colorBackground
+  drawable wins on those devices.
 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/rafiq_navy" />

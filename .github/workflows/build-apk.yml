@@ -82,7 +82,7 @@ jobs:
           # launch surface is white even though drawable/ is navy.
           test -f android/app/src/main/res/drawable-v21/launch_background.xml
           grep -q 'rafiq_navy' android/app/src/main/res/drawable-v21/launch_background.xml
-          if grep -q '?android:colorBackground' android/app/src/main/res/drawable-v21/launch_background.xml; then
+          if grep -q 'android:drawable="?android:colorBackground"' android/app/src/main/res/drawable-v21/launch_background.xml; then
             echo "generated white launch drawable shadowed the brand" >&2
             exit 1
           fi
