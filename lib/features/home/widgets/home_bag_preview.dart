@@ -82,7 +82,7 @@ class _BagIdentity extends StatelessWidget {
             ),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Center(
+          child: const Center(
             child: HugeIcon(
               icon: HugeIcons.strokeRoundedBackpack01,
               size: 24,
