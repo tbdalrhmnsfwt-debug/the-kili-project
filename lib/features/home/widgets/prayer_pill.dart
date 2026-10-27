@@ -202,7 +202,10 @@ class _DayRow extends StatelessWidget {
                       style: meta,
                     ),
                   ),
-                  Text(' · ', style: meta),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: Text('·', style: meta),
+                  ),
                   Flexible(
                     child: TrText(
                       hijri.formatted,
@@ -217,21 +220,26 @@ class _DayRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: ZakerSpacing.sm),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            TrText('بعد', style: TextStyle(fontSize: 10, color: muted)),
-            Text(
-              formatCountdown(day.remaining),
-              textDirection: TextDirection.ltr,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontFeatures: const [FontFeature.tabularFigures()],
-                color: cardAccentOf(accent, theme),
+        // The countdown is a fixed-width badge: clamping its scale keeps the
+        // eight digits from pushing the row past a 320 dp screen at 2.0x.
+        MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.4,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              TrText('بعد', style: TextStyle(fontSize: 10, color: muted)),
+              Text(
+                formatCountdown(day.remaining),
+                textDirection: TextDirection.ltr,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                  color: cardAccentOf(accent, theme),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(width: ZakerSpacing.xs),
         HugeIcon(
