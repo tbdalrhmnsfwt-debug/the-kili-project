@@ -6,43 +6,46 @@ import 'package:zaker_ai/core/router.dart';
 import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/features/bag/bag_preview_provider.dart';
 import 'package:zaker_ai/features/bag/my_bag_screen.dart';
+import 'package:zaker_ai/providers/app_providers.dart';
 
 BagFolderPreview _folder(String name, {int pdfs = 0}) => BagFolderPreview(
-  id: name,
-  name: name,
-  colorValue: 0xFF2F5EA8,
-  pocketCounts: [pdfs, 0, 0, 0],
-);
+      id: name,
+      name: name,
+      colorValue: 0xFF2F5EA8,
+      pocketCounts: [pdfs, 0, 0, 0],
+    );
 
 Widget _app(
   List<BagFolderPreview> folders, {
   double textScale = 1,
-}) => ProviderScope(
-  overrides: [
-    localStoreProvider.overrideWithValue(LocalStore.memory()),
-    bagFolderPreviewProvider.overrideWithValue(folders),
-  ],
-  child: MaterialApp(
-    theme: ZakerTheme.light(),
-    builder: (context, child) => MediaQuery(
-      data: MediaQuery.of(
-        context,
-      ).copyWith(textScaler: TextScaler.linear(textScale)),
-      child: Directionality(
-        textDirection: TextDirection.rtl,
-        child: child ?? const SizedBox.shrink(),
+}) =>
+    ProviderScope(
+      overrides: [
+        localStoreProvider.overrideWithValue(LocalStore.memory()),
+        bagFolderPreviewProvider.overrideWithValue(folders),
+      ],
+      child: MaterialApp(
+        theme: ZakerTheme.light(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: child ?? const SizedBox.shrink(),
+          ),
+        ),
+        home: const MyBagScreen(),
       ),
-    ),
-    home: const MyBagScreen(),
-  ),
-);
+    );
 
 void main() {
   test('/bag is the deep link for the second tab', () {
     expect(ZakerRoutes.bag, '/bag');
   });
 
-  testWidgets('the bag screen names itself and keeps the library one tap away', (
+  testWidgets('the bag screen names itself and keeps the library one tap away',
+      (
     tester,
   ) async {
     await tester.pumpWidget(_app(const []));

@@ -17,9 +17,9 @@ import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/tr_text.dart';
+import '../bag/my_bag_screen.dart';
 import '../batches/batches_screen.dart';
 import '../exam/exam_home_screen.dart';
-import '../library/study_library_screen.dart';
 import '../quran/quran_home_screen.dart';
 import 'home_screen.dart';
 
@@ -33,7 +33,7 @@ class _Tab {
 
 const List<_Tab> _tabs = [
   _Tab(icon: HugeIcons.strokeRoundedHome01, label: 'الرئيسية'),
-  _Tab(icon: HugeIcons.strokeRoundedBookOpen01, label: 'المكتبة الدراسية'),
+  _Tab(icon: HugeIcons.strokeRoundedBackpack01, label: 'شنطتي'),
   _Tab(icon: HugeIcons.strokeRoundedTaskDone01, label: 'الاختبار'),
   _Tab(icon: HugeIcons.strokeRoundedBook02, label: 'القرآن'),
   _Tab(icon: HugeIcons.strokeRoundedUserGroup, label: 'الدفعات'),
@@ -109,7 +109,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     if (i == widget.initialIndex && widget.child != null) return widget.child!;
     return switch (i) {
       0 => const HomeScreen(),
-      1 => const StudyLibraryScreen(),
+      1 => const MyBagScreen(),
       2 => const ExamHomeScreen(),
       3 => const QuranHomeScreen(),
       4 => const BatchesScreen(),
@@ -127,8 +127,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final userName = (ref.watch(authUserProvider)?.displayName ?? 'ضيف')
-        .trim();
+    final userName = (ref.watch(authUserProvider)?.displayName ?? 'ضيف').trim();
     final body = IndexedStack(
       index: _index,
       children: [for (var i = 0; i < _tabs.length; i++) _bodyFor(i)],
@@ -441,7 +440,8 @@ class _SidebarItem extends StatelessWidget {
               boxShadow: selected
                   ? [
                       BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.24),
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.24),
                         blurRadius: 14,
                         offset: const Offset(0, 5),
                       ),

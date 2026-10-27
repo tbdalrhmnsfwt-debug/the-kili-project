@@ -19,6 +19,7 @@ import '../features/azkar/azkar_settings_screen.dart';
 import '../features/azkar/azkar_tasbih_screen.dart';
 import '../features/azkar/kahf_screen.dart';
 import '../features/azkar/salat_counter_screen.dart';
+import '../features/bag/my_bag_screen.dart';
 import '../features/batches/admin/batch_admin_screen.dart';
 import '../features/batches/admin/batch_settings_screen.dart';
 import '../features/batches/admin/join_requests_screen.dart';
@@ -110,6 +111,7 @@ class ZakerRoutes {
 
   static const String home = '/';
   static const String courses = '/courses';
+  static const String bag = '/bag';
   static const String library = '/library';
   static const String subjects = '/subjects';
   static const String exams = '/exams';
@@ -355,9 +357,13 @@ final GoRouter appRouter = GoRouter(
           const ShellScreen(initialIndex: 0, child: HomeScreen()),
     ),
     GoRoute(
-      path: ZakerRoutes.courses,
+      path: ZakerRoutes.bag,
       builder: (context, state) =>
-          const ShellScreen(initialIndex: 1, child: StudyLibraryScreen()),
+          const ShellScreen(initialIndex: 1, child: MyBagScreen()),
+    ),
+    GoRoute(
+      path: ZakerRoutes.courses,
+      builder: (context, state) => const StudyLibraryScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.official,
