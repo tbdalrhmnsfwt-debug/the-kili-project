@@ -64,11 +64,15 @@ class _StatChip extends StatelessWidget {
             ),
           ),
           const SizedBox(width: ZakerSpacing.xs),
-          TrText(
-            label,
-            style: TextStyle(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontSize: 12,
+          Flexible(
+            child: TrText(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
             ),
           ),
         ],
