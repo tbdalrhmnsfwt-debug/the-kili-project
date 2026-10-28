@@ -66,6 +66,77 @@ void main() {
     expect(taps, 1);
   });
 
+  testWidgets('the compact badge keeps the prayer and countdown on one line', (
+    tester,
+  ) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      _host(
+        Align(
+          alignment: Alignment.center,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 190),
+            child: PrayerPillView(
+              compact: true,
+              day: _day(),
+              location: _cairo,
+              hijri: _hijri,
+              onTap: () => taps++,
+            ),
+          ),
+        ),
+      ),
+    );
+    final badge = find.byKey(const Key('home-prayer-badge'));
+    expect(badge, findsOneWidget);
+    expect(find.text('صلاة الفجر'), findsOneWidget);
+    expect(find.text('01:04:00'), findsOneWidget);
+    // Loose width: the badge hugs its content and stays one fixed-height line.
+    expect(tester.getSize(badge).height, 30);
+    expect(tester.getSize(badge).width, lessThan(190));
+    expect(
+      tester.getCenter(find.text('صلاة الفجر')).dy,
+      closeTo(tester.getCenter(find.text('01:04:00')).dy, 1),
+    );
+    await tester.tap(find.byKey(const Key('home-prayer-pill')));
+    expect(taps, 1);
+  });
+
+  testWidgets('the compact badge survives 2.0x text in a 46 dp strip', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ZakerTheme.light(),
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 800),
+            textScaler: TextScaler.linear(2),
+          ),
+          child: Scaffold(
+            body: SizedBox(
+              width: 150,
+              height: 46,
+              child: PrayerPillView(
+                compact: true,
+                day: _day(),
+                location: _cairo,
+                hijri: _hijri,
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('home-prayer-badge')), findsOneWidget);
+  });
+
   testWidgets('without a location it asks for one and still opens /islam', (
     tester,
   ) async {

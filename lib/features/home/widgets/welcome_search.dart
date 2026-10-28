@@ -10,10 +10,12 @@ import '../../../widgets/tr_text.dart';
 /// The greeting for a 24-hour clock [hour].
 String greetingFor(int hour) => hour < 12 ? 'صباح الخير' : 'مساء الخير';
 
-/// The navy welcome card: greeting, the gold question line, and the AI search.
+/// The greeting and AI question line that sit under the prayer badge.
 ///
-/// The search is the app's free-text entry point; submitting it opens the chat
-/// with the typed question.
+/// The navy gradient belongs to the header that owns this widget, so the
+/// welcome content stays transparent and can be reused inside the compact
+/// header without a nested card. The search is the app's free-text entry point;
+/// submitting it opens the chat with the typed question.
 class WelcomeSearch extends StatelessWidget {
   const WelcomeSearch({super.key, required this.name});
 
@@ -22,53 +24,69 @@ class WelcomeSearch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Column(
       key: const Key('home-welcome-search'),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: ZakerColors.navyGradient,
-          stops: [0, 0.58, 1],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 3,
+              height: 34,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [ZakerColors.goldLight, ZakerColors.gold],
+                ),
+                borderRadius: BorderRadius.circular(ZakerRadius.pill),
+              ),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TrText(
+                    '${greetingFor(DateTime.now().hour)}، $name',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  const TrText(
+                    'عايز تعمل إيه النهاردة؟',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: ZakerColors.goldLight,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(ZakerRadius.lg),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TrText(
-            '${greetingFor(DateTime.now().hour)}، $name',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: 2),
-          const TrText(
-            'عايز تعمل إيه النهاردة؟',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: ZakerColors.goldLight,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 10),
-          const _SearchPill(),
-        ],
-      ),
+        const SizedBox(height: 12),
+        const _SearchPill(),
+      ],
     );
   }
 }
 
 /// The translucent search pill. Submitting opens the AI chat with the typed
-/// question.
+/// question; the gold arrow does the same for people who prefer a button.
 class _SearchPill extends StatefulWidget {
   const _SearchPill();
 
@@ -96,37 +114,46 @@ class _SearchPillState extends State<_SearchPill> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsetsDirectional.only(start: 14, end: 7),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(ZakerRadius.pill),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
           const HugeIcon(
-            icon: HugeIcons.strokeRoundedSearch01,
-            size: 20,
-            color: Colors.white,
+            icon: HugeIcons.strokeRoundedAiSparkles,
+            size: 19,
+            color: ZakerColors.goldLight,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 9),
           Expanded(
             child: ShadInput(
               controller: _controller,
               decoration: ShadDecoration.none,
-              padding: const EdgeInsets.symmetric(vertical: 13),
+              padding: const EdgeInsets.symmetric(vertical: 11),
               cursorColor: Colors.white,
               style: const TextStyle(
                 color: Colors.white,
                 fontFamily: ZakerTheme.fontUi,
-                fontSize: 14,
+                fontSize: 13.5,
               ),
               placeholder: const TrText(
                 'اسأل معلم AI عن أي حاجة…',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Color(0xFFE3F4F2),
                   fontFamily: ZakerTheme.fontUi,
-                  fontSize: 14,
+                  fontSize: 13.5,
                 ),
               ),
               textInputAction: TextInputAction.search,
@@ -134,18 +161,38 @@ class _SearchPillState extends State<_SearchPill> {
             ),
           ),
           const SizedBox(width: 6),
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.16),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: HugeIcon(
-                icon: HugeIcons.strokeRoundedArrowLeft01,
-                size: 16,
-                color: Colors.white,
+          Semantics(
+            button: true,
+            label: 'اسأل معلم AI',
+            child: SizedBox(
+              // A 40 dp target around the 32 dp gold circle.
+              width: 40,
+              height: 40,
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  key: const Key('home-search-submit'),
+                  customBorder: const CircleBorder(),
+                  onTap: () => _submit(_controller.text),
+                  child: Center(
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: const BoxDecoration(
+                        color: ZakerColors.gold,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedArrowLeft01,
+                          size: 16,
+                          color: ZakerColors.navy,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

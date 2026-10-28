@@ -53,6 +53,10 @@ void main() {
     expect(find.textContaining('، طالب'), findsOneWidget);
     expect(find.text('عايز تعمل إيه النهاردة؟'), findsOneWidget);
     expect(find.text('اسأل معلم AI عن أي حاجة…'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('home-search-submit'))),
+      const Size(40, 40),
+    );
   });
 
   testWidgets('submitting a question opens chat with it', (tester) async {
@@ -63,6 +67,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(visited.single, startsWith('/chat?q='));
     expect(Uri.parse(visited.single).queryParameters['q'], 'حل مسألة');
+  });
+
+  testWidgets('the search arrow also submits the question', (tester) async {
+    final visited = <String>[];
+    await tester.pumpWidget(_searchApp(visited));
+    await tester.enterText(find.byType(EditableText), 'اشرح الدرس');
+    await tester.tap(find.byKey(const Key('home-search-submit')));
+    await tester.pumpAndSettle();
+    expect(Uri.parse(visited.single).queryParameters['q'], 'اشرح الدرس');
   });
 
   testWidgets('submitting only spaces does not navigate', (tester) async {

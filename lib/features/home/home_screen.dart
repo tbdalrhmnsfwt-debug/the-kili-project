@@ -1,10 +1,10 @@
 /// The home screen.
 ///
-/// The compact order from the approved mockup: the top bar, the welcome strip
-/// with [WelcomeSearch], the stat chips, the live prayer pill, the bag
-/// preview, the three 3D action cards, the countdown and daily-advice
-/// banners, the six-tool daily grid, the library shortcut and — last — the
-/// complete feature grid so every screen stays one tap away.
+/// The compact order from the approved mockup: the navy top strip with the
+/// live prayer micro-badge, the navy welcome panel with [WelcomeSearch], the
+/// stat chips, the three side-by-side pastel action cards, the countdown and
+/// daily-advice banners, the six-tool daily grid, and — last — the tools
+/// section that owns the study library.
 ///
 /// The data is the app's own: the display name comes from
 /// [authUserProvider], the streak/minutes from [studyStatsProvider], the
@@ -29,9 +29,7 @@ import '../../widgets/tr_text.dart';
 import '../../widgets/zaker_visuals.dart';
 import '../focus/focus_screen.dart';
 import 'shell_screen.dart';
-import 'widgets/home_bag_preview.dart';
 import 'widgets/home_top_bar.dart';
-import 'widgets/library_shortcut.dart';
 import 'widgets/prayer_pill.dart';
 import 'widgets/stats_strip.dart';
 import 'widgets/welcome_search.dart';
@@ -95,41 +93,55 @@ class HomeScreen extends ConsumerWidget {
                 onMenu: openDrawer,
                 onNotifications: () => _showNotifications(context),
                 onSettings: () => context.push(ZakerRoutes.settings),
+                prayerBadge: const PrayerPill(compact: true),
               ),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
+                    // Refresh what this screen actually shows. Grades are no
+                    // longer on the home, but the bag still reads them, so
+                    // they are refreshed in the background for that screen.
+                    ref.invalidate(taskScheduleProvider);
+                    ref.invalidate(studyStatsProvider);
                     ref.invalidate(gradesProvider);
-                    await ref.read(gradesProvider.future);
+                    try {
+                      await ref.read(gradesProvider.future);
+                    } catch (_) {
+                      // The home shows no grades, so a failed background
+                      // refresh must not escape the indicator as an unhandled
+                      // error. The bag reports its own load failure.
+                    }
                   },
                   child: ListView(
                     key: const Key('home-body'),
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+                    padding: EdgeInsets.zero,
                     children: [
-                      WelcomeSearch(name: user?.displayName ?? 'ضيف'),
-                      const SizedBox(height: ZakerSpacing.md),
-                      HomeStatsStrip(
-                        streakDays: stats.streakDays,
-                        minutesToday: stats.minutesToday,
-                        pendingCount: pending.length,
+                      _HomeHeader(name: user?.displayName ?? 'ضيف'),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            HomeStatsStrip(
+                              streakDays: stats.streakDays,
+                              minutesToday: stats.minutesToday,
+                              pendingCount: pending.length,
+                            ),
+                            const SizedBox(height: ZakerSpacing.md),
+                            const _OrganicActionCards(),
+                            const SizedBox(height: ZakerSpacing.md),
+                            _BannerRow(
+                              nextDeadline: nextDeadline,
+                              onCountdown: () =>
+                                  context.push(ZakerRoutes.tasks),
+                            ),
+                            const SizedBox(height: 22),
+                            const _DailyTools(),
+                            const SizedBox(height: 22),
+                            const _AllToolsSection(),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: ZakerSpacing.md),
-                      const PrayerPill(),
-                      const SizedBox(height: ZakerSpacing.lg),
-                      const HomeBagPreview(),
-                      const SizedBox(height: ZakerSpacing.lg),
-                      _ActionCards(streakDays: stats.streakDays),
-                      const SizedBox(height: ZakerSpacing.md),
-                      _BannerRow(
-                        nextDeadline: nextDeadline,
-                        onCountdown: () => context.push(ZakerRoutes.tasks),
-                      ),
-                      const SizedBox(height: 22),
-                      const _DailyTools(),
-                      const SizedBox(height: 22),
-                      const LibraryShortcut(),
-                      const SizedBox(height: 22),
-                      const _AllToolsSection(),
                     ],
                   ),
                 ),
@@ -166,195 +178,273 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-// --------------------------------------------------------------- action cards
+// -------------------------------------------------------------------- header
 
-/// The three primary actions, rendered as raised 3D cards.
-class _ActionCards extends StatelessWidget {
-  const _ActionCards({required this.streakDays});
+/// The navy welcome panel directly under the fixed top strip.
+///
+/// The top strip owns the prayer badge and the menu/notification controls; this
+/// panel continues the same navy field into the greeting and the AI search, then
+/// softly rounds back into the off-white body.
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({required this.name});
 
-  final int streakDays;
+  final String name;
 
   @override
   Widget build(BuildContext context) {
-    final accents = featureAccentsOf(Theme.of(context));
-    final cards = <Widget>[
-      _ActionCard(
-        aurora: true,
-        accent: accents.assistant,
-        title: 'المساعد الذكي',
-        subtitle: 'أسأل عن أي حاجة',
-        onTap: () => context.push(ZakerRoutes.chat),
-      ),
-      _ActionCard(
-        icon: HugeIcons.strokeRoundedBookOpen01,
-        accent: accents.study,
-        title: 'المكتبة الدراسية',
-        subtitle: 'كل الكتب والمناهج',
-        onTap: () => context.push(ZakerRoutes.courses),
-      ),
-      _ActionCard(
-        icon: HugeIcons.strokeRoundedTaskDone01,
-        accent: accents.tasks,
-        title: 'مهامي',
-        subtitle:
-            streakDays == 0 ? 'رتب مهام يومك' : 'مذاكرة $streakDays يوم متواصل',
-        onTap: () => context.push(ZakerRoutes.tasks),
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Below 620 dp, or once the text is large, three side-by-side cards
-        // squeeze their titles to nothing; stack them instead.
-        final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
-        if (constraints.maxWidth < 620 || scale > 1.3) {
-          return Column(
-            children: [
-              for (var i = 0; i < cards.length; i++) ...[
-                SizedBox(width: double.infinity, child: cards[i]),
-                if (i != cards.length - 1) const SizedBox(height: 10),
-              ],
-            ],
-          );
-        }
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < cards.length; i++) ...[
-                Expanded(child: cards[i]),
-                if (i != cards.length - 1) const SizedBox(width: 12),
-              ],
-            ],
+    return Container(
+      key: const Key('home-header'),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [ZakerColors.navy, ZakerColors.navyLight],
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: ZakerColors.navy.withValues(alpha: 0.16),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
-        );
-      },
+        ],
+      ),
+      child: WelcomeSearch(name: name),
     );
   }
 }
 
-class _ActionCard extends StatelessWidget {
-  const _ActionCard({
-    this.icon,
+// ------------------------------------------------------------ organic cards
+
+/// The three primary actions, always side by side in their own pastel world.
+///
+/// The row is deliberately not a responsive stack: the brief asks for one
+/// horizontal three-column band, so each child gets an [Expanded] share and
+/// the card contents shrink/ellipsize instead of dropping to a column.
+class _OrganicActionCards extends StatelessWidget {
+  const _OrganicActionCards();
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _OrganicActionCard(
+              cardKey: const Key('home-card-assistant'),
+              icon: HugeIcons.strokeRoundedAiSparkles,
+              accent: const Color(0xFF6C47FF),
+              gradient: const [Color(0xFFF0EBFF), Color(0xFFE5DBFF)],
+              titleColor: const Color(0xFF2D1B69),
+              subtitleColor: const Color(0xFF5B3FE0),
+              title: 'المساعد الذكي',
+              subtitle: 'اسأل عن أي حاجة',
+              onTap: () => context.push(ZakerRoutes.chat),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _OrganicActionCard(
+              cardKey: const Key('home-card-bag'),
+              icon: HugeIcons.strokeRoundedShoppingBag01,
+              accent: const Color(0xFF0F9F59),
+              gradient: const [Color(0xFFE8F9F1), Color(0xFFD1F4E2)],
+              titleColor: const Color(0xFF064E3B),
+              subtitleColor: const Color(0xFF0A7A46),
+              title: 'ملفاتي بالمادة',
+              subtitle: 'شنطة كل مادة',
+              onTap: () => context.push(ZakerRoutes.bag),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _OrganicActionCard(
+              cardKey: const Key('home-card-tasks'),
+              icon: HugeIcons.strokeRoundedCheckList,
+              accent: const Color(0xFF1A73E8),
+              gradient: const [Color(0xFFEBF5FF), Color(0xFFD6EAFF)],
+              titleColor: const Color(0xFF0C4A6E),
+              subtitleColor: const Color(0xFF155FC0),
+              title: 'مهامي',
+              subtitle: 'رتب مهام يومك',
+              onTap: () => context.push(ZakerRoutes.tasks),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One tall pastel pill: a tinted badge, a two-line title block and a solid
+/// circular arrow that anchors the bottom edge.
+class _OrganicActionCard extends StatelessWidget {
+  const _OrganicActionCard({
+    required this.cardKey,
+    required this.icon,
     required this.accent,
+    required this.gradient,
+    required this.titleColor,
+    required this.subtitleColor,
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.aurora = false,
   });
 
-  final List<List<dynamic>>? icon;
+  final Key cardKey;
+  final List<List<dynamic>> icon;
   final Color accent;
+  final List<Color> gradient;
+  final Color titleColor;
+  final Color subtitleColor;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
 
-  /// The assistant card uses the animated aurora mark instead of a glyph.
-  final bool aurora;
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final compact = MediaQuery.sizeOf(context).width < 620;
-    final surface = theme.cardTheme.color ?? theme.colorScheme.surface;
+    final tight = MediaQuery.sizeOf(context).width < 380;
+    final badgeSize = tight ? 36.0 : 40.0;
+    final arrowSize = tight ? 28.0 : 30.0;
 
     return _Pressable3D(
       accent: accent,
-      depth: 6,
-      radius: 22,
+      depth: 4,
+      radius: 26,
       onTap: onTap,
       semanticLabel: title,
       child: Container(
-        padding: EdgeInsets.all(compact ? 12 : 18),
+        key: cardKey,
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsetsDirectional.fromSTEB(
+          tight ? 8 : 10,
+          12,
+          tight ? 8 : 10,
+          10,
+        ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
-            colors: [
-              Color.alphaBlend(
-                accent.withValues(alpha: isDark ? 0.30 : 0.16),
-                surface,
-              ),
-              Color.alphaBlend(
-                accent.withValues(alpha: isDark ? 0.12 : 0.04),
-                surface,
-              ),
-            ],
+            colors: gradient,
           ),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: _hairline(context, accent)),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: accent.withValues(alpha: 0.16)),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            Container(
-              width: 30,
-              height: 3.5,
-              decoration: BoxDecoration(
-                color: accent,
-                borderRadius: BorderRadius.circular(ZakerRadius.pill),
-              ),
-            ),
-            SizedBox(height: compact ? 9 : 11),
-            if (aurora)
-              AuroraAssistantMark(
-                size: compact ? 46 : 54,
-                radius: compact ? 15 : 18,
-              )
-            else
-              ZakerGlassIcon(
-                icon: icon!,
-                accent: accent,
-                size: compact ? 46 : 54,
-                iconSize: compact ? 24 : 28,
-                radius: compact ? 15 : 18,
-              ),
-            SizedBox(height: compact ? 10 : 12),
-            TrText(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontSize: compact ? 12 : 15,
-                height: 1.25,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            if (!compact) ...[
-              const SizedBox(height: 4),
-              TrText(
-                subtitle,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  height: 1.35,
+            // A soft, clipped orb keeps the card organic without adding a
+            // second illustration or another tap target.
+            PositionedDirectional(
+              top: -20,
+              end: -16,
+              child: IgnorePointer(
+                child: Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.34),
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
-            ],
-            SizedBox(height: compact ? 8 : 14),
-            Container(
-              width: compact ? 30 : 36,
-              height: compact ? 30 : 36,
-              decoration: BoxDecoration(
-                color: accent,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: accent.withValues(alpha: 0.32),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: badgeSize,
+                  height: badgeSize,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.66),
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(
+                      color: accent.withValues(alpha: 0.14),
+                    ),
                   ),
-                ],
-              ),
-              child: HugeIcon(
-                icon: HugeIcons.strokeRoundedArrowLeft01,
-                size: compact ? 15 : 18,
-                color: Colors.white,
-              ),
+                  child: Center(
+                    child: HugeIcon(
+                      icon: icon,
+                      size: tight ? 19 : 21,
+                      color: accent,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: TrText(
+                          title,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: titleColor,
+                            fontSize: 13,
+                            height: 1.2,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: TrText(
+                          subtitle,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: subtitleColor,
+                            fontSize: 11,
+                            height: 1.2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: arrowSize,
+                  height: arrowSize,
+                  decoration: BoxDecoration(
+                    color: accent,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.28),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedArrowLeft01,
+                      size: tight ? 14 : 15,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -545,18 +635,22 @@ class _CountdownBanner extends StatelessWidget {
               ),
             ] else ...[
               const SizedBox(width: 8),
-              ShadIconButton(
-                width: 38,
-                height: 38,
-                padding: EdgeInsets.zero,
-                backgroundColor: accents.islamic.withValues(alpha: 0.16),
-                hoverBackgroundColor: accents.islamic.withValues(alpha: 0.24),
-                decoration: const ShadDecoration(shape: BoxShape.circle),
-                onPressed: onTap,
-                icon: HugeIcon(
-                  icon: HugeIcons.strokeRoundedArrowLeft01,
-                  size: 18,
-                  color: accents.islamic,
+              // The whole banner is already one labelled button; this is a
+              // visual affordance for the same tap, not a second unnamed one.
+              ExcludeSemantics(
+                child: ShadIconButton(
+                  width: 38,
+                  height: 38,
+                  padding: EdgeInsets.zero,
+                  backgroundColor: accents.islamic.withValues(alpha: 0.16),
+                  hoverBackgroundColor: accents.islamic.withValues(alpha: 0.24),
+                  decoration: const ShadDecoration(shape: BoxShape.circle),
+                  onPressed: onTap,
+                  icon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowLeft01,
+                    size: 18,
+                    color: accents.islamic,
+                  ),
                 ),
               ),
             ],
@@ -817,17 +911,18 @@ class _AllToolsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      key: const Key('home-tools-section'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionTitle(
-          title: 'كل الأدوات',
+          title: 'قسم الأدوات',
           icon: HugeIcons.strokeRoundedDashboardSquare01,
         ),
         const SizedBox(height: 4),
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: TrText(
-            'كل حاجة في رفيق الطالب على بُعد ضغطة واحدة.',
+            'المكتبة الدراسية وكل أدوات رفيق الطالب على بُعد ضغطة واحدة.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -884,6 +979,12 @@ class _AllToolsSection extends StatelessWidget {
     final colors = _allToolsAccents(featureAccentsOf(Theme.of(context)));
     final tiles =
         <({String title, IconData icon, String? subtitle, VoidCallback onTap})>[
+      (
+        title: 'المكتبة الدراسية',
+        icon: Icons.library_books_rounded,
+        subtitle: 'كل الكتب والمناهج',
+        onTap: () => context.push(ZakerRoutes.courses),
+      ),
       (
         title: 'امتحان',
         icon: Icons.fact_check_rounded,
@@ -1077,6 +1178,15 @@ class _SectionTitle extends StatelessWidget {
     final theme = Theme.of(context);
     return Row(
       children: [
+        Container(
+          width: 3,
+          height: 17,
+          decoration: BoxDecoration(
+            color: ZakerColors.gold,
+            borderRadius: BorderRadius.circular(ZakerRadius.pill),
+          ),
+        ),
+        const SizedBox(width: 7),
         HugeIcon(icon: icon, size: 20, color: theme.colorScheme.primary),
         const SizedBox(width: 8),
         // Flexible so an Arabic title at 2.0x wraps instead of overflowing
@@ -1110,7 +1220,10 @@ class _NotificationsSheet extends ConsumerWidget {
         ref.watch(taskScheduleProvider).forDay().where((e) => !e.done).toList();
 
     return SafeArea(
-      child: Padding(
+      // A short phone or 2.0x text can push the sheet past the screen; scroll
+      // instead of overflowing so the two actions stay reachable.
+      child: SingleChildScrollView(
+        key: const Key('notifications-sheet-scroll'),
         padding: const EdgeInsets.fromLTRB(
           ZakerSpacing.lg,
           0,
