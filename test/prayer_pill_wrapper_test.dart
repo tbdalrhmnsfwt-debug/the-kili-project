@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zaker_ai/core/local_store.dart';
 import 'package:zaker_ai/core/router.dart';
 import 'package:zaker_ai/core/theme.dart';
@@ -60,7 +61,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final store = LocalStore.memory();
+    // `LocalStore.memory()` keeps nothing, so it cannot show that the flag
+    // survives a remount; a mocked SharedPreferences does.
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    expect(store.isAvailable, isTrue);
     Widget app() => ProviderScope(
           overrides: [
             localStoreProvider.overrideWithValue(store),
