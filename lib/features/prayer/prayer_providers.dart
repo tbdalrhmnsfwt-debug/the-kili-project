@@ -11,6 +11,8 @@
 /// * [prayerDayProvider] — a cheap per-second view over those times.
 library;
 
+import 'dart:async';
+
 import 'package:adhan_dart/adhan_dart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,19 +31,26 @@ const String _locationKey = 'prayer_location';
 /// The user's calculation choices.
 final prayerSettingsProvider =
     StateNotifierProvider<PrayerSettingsController, PrayerSettings>((ref) {
-      return PrayerSettingsController(ref.watch(localStoreProvider));
-    });
+  return PrayerSettingsController(ref.watch(localStoreProvider));
+});
 
 /// The saved location, or `null` until the user picks one.
 final prayerLocationProvider =
     StateNotifierProvider<PrayerLocationController, PrayerLocation?>((ref) {
-      return PrayerLocationController(ref.watch(localStoreProvider));
-    });
+  return PrayerLocationController(ref.watch(localStoreProvider));
+});
 
 /// A clock that emits once per second, aligned to the second boundary.
-final prayerClockProvider = StreamProvider.autoDispose<DateTime>((ref) async* {
-  yield DateTime.now();
-  while (true) {
+///
+/// The timer is owned by a controller rather than an `async*` loop so that
+/// disposing the provider cancels it: an `async*` body suspended in
+/// `Future.delayed` cannot be cancelled, and the stray timer keeps firing
+/// after the screen that watched it is gone.
+final prayerClockProvider = StreamProvider.autoDispose<DateTime>((ref) {
+  final controller = StreamController<DateTime>();
+  Timer? timer;
+
+  Duration untilNextSecond() {
     final now = DateTime.now();
     final nextTick = DateTime(
       now.year,
@@ -51,9 +60,28 @@ final prayerClockProvider = StreamProvider.autoDispose<DateTime>((ref) async* {
       now.minute,
       now.second,
     ).add(const Duration(seconds: 1));
-    await Future<void>.delayed(nextTick.difference(now));
-    yield DateTime.now();
+    return nextTick.difference(now);
   }
+
+  void tick() {
+    controller.add(DateTime.now());
+    timer = Timer(untilNextSecond(), tick);
+  }
+
+  controller.onListen = () {
+    controller.add(DateTime.now());
+    timer = Timer(untilNextSecond(), tick);
+  };
+  controller.onCancel = () {
+    timer?.cancel();
+    timer = null;
+  };
+  ref.onDispose(() {
+    timer?.cancel();
+    timer = null;
+    controller.close();
+  });
+  return controller.stream;
 });
 
 /// Today's prayer times, or `null` when no location is set or the calculation
@@ -113,8 +141,8 @@ final prayerHijriProvider = Provider.autoDispose<HijriDate>((ref) {
 /// Persists the settings and exposes small update methods.
 class PrayerSettingsController extends StateNotifier<PrayerSettings> {
   PrayerSettingsController(LocalStore store)
-    : _store = store,
-      super(_read(store));
+      : _store = store,
+        super(_read(store));
 
   final LocalStore _store;
 
@@ -153,8 +181,8 @@ class PrayerSettingsController extends StateNotifier<PrayerSettings> {
 /// Persists the chosen location.
 class PrayerLocationController extends StateNotifier<PrayerLocation?> {
   PrayerLocationController(LocalStore store)
-    : _store = store,
-      super(_read(store));
+      : _store = store,
+        super(_read(store));
 
   final LocalStore _store;
 
