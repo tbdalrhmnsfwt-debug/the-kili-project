@@ -8,4 +8,7 @@ abstract final class RafiqBrand {
   static const String developer = 'عبد الرحمن صفوت عطا';
   static const String studio = 'عبد الرحمن سوفت';
   static const String credit = 'من تطوير: $developer';
+
+  /// The short credit shown at the bottom of the home screen.
+  static const String copyright = 'المطور عبد الرحمن سوفت';
 }

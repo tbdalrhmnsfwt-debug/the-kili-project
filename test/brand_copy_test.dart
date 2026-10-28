@@ -11,6 +11,7 @@ void main() {
     expect(RafiqBrand.developer, 'عبد الرحمن صفوت عطا');
     expect(RafiqBrand.studio, 'عبد الرحمن سوفت');
     expect(RafiqBrand.credit, 'من تطوير: عبد الرحمن صفوت عطا');
+    expect(RafiqBrand.copyright, 'المطور عبد الرحمن سوفت');
   });
 
   test('brand strings have English entries', () async {
@@ -21,6 +22,10 @@ void main() {
     expect(
       localizations.t('من تطوير: عبد الرحمن صفوت عطا'),
       'Developed by: Abdurrahman Safwat Atta',
+    );
+    expect(
+      localizations.t('المطور عبد الرحمن سوفت'),
+      'Developer: Abdurrahman Soft',
     );
   });
 

@@ -54,6 +54,7 @@ void main() {
       closeTo(homeTopBarHeightFor(800) + 24, 1e-9),
     );
     expect(find.text(RafiqBrand.appName), findsOneWidget);
+    expect(find.byKey(const Key('home-app-name')), findsOneWidget);
     expect(find.byKey(const Key('home-top-bar-menu')), findsOneWidget);
     expect(find.byKey(const Key('home-top-bar-bell')), findsOneWidget);
     expect(find.byKey(const Key('home-top-bar-badge')), findsOneWidget);
@@ -105,25 +106,6 @@ void main() {
       tester.getSize(find.byKey(const Key('home-top-bar'))).height,
       closeTo(homeTopBarHeightFor(800) + 44, 1e-9),
     );
-  });
-
-  testWidgets('a supplied prayer badge replaces the wordmark', (tester) async {
-    await tester.pumpWidget(
-      _host(
-        HomeTopBar(
-          showBadge: false,
-          onMenu: () {},
-          onNotifications: () {},
-          onSettings: () {},
-          prayerBadge: Container(
-            key: const Key('test-prayer-badge'),
-            height: 24,
-          ),
-        ),
-      ),
-    );
-    expect(find.byKey(const Key('test-prayer-badge')), findsOneWidget);
-    expect(find.text(RafiqBrand.appName), findsNothing);
   });
 
   testWidgets('the strip asks for light status icons under the status bar', (

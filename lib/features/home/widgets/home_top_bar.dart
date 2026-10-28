@@ -16,14 +16,12 @@ import '../../../widgets/tr_text.dart';
 double homeTopBarHeightFor(double screenHeight) =>
     (screenHeight * 0.055).clamp(40.0, 54.0);
 
-/// The compact navy strip above the greeting: menu, prayer badge, bell,
-/// settings.
+/// The compact navy strip above the greeting: menu, app name, bell, settings.
 ///
-/// It never scrolls away with the body, so the drawer, the live prayer badge
-/// and the notifications stay reachable from anywhere in the home. [onMenu] is
-/// null when the shell already shows its own menu button (wide screens, where
-/// the sidebar is visible). [prayerBadge] replaces the wordmark when supplied;
-/// the fallback keeps the bar usable on its own in tests and previews.
+/// It never scrolls away with the body, so the drawer and the notifications
+/// stay reachable from anywhere in the home and the app name is always
+/// visible. [onMenu] is null when the shell already shows its own menu button
+/// (wide screens, where the sidebar is visible).
 class HomeTopBar extends StatelessWidget {
   const HomeTopBar({
     super.key,
@@ -31,14 +29,12 @@ class HomeTopBar extends StatelessWidget {
     this.onMenu,
     required this.onNotifications,
     required this.onSettings,
-    this.prayerBadge,
   });
 
   final bool showBadge;
   final VoidCallback? onMenu;
   final VoidCallback onNotifications;
   final VoidCallback onSettings;
-  final Widget? prayerBadge;
 
   static const ButtonStyle _iconStyle = ButtonStyle(
     foregroundColor: WidgetStatePropertyAll(Colors.white),
@@ -106,17 +102,18 @@ class HomeTopBar extends StatelessWidget {
                   alignment: Alignment.center,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 380),
-                    child: prayerBadge ??
-                        TrText(
-                          RafiqBrand.appName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
+                    child: TrText(
+                      RafiqBrand.appName,
+                      key: const Key('home-app-name'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        height: 1.15,
+                      ),
+                    ),
                   ),
                 ),
               ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
 import 'package:zaker_ai/core/auth_service.dart';
+import 'package:zaker_ai/core/brand/rafiq_brand.dart';
 import 'package:zaker_ai/core/local_store.dart';
 import 'package:zaker_ai/core/shad_theme.dart';
 import 'package:zaker_ai/core/theme.dart';
@@ -131,15 +133,17 @@ void main() {
     expect(find.byKey(const Key('home-prayer-pill')), findsOneWidget);
   });
 
-  testWidgets('the navy header holds the live prayer badge in its top strip', (
+  testWidgets('the top bar names the app and the header holds the badge', (
     tester,
   ) async {
     await _pumpAt(tester);
+    expect(find.byKey(const Key('home-app-name')), findsOneWidget);
+    expect(find.text(RafiqBrand.appName), findsOneWidget);
     expect(find.byKey(const Key('home-header')), findsOneWidget);
     expect(find.byKey(const Key('home-prayer-pill')), findsOneWidget);
     expect(
       find.descendant(
-        of: find.byType(HomeTopBar),
+        of: find.byKey(const Key('home-header')),
         matching: find.byKey(const Key('home-prayer-badge')),
       ),
       findsOneWidget,
@@ -153,6 +157,71 @@ void main() {
       (gradient as LinearGradient).colors,
       const [ZakerColors.navy, ZakerColors.navyLight],
     );
+  });
+
+  testWidgets('the six core feature cards make up the home grid', (
+    tester,
+  ) async {
+    await _pumpAt(tester, width: 400);
+    await tester.dragUntilVisible(
+      find.byKey(const Key('home-feature-grid')),
+      find.byKey(const Key('home-body')),
+      const Offset(0, -300),
+    );
+
+    for (final key in [
+      'home-feature-textbooks',
+      'home-feature-pdf-reader',
+      'home-feature-calculator',
+      'home-feature-notebooks',
+      'home-feature-mind-maps',
+      'home-feature-ai-explanations',
+    ]) {
+      expect(find.byKey(Key(key)), findsOneWidget, reason: key);
+    }
+
+    for (final title in [
+      'الكتب الدراسية الرقمية',
+      'قارئ PDF التفاعلي',
+      'الآلة الحاسبة العلمية',
+      'دفاتر الملاحظات',
+      'الخرائط الذهنية',
+      'الشروحات بمساعدة الذكاء الاصطناعي',
+    ]) {
+      expect(find.text(title), findsOneWidget, reason: title);
+    }
+  });
+
+  testWidgets('the AI feature title stays readable at 320 dp and 2.0x', (
+    tester,
+  ) async {
+    await _pumpAt(tester, width: 320, textScale: 2);
+    final card = find.byKey(const Key('home-feature-ai-explanations'));
+    await tester.dragUntilVisible(
+      card,
+      find.byKey(const Key('home-body')),
+      const Offset(0, -300),
+    );
+
+    // At this width and scale a two-column card is too narrow for the four
+    // Arabic words, so the grid must fall back to one full-width column.
+    expect(tester.getSize(card).width, greaterThan(250));
+    final title = find.descendant(
+      of: card,
+      matching: find.text('الشروحات بمساعدة الذكاء الاصطناعي'),
+    );
+    final paragraph = tester.renderObject<RenderParagraph>(title);
+    expect(paragraph.didExceedMaxLines, isFalse);
+  });
+
+  testWidgets('the footer credits the developer', (tester) async {
+    await _pumpAt(tester, width: 400);
+    await tester.dragUntilVisible(
+      find.byKey(const Key('home-footer-copyright')),
+      find.byKey(const Key('home-body')),
+      const Offset(0, -400),
+    );
+    expect(find.text(RafiqBrand.copyright), findsOneWidget);
   });
 
   testWidgets('the three primary actions sit side by side in pastels', (

@@ -1,10 +1,10 @@
 /// The home screen.
 ///
 /// The compact order from the approved mockup: the navy top strip with the
-/// live prayer micro-badge, the navy welcome panel with [WelcomeSearch], the
-/// stat chips, the three side-by-side pastel action cards, the countdown and
-/// daily-advice banners, the six-tool daily grid, and — last — the tools
-/// section that owns the study library.
+/// app name, the navy welcome panel with the live prayer badge and
+/// [WelcomeSearch], the stat chips, the three side-by-side pastel action cards,
+/// the six core-feature cards, the countdown and daily-advice banners, the
+/// all-tools grid, and the developer credit at the bottom.
 ///
 /// The data is the app's own: the display name comes from
 /// [authUserProvider], the streak/minutes from [studyStatsProvider], the
@@ -19,6 +19,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:shadcn_ui/shadcn_ui.dart' show ShadDecoration, ShadIconButton;
 
+import '../../core/brand/rafiq_brand.dart';
 import '../../core/router.dart';
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
@@ -29,6 +30,7 @@ import '../../widgets/tr_text.dart';
 import '../../widgets/zaker_visuals.dart';
 import '../focus/focus_screen.dart';
 import 'shell_screen.dart';
+import 'widgets/core_features_grid.dart';
 import 'widgets/home_top_bar.dart';
 import 'widgets/prayer_pill.dart';
 import 'widgets/stats_strip.dart';
@@ -93,7 +95,6 @@ class HomeScreen extends ConsumerWidget {
                 onMenu: openDrawer,
                 onNotifications: () => _showNotifications(context),
                 onSettings: () => context.push(ZakerRoutes.settings),
-                prayerBadge: const PrayerPill(compact: true),
               ),
               Expanded(
                 child: RefreshIndicator(
@@ -129,16 +130,23 @@ class HomeScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: ZakerSpacing.md),
                             const _OrganicActionCards(),
+                            const SizedBox(height: 22),
+                            const _SectionTitle(
+                              title: 'ميزاتك الأساسية',
+                              icon: HugeIcons.strokeRoundedGrid02,
+                            ),
                             const SizedBox(height: ZakerSpacing.md),
+                            const CoreFeaturesGrid(),
+                            const SizedBox(height: 22),
                             _BannerRow(
                               nextDeadline: nextDeadline,
                               onCountdown: () =>
                                   context.push(ZakerRoutes.tasks),
                             ),
                             const SizedBox(height: 22),
-                            const _DailyTools(),
-                            const SizedBox(height: 22),
                             const _AllToolsSection(),
+                            const SizedBox(height: ZakerSpacing.xl),
+                            const _HomeFooter(),
                           ],
                         ),
                       ),
@@ -182,9 +190,9 @@ class HomeScreen extends ConsumerWidget {
 
 /// The navy welcome panel directly under the fixed top strip.
 ///
-/// The top strip owns the prayer badge and the menu/notification controls; this
-/// panel continues the same navy field into the greeting and the AI search, then
-/// softly rounds back into the off-white body.
+/// The fixed top strip owns the menu, notifications and settings. This panel
+/// carries the compact prayer badge and continues the same navy field into the
+/// greeting and the AI search, then softly rounds back into the off-white body.
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({required this.name});
 
@@ -210,7 +218,19 @@ class _HomeHeader extends StatelessWidget {
           ),
         ],
       ),
-      child: WelcomeSearch(name: name),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // The live badge sits just under the app bar so the app name can
+          // stay the top strip's clear, permanent title.
+          const Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: PrayerPill(compact: true),
+          ),
+          const SizedBox(height: 6),
+          WelcomeSearch(name: name),
+        ],
+      ),
     );
   }
 }
@@ -749,159 +769,6 @@ class _AdviceBanner extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------- daily tools
-
-/// The six daily-tool tiles from the mockup.
-class _DailyTools extends StatelessWidget {
-  const _DailyTools();
-
-  @override
-  Widget build(BuildContext context) {
-    final accents = featureAccentsOf(Theme.of(context));
-    final tools = <({
-      List<List<dynamic>> icon,
-      String label,
-      Color accent,
-      VoidCallback onTap,
-    })>[
-      (
-        icon: HugeIcons.strokeRoundedCalculator01,
-        label: 'الآلة الحاسبة',
-        accent: accents.study,
-        onTap: () => context.push(ZakerRoutes.calculator),
-      ),
-      (
-        icon: HugeIcons.strokeRoundedPen01,
-        label: 'الإعراب',
-        accent: accents.azkar,
-        onTap: () => context.push(ZakerRoutes.irab),
-      ),
-      (
-        icon: HugeIcons.strokeRoundedCalendar03,
-        label: 'خطة المذاكرة',
-        accent: accents.tasks,
-        onTap: () => context.push(ZakerRoutes.planner),
-      ),
-      (
-        icon: HugeIcons.strokeRoundedTimer01,
-        label: 'إدارة الوقت',
-        accent: accents.qibla,
-        onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const FocusScreen()),
-            ),
-      ),
-      (
-        icon: HugeIcons.strokeRoundedAnalytics01,
-        label: 'متابعة التقدم',
-        accent: accents.islamic,
-        onTap: () => context.push(ZakerRoutes.weekly),
-      ),
-      (
-        icon: HugeIcons.strokeRoundedTarget01,
-        label: 'مراجعات',
-        accent: accents.hifz,
-        onTap: () => context.push(ZakerRoutes.recall),
-      ),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionTitle(
-          title: 'أدواتك اليومية',
-          icon: HugeIcons.strokeRoundedWrench01,
-        ),
-        const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            const spacing = 10.0;
-            final columns = constraints.maxWidth >= 720 ? 6 : 3;
-            final tileWidth =
-                (constraints.maxWidth - spacing * (columns - 1)) / columns;
-            return Wrap(
-              spacing: spacing,
-              runSpacing: spacing,
-              children: [
-                for (final tool in tools)
-                  SizedBox(
-                    width: tileWidth,
-                    child: _ToolTile(
-                      icon: tool.icon,
-                      label: tool.label,
-                      accent: tool.accent,
-                      onTap: tool.onTap,
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _ToolTile extends StatelessWidget {
-  const _ToolTile({
-    required this.icon,
-    required this.label,
-    required this.accent,
-    required this.onTap,
-  });
-
-  final List<List<dynamic>> icon;
-  final String label;
-  final Color accent;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return _Pressable3D(
-      accent: accent,
-      depth: 4,
-      radius: 18,
-      onTap: onTap,
-      semanticLabel: label,
-      child: Container(
-        // A 104 dp floor, not a fixed height: at 2.0x text the label needs a
-        // third line and the tile grows instead of clipping its text.
-        constraints: const BoxConstraints(minHeight: 104),
-        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 6),
-        decoration: BoxDecoration(
-          color: _wash(context, accent),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _hairline(context, accent)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ZakerGlassIcon(
-              icon: icon,
-              accent: accent,
-              size: 36,
-              iconSize: 21,
-              radius: 11,
-            ),
-            const SizedBox(height: 8),
-            TrText(
-              label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontSize: 12,
-                height: 1.3,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ------------------------------------------------------------------ all tools
 
 /// The full feature grid, preserving every entry the app exposes.
@@ -1199,6 +1066,39 @@ class _SectionTitle extends StatelessWidget {
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w800,
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The developer credit that closes the home scroll.
+class _HomeFooter extends StatelessWidget {
+  const _HomeFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      key: const Key('home-footer'),
+      children: [
+        Container(
+          width: 44,
+          height: 2,
+          decoration: BoxDecoration(
+            color: ZakerColors.gold,
+            borderRadius: BorderRadius.circular(ZakerRadius.pill),
+          ),
+        ),
+        const SizedBox(height: ZakerSpacing.sm),
+        TrText(
+          RafiqBrand.copyright,
+          key: const Key('home-footer-copyright'),
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
