@@ -88,14 +88,10 @@ class CoreFeaturesGrid extends StatelessWidget {
         final columns = constraints.maxWidth >= 720
             ? (scale >= 1.75 ? 2 : 3)
             : (scale >= 1.5 ? 1 : 2);
-        // The long AI title needs a line reserve that follows the card width
-        // and the text scale, not a single fixed count.
-        final titleLines = switch (columns) {
-          1 => 3,
-          2 when constraints.maxWidth >= 720 => 2,
-          2 => scale >= 1.25 ? 4 : 3,
-          _ => scale >= 1.25 ? 3 : 2,
-        };
+        // The long AI title is four Arabic words. At 2.0x each word needs its
+        // own line even on a full-width phone card, so reserve four lines for
+        // every layout and let the tighter columns use the same reserve.
+        const titleLines = 4;
         final titleLine =
             scaler.scale(_titleStyle.fontSize!) * _titleStyle.height!;
         final subtitleLine =
