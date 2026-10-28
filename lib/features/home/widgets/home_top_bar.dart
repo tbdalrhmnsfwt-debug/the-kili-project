@@ -40,8 +40,13 @@ class HomeTopBar extends StatelessWidget {
       key: const Key('home-top-bar'),
       height: media.padding.top + homeTopBarHeightFor(media.size.height),
       child: Padding(
-        padding: const EdgeInsetsDirectional.symmetric(
-          horizontal: ZakerSpacing.sm,
+        // The inset is part of the box's height, so it has to be part of its
+        // padding too: otherwise the Row centres its controls inside the
+        // status bar and half of each tap target is under the cutout.
+        padding: EdgeInsetsDirectional.only(
+          top: media.padding.top,
+          start: ZakerSpacing.sm,
+          end: ZakerSpacing.sm,
         ),
         child: Row(
           children: [

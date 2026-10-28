@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
 import 'package:zaker_ai/core/auth_service.dart';
 import 'package:zaker_ai/core/local_store.dart';
 import 'package:zaker_ai/core/router.dart';
+import 'package:zaker_ai/core/shad_theme.dart';
 import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/features/bag/my_bag_screen.dart';
 import 'package:zaker_ai/features/home/shell_screen.dart';
@@ -39,6 +41,12 @@ void main() {
         child: MaterialApp.router(
           routerConfig: appRouter,
           theme: ZakerTheme.light(),
+          // The shell's IndexedStack builds the home tab too, and its search
+          // field reads shadcn_ui's theme; the real app supplies one.
+          builder: (context, child) => ShadTheme(
+            data: ZakerShadTheme.forStyle(ZakerThemeStyle.light),
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );

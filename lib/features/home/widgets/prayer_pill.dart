@@ -147,106 +147,131 @@ class _DayRow extends StatelessWidget {
     // The watched location wins; the snapshot carries its own as a fallback.
     final place = location?.displayName ?? day.location.displayName;
 
-    return Row(
+    final tile = _PrayerTile(theme: theme, accent: accent);
+    final chevron = HugeIcon(
+      key: const Key('home-prayer-chevron'),
+      icon: HugeIcons.strokeRoundedArrowLeft01,
+      size: 18,
+      color: muted,
+    );
+    final countdown = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        _PrayerTile(theme: theme, accent: accent),
-        const SizedBox(width: ZakerSpacing.sm),
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Flexible(
-                    child: TrText(
-                      day.next.name.invocation,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  if (day.next.tomorrow) ...[
-                    const SizedBox(width: ZakerSpacing.xs),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(ZakerRadius.pill),
-                      ),
-                      child: TrText(
-                        'غدًا',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: cardAccentOf(accent, theme),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 1),
-              Text(formatClockTime(day.next.time), style: meta),
-              const SizedBox(height: 1),
-              Row(
-                children: [
-                  Flexible(
-                    child: TrText(
-                      place,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: meta,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: Text('·', style: meta),
-                  ),
-                  Flexible(
-                    child: TrText(
-                      hijri.formatted,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: meta,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        TrText('بعد', style: TextStyle(fontSize: 10, color: muted)),
+        Text(
+          formatCountdown(day.remaining),
+          textDirection: TextDirection.ltr,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()],
+            color: cardAccentOf(accent, theme),
           ),
         ),
-        const SizedBox(width: ZakerSpacing.sm),
-        // The countdown is a fixed-width badge: clamping its scale keeps the
-        // eight digits from pushing the row past a 320 dp screen at 2.0x.
-        MediaQuery.withClampedTextScaling(
-          maxScaleFactor: 1.4,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              TrText('بعد', style: TextStyle(fontSize: 10, color: muted)),
-              Text(
-                formatCountdown(day.remaining),
-                textDirection: TextDirection.ltr,
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                  color: cardAccentOf(accent, theme),
+      ],
+    );
+
+    final details = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Flexible(
+              child: TrText(
+                day.next.name.invocation,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+            if (day.next.tomorrow) ...[
+              const SizedBox(width: ZakerSpacing.xs),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 1,
+                ),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(ZakerRadius.pill),
+                ),
+                child: TrText(
+                  'غدًا',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: cardAccentOf(accent, theme),
+                  ),
                 ),
               ),
             ],
-          ),
+          ],
         ),
-        const SizedBox(width: ZakerSpacing.xs),
-        HugeIcon(
-          key: const Key('home-prayer-chevron'),
-          icon: HugeIcons.strokeRoundedArrowLeft01,
-          size: 18,
-          color: muted,
+        const SizedBox(height: 1),
+        Text(formatClockTime(day.next.time), style: meta),
+        const SizedBox(height: 1),
+        Row(
+          children: [
+            Flexible(
+              child: TrText(
+                place,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: meta,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Text('·', style: meta),
+            ),
+            Flexible(
+              child: TrText(
+                hijri.formatted,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: meta,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    // The countdown is eight fixed-width digits. At large text they no longer
+    // fit beside the details on a narrow screen, so the countdown gets its own
+    // line at full scale instead of being clamped below the user's setting.
+    final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
+    if (!largeText) {
+      return Row(
+        children: [
+          tile,
+          const SizedBox(width: ZakerSpacing.sm),
+          Expanded(child: details),
+          const SizedBox(width: ZakerSpacing.sm),
+          countdown,
+          const SizedBox(width: ZakerSpacing.xs),
+          chevron,
+        ],
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            tile,
+            const SizedBox(width: ZakerSpacing.sm),
+            Expanded(child: details),
+            const SizedBox(width: ZakerSpacing.xs),
+            chevron,
+          ],
+        ),
+        const SizedBox(height: ZakerSpacing.xs),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: countdown,
         ),
       ],
     );

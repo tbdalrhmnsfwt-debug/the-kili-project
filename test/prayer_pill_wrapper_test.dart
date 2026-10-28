@@ -53,6 +53,13 @@ void main() {
   testWidgets('the first-run sheet appears once and is remembered', (
     tester,
   ) async {
+    // A phone-sized surface: on the default 800x600 the sheet's «بعدين»
+    // button lands below the test surface and the tap misses.
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 900);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final store = LocalStore.memory();
     Widget app() => ProviderScope(
           overrides: [

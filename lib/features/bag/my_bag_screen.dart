@@ -24,7 +24,11 @@ class MyBagScreen extends ConsumerWidget {
     return Scaffold(
       key: const Key('my-bag-screen'),
       appBar: AppBar(
-        leading: shellMenuLeading(context),
+        // Pushed on top of a shell (a /bag deep link from a card), the screen
+        // needs a way back; inside the shell's own tab, the menu is the way out.
+        leading: Navigator.of(context).canPop()
+            ? const BackButton()
+            : shellMenuLeading(context),
         title: const TrText('شنطتي'),
       ),
       body: ListView(

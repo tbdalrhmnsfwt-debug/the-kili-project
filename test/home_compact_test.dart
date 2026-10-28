@@ -107,6 +107,12 @@ void main() {
     ) async {
       await _pumpAt(tester, width: 320, textScale: 2, style: style);
       expect(tester.takeException(), isNull);
+      await tester.dragUntilVisible(
+        find.text('كل حاجة في رفيق الطالب على بُعد ضغطة واحدة.'),
+        find.byKey(const Key('home-body')),
+        const Offset(0, -400),
+      );
+      expect(tester.takeException(), isNull);
     });
   }
 

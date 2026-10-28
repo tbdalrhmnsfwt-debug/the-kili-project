@@ -770,7 +770,9 @@ class _ToolTile extends StatelessWidget {
       onTap: onTap,
       semanticLabel: label,
       child: Container(
-        height: 104,
+        // A 104 dp floor, not a fixed height: at 2.0x text the label needs a
+        // third line and the tile grows instead of clipping its text.
+        constraints: const BoxConstraints(minHeight: 104),
         padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 6),
         decoration: BoxDecoration(
           color: _wash(context, accent),
@@ -839,6 +841,23 @@ class _AllToolsSection extends StatelessWidget {
                     ? 3
                     : 2;
             final tiles = _tiles(context);
+            // The cell must hold the glyph, both text blocks at their own
+            // scale, and the padding; a flat 168 clips the text at 2.0x.
+            final scaler = MediaQuery.textScalerOf(context);
+            final text = Theme.of(context).textTheme;
+            double block(TextStyle? style, double size, double height) =>
+                2 *
+                scaler.scale(style?.fontSize ?? size) *
+                (style?.height ?? height);
+            final needed = ZakerSpacing.md * 2 +
+                38 + // glyph
+                ZakerSpacing.sm +
+                2 +
+                block(text.titleSmall, 14, 1.43) +
+                block(text.bodySmall, 12, 1.33) +
+                // Line boxes round up to whole pixels; the slack keeps the
+                // cell from overflowing its own text by a fraction.
+                ZakerSpacing.xs;
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -847,10 +866,10 @@ class _AllToolsSection extends StatelessWidget {
                 crossAxisCount: columns,
                 mainAxisSpacing: ZakerSpacing.md,
                 crossAxisSpacing: ZakerSpacing.md,
-                // A fixed tile height keeps the icon, title and subtitle
-                // together instead of stretching into tall squares on wide
-                // screens.
-                mainAxisExtent: 168,
+                // A floor keeps the icon, title and subtitle together instead
+                // of stretching into tall squares on wide screens, and the
+                // scaled height lets the text grow with the user's setting.
+                mainAxisExtent: needed < 168 ? 168 : needed,
               ),
               itemCount: tiles.length,
               itemBuilder: (_, index) => tiles[index],
@@ -1060,10 +1079,16 @@ class _SectionTitle extends StatelessWidget {
       children: [
         HugeIcon(icon: icon, size: 20, color: theme.colorScheme.primary),
         const SizedBox(width: 8),
-        TrText(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
+        // Flexible so an Arabic title at 2.0x wraps instead of overflowing
+        // the row.
+        Flexible(
+          child: TrText(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],
