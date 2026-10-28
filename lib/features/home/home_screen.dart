@@ -1,15 +1,14 @@
 /// The home screen.
 ///
-/// Layout follows the approved mockup: a teal gradient hero with the
-/// greeting, search and live study stats; the three 3D action cards; the
-/// countdown and daily-advice banners; the six-tool daily grid (including the
-/// calculator and the إعراب guide); the subject cards for the selected grade;
-/// and — below them — the complete feature grid so every screen stays one tap
-/// away.
+/// The compact order from the approved mockup: the top bar, the welcome strip
+/// with [WelcomeSearch], the stat chips, the live prayer pill, the bag
+/// preview, the three 3D action cards, the countdown and daily-advice
+/// banners, the six-tool daily grid, the library shortcut and — last — the
+/// complete feature grid so every screen stays one tap away.
 ///
 /// The data is the app's own: the display name comes from
 /// [authUserProvider], the streak/minutes from [studyStatsProvider], the
-/// pending reminders from [taskScheduleProvider], and the subjects from
+/// pending reminders from [taskScheduleProvider], and the shelves from
 /// [gradesProvider].
 library;
 
@@ -18,12 +17,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:shadcn_ui/shadcn_ui.dart'
-    show ShadDecoration, ShadIconButton, ShadInput;
+import 'package:shadcn_ui/shadcn_ui.dart' show ShadDecoration, ShadIconButton;
 
-import '../../core/appearance.dart';
-import '../../core/hijri_date.dart';
-import '../../core/prayer_formats.dart';
 import '../../core/router.dart';
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
@@ -33,11 +28,13 @@ import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import '../../widgets/zaker_visuals.dart';
 import '../focus/focus_screen.dart';
-import '../prayer/location_flow.dart';
-import '../prayer/prayer_models.dart';
-import '../prayer/prayer_onboarding.dart';
-import '../prayer/prayer_providers.dart';
 import 'shell_screen.dart';
+import 'widgets/home_bag_preview.dart';
+import 'widgets/home_top_bar.dart';
+import 'widgets/library_shortcut.dart';
+import 'widgets/prayer_pill.dart';
+import 'widgets/stats_strip.dart';
+import 'widgets/welcome_search.dart';
 
 /// The all-tools grid's accent cycle, drawn from the active appearance.
 List<Color> _allToolsAccents(ZakerFeatureAccents accents) => [
@@ -85,43 +82,59 @@ class HomeScreen extends ConsumerWidget {
     final schedule = ref.watch(taskScheduleProvider);
     final pending = schedule.forDay().where((e) => !e.done).toList();
     final nextDeadline = _nextDeadline(schedule.entries);
+    final openDrawer = shellDrawerOpener(context);
 
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(gradesProvider);
-          await ref.read(gradesProvider.future);
-        },
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1080),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 40),
-              children: [
-                _HeroBanner(
-                  name: user?.displayName ?? 'ضيف',
-                  showBadge: notificationsOn && pending.isNotEmpty,
-                  streakDays: stats.streakDays,
-                  minutesToday: stats.minutesToday,
-                  pendingCount: pending.length,
-                  onNotifications: () => _showNotifications(context),
-                  onSettings: () => context.push(ZakerRoutes.settings),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1080),
+          child: Column(
+            children: [
+              HomeTopBar(
+                showBadge: notificationsOn && pending.isNotEmpty,
+                onMenu: openDrawer,
+                onNotifications: () => _showNotifications(context),
+                onSettings: () => context.push(ZakerRoutes.settings),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(gradesProvider);
+                    await ref.read(gradesProvider.future);
+                  },
+                  child: ListView(
+                    key: const Key('home-body'),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+                    children: [
+                      WelcomeSearch(name: user?.displayName ?? 'ضيف'),
+                      const SizedBox(height: ZakerSpacing.md),
+                      HomeStatsStrip(
+                        streakDays: stats.streakDays,
+                        minutesToday: stats.minutesToday,
+                        pendingCount: pending.length,
+                      ),
+                      const SizedBox(height: ZakerSpacing.md),
+                      const PrayerPill(),
+                      const SizedBox(height: ZakerSpacing.lg),
+                      const HomeBagPreview(),
+                      const SizedBox(height: ZakerSpacing.lg),
+                      _ActionCards(streakDays: stats.streakDays),
+                      const SizedBox(height: ZakerSpacing.md),
+                      _BannerRow(
+                        nextDeadline: nextDeadline,
+                        onCountdown: () => context.push(ZakerRoutes.tasks),
+                      ),
+                      const SizedBox(height: 22),
+                      const _DailyTools(),
+                      const SizedBox(height: 22),
+                      const LibraryShortcut(),
+                      const SizedBox(height: 22),
+                      const _AllToolsSection(),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 20),
-                _ActionCards(streakDays: stats.streakDays),
-                const SizedBox(height: 12),
-                const _IslamicHubCard(),
-                const SizedBox(height: 22),
-                _BannerRow(
-                  nextDeadline: nextDeadline,
-                  onCountdown: () => context.push(ZakerRoutes.tasks),
-                ),
-                const SizedBox(height: 26),
-                const _DailyTools(),
-                const SizedBox(height: 26),
-                const _AllToolsSection(),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -149,895 +162,6 @@ class HomeScreen extends ConsumerWidget {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: ZakerRadius.sheet),
       builder: (_) => const _NotificationsSheet(),
-    );
-  }
-}
-
-// ---------------------------------------------------------------- hero banner
-
-/// The greeting banner: greeting, name, actions, search, the live next-prayer
-/// countdown and the three Islamic quick actions.
-class _HeroBanner extends ConsumerStatefulWidget {
-  const _HeroBanner({
-    required this.name,
-    required this.showBadge,
-    required this.streakDays,
-    required this.minutesToday,
-    required this.pendingCount,
-    required this.onNotifications,
-    required this.onSettings,
-  });
-
-  final String name;
-  final bool showBadge;
-  final int streakDays;
-  final int minutesToday;
-  final int pendingCount;
-  final VoidCallback onNotifications;
-  final VoidCallback onSettings;
-
-  @override
-  ConsumerState<_HeroBanner> createState() => _HeroBannerState();
-}
-
-class _HeroBannerState extends ConsumerState<_HeroBanner>
-    with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!ref.read(prayerSettingsProvider).onboarded) {
-        maybeShowPrayerOnboarding(context, ref);
-      } else {
-        refreshLocationIfMoved(ref);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && mounted) {
-      refreshLocationIfMoved(ref);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final palette = ZakerTheme.paletteFor(
-      ref.watch(appearanceProvider).themeStyle,
-    );
-    final location = ref.watch(prayerLocationProvider);
-    final day = ref.watch(prayerDayProvider);
-    final hijri = ref.watch(prayerHijriProvider);
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'صباح الخير' : 'مساء الخير';
-    final openDrawer = shellDrawerOpener(context);
-    final radius = BorderRadius.circular(28);
-    const softWhite = Color(0xFFEDF1F8);
-
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: palette.heroGradient,
-          stops: const [0, 0.58, 1],
-        ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        boxShadow: [
-          BoxShadow(
-            color: palette.heroGradient.first.withValues(alpha: 0.34),
-            blurRadius: 32,
-            offset: const Offset(0, 15),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => context.push(ZakerRoutes.prayer),
-          child: Stack(
-            children: [
-              Positioned(
-                top: -70,
-                right: -40,
-                child: _Bubble(size: 200, opacity: 0.08),
-              ),
-              Positioned(
-                bottom: -90,
-                left: -50,
-                child: _Bubble(size: 220, opacity: 0.05),
-              ),
-              Positioned(
-                top: 24,
-                left: 92,
-                child: _Bubble(size: 56, opacity: 0.06),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 11,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.14),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: TrText(
-                                  '$greeting يا ${widget.name}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: softWhite,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 9),
-                              TrText(
-                                'عايز تعمل إيه النهاردة؟',
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  color: Colors.white,
-                                  fontSize: 21,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.3,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        if (openDrawer != null) ...[
-                          _HeroButton(
-                            icon: HugeIcons.strokeRoundedMenu01,
-                            onTap: openDrawer,
-                            tooltip: 'القائمة',
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        _HeroButton(
-                          icon: HugeIcons.strokeRoundedDashboardSquare01,
-                          onTap: () => context.push(ZakerRoutes.appearance),
-                          tooltip: 'تغيير الشكل',
-                        ),
-                        const SizedBox(width: 6),
-                        _HeroButton(
-                          icon: HugeIcons.strokeRoundedNotification01,
-                          showDot: widget.showBadge,
-                          onTap: widget.onNotifications,
-                          tooltip: 'التنبيهات',
-                        ),
-                        if (openDrawer == null) ...[
-                          const SizedBox(width: 6),
-                          _HeroButton(
-                            icon: HugeIcons.strokeRoundedSettings01,
-                            onTap: widget.onSettings,
-                            tooltip: 'الإعدادات',
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    const _SearchBox(),
-                    const SizedBox(height: 14),
-                    if (location == null)
-                      _HeroPrayerSetup(
-                        onDevice: () => startLocationFlow(context, ref),
-                        onCity: () => chooseCity(context, ref),
-                      )
-                    else if (day == null)
-                      const _HeroPrayerLoading()
-                    else
-                      _HeroPrayerBlock(
-                        day: day,
-                        hijri: hijri,
-                        onLocation: () => showLocationPickerSheet(context, ref),
-                      ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _HeroQuickAction(
-                            icon: HugeIcons.strokeRoundedVolumeHigh,
-                            label: 'الأذان',
-                            onTap: () =>
-                                context.push(ZakerRoutes.prayerNotifications),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _HeroQuickAction(
-                            icon: HugeIcons.strokeRoundedKaaba01,
-                            label: 'القبلة',
-                            onTap: () => context.push(ZakerRoutes.qibla),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _HeroQuickAction(
-                            icon: HugeIcons.strokeRoundedSunrise,
-                            label: 'الأذكار',
-                            onTap: () => context.push(ZakerRoutes.azkar),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.10),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _HeroStat(
-                              value: '${widget.streakDays}',
-                              label: 'يوم متواصل',
-                            ),
-                          ),
-                          const _HeroDivider(),
-                          Expanded(
-                            child: _HeroStat(
-                              value: '${widget.minutesToday}',
-                              label: 'دقيقة النهاردة',
-                            ),
-                          ),
-                          const _HeroDivider(),
-                          Expanded(
-                            child: _HeroStat(
-                              value: '${widget.pendingCount}',
-                              label: 'مهمة مستنية',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The next prayer, its live HH:MM:SS countdown and the day's progress.
-class _HeroPrayerBlock extends StatelessWidget {
-  const _HeroPrayerBlock({
-    required this.day,
-    required this.hijri,
-    required this.onLocation,
-  });
-
-  final PrayerDay day;
-  final HijriDate hijri;
-  final VoidCallback onLocation;
-
-  static const Color _meta = Color(0xFFD9F5F2);
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Flexible(
-              child: _HeroPill(
-                icon: HugeIcons.strokeRoundedLocation01,
-                label: day.location.displayName,
-                onTap: onLocation,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: _HeroPill(
-                icon: HugeIcons.strokeRoundedCalendar03,
-                label: hijri.formatted,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            const TrText(
-              'الصلاة القادمة',
-              style: TextStyle(
-                color: _meta,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            if (day.next.tomorrow) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const TrText(
-                  'غدًا',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-            const Spacer(),
-            const HugeIcon(
-              icon: HugeIcons.strokeRoundedArrowLeft01,
-              size: 17,
-              color: _meta,
-            ),
-          ],
-        ),
-        const SizedBox(height: 3),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 380),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          child: Row(
-            key: ValueKey('${day.next.name.name}-${day.next.tomorrow}'),
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: TrText(
-                  day.next.name.invocation,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 25,
-                    fontWeight: FontWeight.w900,
-                    height: 1.15,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                formatClockTime(day.next.time),
-                textDirection: TextDirection.ltr,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const TrText(
-              'متبقي',
-              style: TextStyle(
-                color: _meta,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 7),
-            Text(
-              formatCountdown(day.remaining),
-              textDirection: TextDirection.ltr,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 27,
-                height: 1.1,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: day.progress,
-            minHeight: 5,
-            backgroundColor: Colors.white.withValues(alpha: 0.22),
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
-        ),
-        const SizedBox(height: 5),
-        Row(
-          children: [
-            Text(
-              formatShortClockTime(day.previousTime),
-              textDirection: TextDirection.ltr,
-              style: const TextStyle(
-                color: _meta,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-            const Spacer(),
-            Text(
-              formatShortClockTime(day.next.time),
-              textDirection: TextDirection.ltr,
-              style: const TextStyle(
-                color: _meta,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _HeroPill extends StatelessWidget {
-  const _HeroPill({required this.icon, required this.label, this.onTap});
-
-  final dynamic icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          HugeIcon(icon: icon, size: 13, color: Colors.white),
-          const SizedBox(width: 5),
-          Flexible(
-            child: TrText(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (onTap == null) return content;
-    return Semantics(
-      button: true,
-      label: 'تغيير الموقع',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: content,
-      ),
-    );
-  }
-}
-
-/// The no-location state inside the hero: two ways to set a location.
-class _HeroPrayerSetup extends StatelessWidget {
-  const _HeroPrayerSetup({required this.onDevice, required this.onCity});
-
-  final VoidCallback onDevice;
-  final VoidCallback onCity;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              HugeIcon(
-                icon: HugeIcons.strokeRoundedMosqueLocation,
-                size: 19,
-                color: Colors.white,
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: TrText(
-                  'حدّد موقعك تشوف مواقيت الصلاة والعدّاد',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: onDevice,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: ZakerColors.primaryDark,
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    textStyle: const TextStyle(
-                      fontFamily: ZakerTheme.fontUi,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  child: const TrText('موقعي الحالي'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onCity,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.55),
-                    ),
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    textStyle: const TextStyle(
-                      fontFamily: ZakerTheme.fontUi,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  child: const TrText('اختار مدينة'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroPrayerLoading extends StatelessWidget {
-  const _HeroPrayerLoading();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Row(
-        children: [
-          ZakerSkeleton(width: 16, height: 16, radius: 8),
-          SizedBox(width: 10),
-          TrText(
-            'بنحسب مواقيت النهاردة…',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One of the three hero shortcuts. An item with no route is rendered
-/// disabled instead of pushing a dead path.
-class _HeroQuickAction extends StatelessWidget {
-  const _HeroQuickAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final dynamic icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    return Opacity(
-      opacity: enabled ? 1 : 0.5,
-      child: Material(
-        color: Colors.black.withValues(alpha: 0.13),
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            height: 44,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                HugeIcon(icon: icon, size: 18, color: Colors.white),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: TrText(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.size, required this.opacity});
-
-  final double size;
-  final double opacity;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: opacity),
-        border: Border.all(color: Colors.white.withValues(alpha: opacity / 2)),
-      ),
-    );
-  }
-}
-
-class _HeroStat extends StatelessWidget {
-  const _HeroStat({required this.value, required this.label});
-
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 19,
-            height: 1.1,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 4),
-        TrText(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeroDivider extends StatelessWidget {
-  const _HeroDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 30,
-      color: Colors.white.withValues(alpha: 0.16),
-    );
-  }
-}
-
-/// A translucent circular action in the banner.
-class _HeroButton extends StatelessWidget {
-  const _HeroButton({
-    required this.icon,
-    required this.onTap,
-    this.showDot = false,
-    this.tooltip,
-  });
-
-  final List<List<dynamic>> icon;
-  final VoidCallback onTap;
-  final bool showDot;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    final button = ShadIconButton(
-      width: 42,
-      height: 42,
-      padding: EdgeInsets.zero,
-      backgroundColor: Colors.white.withValues(alpha: 0.18),
-      hoverBackgroundColor: Colors.white.withValues(alpha: 0.30),
-      pressedBackgroundColor: Colors.white.withValues(alpha: 0.34),
-      decoration: const ShadDecoration(shape: BoxShape.circle),
-      onPressed: onTap,
-      icon: SizedBox(
-        width: 24,
-        height: 24,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            HugeIcon(icon: icon, size: 22, color: Colors.white),
-            if (showDot)
-              Positioned(
-                top: -1,
-                right: -1,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFBBF24),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-    return tooltip == null ? button : Tooltip(message: tooltip!, child: button);
-  }
-}
-
-/// The mockup's translucent search pill. Submitting opens the AI chat with
-/// the typed question, which is the app's free-text entry point.
-class _SearchBox extends StatefulWidget {
-  const _SearchBox();
-
-  @override
-  State<_SearchBox> createState() => _SearchBoxState();
-}
-
-class _SearchBoxState extends State<_SearchBox> {
-  final TextEditingController _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit(String value) {
-    final query = value.trim();
-    if (query.isEmpty) return;
-    _controller.clear();
-    FocusScope.of(context).unfocus();
-    context.push('${ZakerRoutes.chat}?q=${Uri.encodeQueryComponent(query)}');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
-      ),
-      child: Row(
-        children: [
-          const HugeIcon(
-            icon: HugeIcons.strokeRoundedSearch01,
-            size: 20,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: ShadInput(
-              controller: _controller,
-              decoration: ShadDecoration.none,
-              padding: const EdgeInsets.symmetric(vertical: 13),
-              cursorColor: Colors.white,
-              style: const TextStyle(
-                color: Colors.white,
-                fontFamily: ZakerTheme.fontUi,
-                fontSize: 14,
-              ),
-              placeholder: const TrText(
-                'اسأل معلم AI عن أي حاجة…',
-                style: TextStyle(
-                  color: Color(0xFFE3F4F2),
-                  fontFamily: ZakerTheme.fontUi,
-                  fontSize: 14,
-                ),
-              ),
-              textInputAction: TextInputAction.search,
-              onSubmitted: _submit,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.16),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: HugeIcon(
-                icon: HugeIcons.strokeRoundedArrowLeft01,
-                size: 16,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1080,14 +204,26 @@ class _ActionCards extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 620;
+        // Below 620 dp, or once the text is large, three side-by-side cards
+        // squeeze their titles to nothing; stack them instead.
+        final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+        if (constraints.maxWidth < 620 || scale > 1.3) {
+          return Column(
+            children: [
+              for (var i = 0; i < cards.length; i++) ...[
+                SizedBox(width: double.infinity, child: cards[i]),
+                if (i != cards.length - 1) const SizedBox(height: 10),
+              ],
+            ],
+          );
+        }
         return IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (var i = 0; i < cards.length; i++) ...[
                 Expanded(child: cards[i]),
-                if (i != cards.length - 1) SizedBox(width: compact ? 8 : 12),
+                if (i != cards.length - 1) const SizedBox(width: 12),
               ],
             ],
           ),
@@ -1221,128 +357,6 @@ class _ActionCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------- islamic hub card
-
-/// The single home entry to the Islamics hub.
-class _IslamicHubCard extends StatelessWidget {
-  const _IslamicHubCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent = theme.extension<ZakerFeatureAccents>()?.islamic ??
-        theme.colorScheme.primary;
-    final surface = theme.cardTheme.color ?? theme.colorScheme.surface;
-    final muted = theme.colorScheme.onSurfaceVariant;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => context.push(ZakerRoutes.islamicHub),
-        borderRadius: BorderRadius.circular(ZakerRadius.lg),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(
-            horizontal: ZakerSpacing.md,
-            vertical: ZakerSpacing.md,
-          ),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-              colors: [
-                Color.alphaBlend(
-                  accent.withValues(alpha: isDark ? 0.22 : 0.10),
-                  surface,
-                ),
-                surface,
-              ],
-            ),
-            borderRadius: BorderRadius.circular(ZakerRadius.lg),
-            border: Border.all(color: _hairline(context, accent)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                    colors: [
-                      accent.withValues(alpha: isDark ? 0.30 : 0.18),
-                      accent.withValues(alpha: 0.08),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(ZakerRadius.md),
-                  border: Border.all(color: accent.withValues(alpha: 0.24)),
-                ),
-                child: Center(
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedMosque01,
-                    size: 22,
-                    color: accent,
-                  ),
-                ),
-              ),
-              const SizedBox(width: ZakerSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const TrText(
-                      'الإسلاميات',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    TrText(
-                      'المواقيت · الأذان · القبلة · الأذكار · الحفظ',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, height: 1.4, color: muted),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: ZakerSpacing.sm),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(ZakerRadius.pill),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TrText(
-                      'افتح',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: accent,
-                      ),
-                    ),
-                    const SizedBox(width: 2),
-                    Icon(Icons.chevron_left_rounded, size: 16, color: accent),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
