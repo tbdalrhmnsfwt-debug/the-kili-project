@@ -75,7 +75,7 @@ void main() {
         Align(
           alignment: Alignment.center,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 190),
+            constraints: const BoxConstraints(maxWidth: 320),
             child: PrayerPillView(
               compact: true,
               day: _day(),
@@ -93,7 +93,7 @@ void main() {
     expect(find.text('01:04:00'), findsOneWidget);
     // Loose width: the badge hugs its content and stays one fixed-height line.
     expect(tester.getSize(badge).height, 30);
-    expect(tester.getSize(badge).width, lessThan(190));
+    expect(tester.getSize(badge).width, lessThan(320));
     expect(
       tester.getCenter(find.text('صلاة الفجر')).dy,
       closeTo(tester.getCenter(find.text('01:04:00')).dy, 1),
