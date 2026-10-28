@@ -87,6 +87,16 @@ void main() {
         await _pumpAt(tester, width: width, textScale: scale);
         expect(tester.takeException(), isNull);
         expect(find.text('اسأل معلم AI عن أي حاجة…'), findsOneWidget);
+
+        // The list lays out only what fits in the viewport plus its cache
+        // extent, so the first screen cannot vouch for the daily tools or the
+        // all-tools grid. Drag the keyed body to the bottom and check again.
+        await tester.dragUntilVisible(
+          find.text('كل حاجة في رفيق الطالب على بُعد ضغطة واحدة.'),
+          find.byKey(const Key('home-body')),
+          const Offset(0, -400),
+        );
+        expect(tester.takeException(), isNull);
       });
     }
   }

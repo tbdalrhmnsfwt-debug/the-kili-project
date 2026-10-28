@@ -71,6 +71,37 @@ void main() {
     expect(find.byKey(const Key('home-top-bar-menu')), findsNothing);
   });
 
+  testWidgets('the controls start below the status-bar inset', (tester) async {
+    await tester.pumpWidget(
+      _host(
+        HomeTopBar(
+          showBadge: false,
+          onMenu: () {},
+          onNotifications: () {},
+          onSettings: () {},
+        ),
+        topPadding: 44,
+      ),
+    );
+    // A control centred in an inset + bar box would sit inside the cutout and
+    // put half its tap target under the status bar.
+    for (final key in [
+      'home-top-bar-menu',
+      'home-top-bar-bell',
+      'home-top-bar-settings',
+    ]) {
+      expect(
+        tester.getTopLeft(find.byKey(Key(key))).dy,
+        greaterThanOrEqualTo(44),
+        reason: key,
+      );
+    }
+    expect(
+      tester.getSize(find.byKey(const Key('home-top-bar'))).height,
+      closeTo(48 + 44, 1e-9),
+    );
+  });
+
   testWidgets('no overflow at 320 dp and 2.0x text', (tester) async {
     await tester.pumpWidget(
       _host(

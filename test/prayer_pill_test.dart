@@ -85,6 +85,36 @@ void main() {
     expect(taps, 1);
   });
 
+  testWidgets('the countdown honours the full text scale at 2.0x', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ZakerTheme.light(),
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 800),
+            textScaler: TextScaler.linear(2),
+          ),
+          child: Scaffold(
+            body: PrayerPillView(
+              day: _day(),
+              location: _cairo,
+              hijri: _hijri,
+              onTap: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    // The spec forbids clamping text scaling to hide an overflow: the live
+    // countdown must be laid out at the scale the reader asked for.
+    expect(
+      MediaQuery.textScalerOf(tester.element(find.text('01:04:00'))),
+      const TextScaler.linear(2),
+    );
+  });
+
   testWidgets('no overflow at 320 dp and 2.0x text', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(320, 800);

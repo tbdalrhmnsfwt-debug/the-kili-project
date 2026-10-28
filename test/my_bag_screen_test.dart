@@ -6,6 +6,7 @@ import 'package:zaker_ai/core/router.dart';
 import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/features/bag/bag_preview_provider.dart';
 import 'package:zaker_ai/features/bag/my_bag_screen.dart';
+import 'package:zaker_ai/features/home/shell_screen.dart';
 import 'package:zaker_ai/providers/app_providers.dart';
 
 BagFolderPreview _folder(String name, {int pdfs = 0}) => BagFolderPreview(
@@ -53,6 +54,42 @@ void main() {
     expect(find.text('شنطتي'), findsWidgets);
     expect(find.text('المكتبة الدراسية'), findsOneWidget);
     expect(find.byKey(const Key('my-bag-library-button')), findsOneWidget);
+  });
+
+  testWidgets('a pushed bag screen offers a back button that pops', (
+    tester,
+  ) async {
+    final navigator = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localStoreProvider.overrideWithValue(LocalStore.memory()),
+          bagFolderPreviewProvider.overrideWithValue(const []),
+        ],
+        child: MaterialApp(
+          navigatorKey: navigator,
+          theme: ZakerTheme.light(),
+          home: const Scaffold(body: Text('root')),
+        ),
+      ),
+    );
+    // `context.push(ZakerRoutes.bag)` mounts a second shell around the bag,
+    // whose menu scope would otherwise replace the AppBar's back affordance.
+    navigator.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => ShellMenuScope(
+          openDrawer: () {},
+          enabled: true,
+          child: const MyBagScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(BackButton), findsOneWidget);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('root'), findsOneWidget);
   });
 
   testWidgets('shows one chip with four pocket dots per folder', (
