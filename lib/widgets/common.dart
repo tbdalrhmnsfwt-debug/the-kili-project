@@ -167,6 +167,7 @@ class StatChip extends StatelessWidget {
     required this.label,
     this.icon,
     this.color,
+    this.labelColor,
   });
 
   final String value;
@@ -174,10 +175,31 @@ class StatChip extends StatelessWidget {
   final IconData? icon;
   final Color? color;
 
+  /// Overrides the label's colour; by default it follows the chip's surface.
+  final Color? labelColor;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = color ?? theme.colorScheme.primary;
+    // A near-white accent is how callers mark a chip painted on a coloured
+    // banner. The chip then sits on a dark backdrop, so its text has to stay
+    // light instead of being adapted to the light card — the theme's muted
+    // label colour used to disappear on navy.
+    final onBanner = accent.computeLuminance() > 0.8;
+    final surface = cardSurfaceOf(theme);
+    // Text has to clear the chip's own tint, not the bare card behind it.
+    final chipSurface = Color.alphaBlend(
+      accent.withValues(alpha: 0.10),
+      surface,
+    );
+    final foreground =
+        onBanner ? accent : readableTextColor(accent, chipSurface);
+    final mutedLabel = readableTextColor(
+      theme.colorScheme.onSurfaceVariant,
+      chipSurface,
+    );
+    final resolvedLabel = labelColor ?? (onBanner ? accent : mutedLabel);
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: ZakerSpacing.md,
@@ -191,13 +213,13 @@ class StatChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 16, color: accent),
+            Icon(icon, size: 16, color: foreground),
             const SizedBox(width: ZakerSpacing.xs),
           ],
           TrText(
             value,
             style: theme.textTheme.titleSmall?.copyWith(
-              color: accent,
+              color: foreground,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -208,7 +230,7 @@ class StatChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: resolvedLabel,
               ),
             ),
           ),
