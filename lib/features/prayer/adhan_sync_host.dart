@@ -52,7 +52,10 @@ class _AdhanSyncHostState extends ConsumerState<AdhanSyncHost>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
     // The user may have changed the timezone, granted a permission or moved
-    // while the app was in the background.
+    // while the app was in the background. The cached day is keyed on the UTC
+    // offset, so invalidate it before the bar and the cards read it again.
+    ref.invalidate(prayerTimesTodayProvider);
+    ref.invalidate(prayerHijriProvider);
     unawaited(_sync());
     _scheduleMidnightSync();
   }

@@ -40,6 +40,22 @@ final prayerLocationProvider =
   return PrayerLocationController(ref.watch(localStoreProvider));
 });
 
+/// The calendar day a prayer calculation belongs to, including the device's
+/// UTC offset: a timezone change that keeps the local date must still
+/// recompute the times.
+typedef PrayerDayKey = ({int year, int month, int day, int offsetMinutes});
+
+PrayerDayKey prayerDayKey(DateTime now) => prayerDayKeyFor(
+      now.year,
+      now.month,
+      now.day,
+      now.timeZoneOffset.inMinutes,
+    );
+
+@visibleForTesting
+PrayerDayKey prayerDayKeyFor(int year, int month, int day, int offsetMinutes) =>
+    (year: year, month: month, day: day, offsetMinutes: offsetMinutes);
+
 /// A clock that emits once per second, aligned to the second boundary.
 ///
 /// The timer is owned by a controller rather than an `async*` loop so that
@@ -92,17 +108,16 @@ final prayerClockProvider = StreamProvider.autoDispose<DateTime>((ref) {
 final prayerTimesTodayProvider = Provider.autoDispose<PrayerTimes?>((ref) {
   final location = ref.watch(prayerLocationProvider);
   final settings = ref.watch(prayerSettingsProvider);
-  final today = ref.watch(
-    prayerClockProvider.select((clock) {
-      final now = clock.valueOrNull ?? DateTime.now();
-      return DateTime(now.year, now.month, now.day);
-    }),
+  final day = ref.watch(
+    prayerClockProvider.select(
+      (clock) => prayerDayKey(clock.valueOrNull ?? DateTime.now()),
+    ),
   );
   if (location == null) return null;
 
   try {
     return PrayerTimes(
-      date: today,
+      date: DateTime(day.year, day.month, day.day),
       coordinates: Coordinates(location.latitude, location.longitude),
       calculationParameters: prayerParameters(
         methodId: settings.methodId,
@@ -129,13 +144,12 @@ final prayerDayProvider = Provider.autoDispose<PrayerDay?>((ref) {
 /// Today's Hijri date, recomputed once per calendar day rather than once per
 /// second (the home card rebuilds with the countdown).
 final prayerHijriProvider = Provider.autoDispose<HijriDate>((ref) {
-  final today = ref.watch(
-    prayerClockProvider.select((clock) {
-      final now = clock.valueOrNull ?? DateTime.now();
-      return DateTime(now.year, now.month, now.day);
-    }),
+  final day = ref.watch(
+    prayerClockProvider.select(
+      (clock) => prayerDayKey(clock.valueOrNull ?? DateTime.now()),
+    ),
   );
-  return HijriDate.fromGregorian(today);
+  return HijriDate.fromGregorian(DateTime(day.year, day.month, day.day));
 });
 
 /// Persists the settings and exposes small update methods.
