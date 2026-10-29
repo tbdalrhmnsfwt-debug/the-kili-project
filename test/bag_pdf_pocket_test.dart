@@ -28,6 +28,8 @@ void main() {
   late MyBagStore store;
   late LocalStore local;
   late PdfLibraryStore pdfStore;
+  late MemoryKv libraryKv;
+  late PdfLibraryController libraryController;
   const folderId = 'subject:sec1:الرياضيات';
 
   PdfDocumentEntry entry(
@@ -62,9 +64,17 @@ void main() {
         ).copyWith(pdfIds: pdfIds),
       ),
     );
-    await local.setString(
+    await libraryKv.setString(
       PdfLibraryRepository.storeKey,
       jsonEncode(PdfLibraryIndex(library).toJson()),
+    );
+    // The controller loads its catalog in the constructor, so it is built
+    // after the seed lands in the store.
+    libraryController = PdfLibraryController(
+      store: pdfStore,
+      repository: PdfLibraryRepository(libraryKv),
+      probe: (file) async => const PdfProbeResult(pageCount: 3),
+      thumbnailer: (base, thumb) async {},
     );
     if (writeBases) {
       for (final item in library) {
@@ -78,6 +88,7 @@ void main() {
     cache = Directory.systemTemp.createTempSync('zaker_bag_pdf_cache_');
     store = MyBagStore(kv: MemoryKv(), rootDir: root);
     local = LocalStore.memory();
+    libraryKv = MemoryKv();
     pdfStore = PdfLibraryStore(rootDir: root, cacheDir: cache);
     await pdfStore.ensureReady();
   });
@@ -112,6 +123,9 @@ void main() {
         bagSeedSubjectsProvider.overrideWithValue(const []),
         bagSubjectProgressProvider.overrideWithValue(const {}),
         pdfLibraryStoreProvider.overrideWithValue(pdfStore),
+        pdfLibraryControllerProvider.overrideWith(
+          (ref) => libraryController,
+        ),
         pdfProbeProvider.overrideWithValue(
           (file) async => const PdfProbeResult(pageCount: 3),
         ),
@@ -199,11 +213,24 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('bag-pocket-add')));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     final container = ProviderScope.containerOf(
       tester.element(find.byType(BagPocketScreen)),
     );
+    // The import copies real bytes on the real event loop; pumpAndSettle alone
+    // can return before the copy lands.
+    for (var i = 0; i < 50; i++) {
+      if (container.read(pdfLibraryControllerProvider).entries.isNotEmpty) {
+        break;
+      }
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+
     final library = container.read(pdfLibraryControllerProvider);
     expect(library.entries, hasLength(1));
     expect(library.entries.single.subjectKey, 'الرياضيات');
