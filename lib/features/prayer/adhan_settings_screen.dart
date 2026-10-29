@@ -59,10 +59,10 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
   }
 
   Future<void> _refreshSystemState() async {
-    final notifications = await NotificationService.instance
-        .areNotificationsEnabled();
-    final exact = await NotificationService.instance
-        .canScheduleExactNotifications();
+    final notifications =
+        await NotificationService.instance.areNotificationsEnabled();
+    final exact =
+        await NotificationService.instance.canScheduleExactNotifications();
     final battery = await AdhanPlatform.isIgnoringBatteryOptimizations();
     final fullScreen = await AdhanPlatform.canUseFullScreenIntent();
     if (!mounted) return;
@@ -239,6 +239,13 @@ class _AdhanSettingsScreenState extends ConsumerState<AdhanSettingsScreen>
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 32),
             children: [
               _MasterCard(enabled: settings.enabled, onChanged: _setEnabled),
+              const SizedBox(height: 10),
+              _StatusBarCard(
+                value: settings.statusBarEnabled,
+                onChanged: (value) => ref
+                    .read(adhanSettingsProvider.notifier)
+                    .setStatusBarEnabled(value),
+              ),
               const SizedBox(height: 18),
               const _SectionLabel(title: 'جاهزية الأذان'),
               const SizedBox(height: 8),
@@ -442,13 +449,13 @@ class _ReadinessCard extends StatelessWidget {
             state: notificationsAllowed == null
                 ? _CheckState.unknown
                 : notificationsAllowed!
-                ? _CheckState.ok
-                : _CheckState.attention,
+                    ? _CheckState.ok
+                    : _CheckState.attention,
             statusText: notificationsAllowed == null
                 ? '…'
                 : notificationsAllowed!
-                ? 'مسموح'
-                : 'مقفول',
+                    ? 'مسموح'
+                    : 'مقفول',
             onTap: onNotifications,
           ),
           const _Divider(),
@@ -459,13 +466,13 @@ class _ReadinessCard extends StatelessWidget {
             state: exactAllowed == null
                 ? _CheckState.unknown
                 : exactAllowed!
-                ? _CheckState.ok
-                : _CheckState.attention,
+                    ? _CheckState.ok
+                    : _CheckState.attention,
             statusText: exactAllowed == null
                 ? '…'
                 : exactAllowed!
-                ? 'مسموح'
-                : 'مش مسموح',
+                    ? 'مسموح'
+                    : 'مش مسموح',
             onTap: onExact,
           ),
           const _Divider(),
@@ -476,13 +483,13 @@ class _ReadinessCard extends StatelessWidget {
             state: fullScreenAllowed == null
                 ? _CheckState.unknown
                 : fullScreenAllowed!
-                ? _CheckState.ok
-                : _CheckState.attention,
+                    ? _CheckState.ok
+                    : _CheckState.attention,
             statusText: fullScreenAllowed == null
                 ? '…'
                 : fullScreenAllowed!
-                ? 'مسموح'
-                : 'مقفول',
+                    ? 'مسموح'
+                    : 'مقفول',
             onTap: onFullScreen,
           ),
           const _Divider(),
@@ -493,13 +500,13 @@ class _ReadinessCard extends StatelessWidget {
             state: ignoringBattery == null
                 ? _CheckState.unknown
                 : ignoringBattery!
-                ? _CheckState.ok
-                : _CheckState.attention,
+                    ? _CheckState.ok
+                    : _CheckState.attention,
             statusText: ignoringBattery == null
                 ? '…'
                 : ignoringBattery!
-                ? 'مستثنى'
-                : 'شغال',
+                    ? 'مستثنى'
+                    : 'شغال',
             onTap: onBattery,
           ),
         ],
@@ -632,12 +639,12 @@ class _PrayerCard extends StatelessWidget {
   final VoidCallback onVoice;
 
   List<List<dynamic>> get _icon => switch (prayer) {
-    PrayerName.fajr => HugeIcons.strokeRoundedSunrise,
-    PrayerName.dhuhr => HugeIcons.strokeRoundedSun01,
-    PrayerName.asr => HugeIcons.strokeRoundedSun03,
-    PrayerName.maghrib => HugeIcons.strokeRoundedSunset,
-    PrayerName.isha => HugeIcons.strokeRoundedMoon02,
-  };
+        PrayerName.fajr => HugeIcons.strokeRoundedSunrise,
+        PrayerName.dhuhr => HugeIcons.strokeRoundedSun01,
+        PrayerName.asr => HugeIcons.strokeRoundedSun03,
+        PrayerName.maghrib => HugeIcons.strokeRoundedSunset,
+        PrayerName.isha => HugeIcons.strokeRoundedMoon02,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -844,6 +851,74 @@ class _HardwareSilenceCard extends StatelessWidget {
               height: 1.55,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------- status bar
+
+class _StatusBarCard extends StatelessWidget {
+  const _StatusBarCard({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(13, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.dividerTheme.color ?? Colors.black12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Center(
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedNotification02,
+                size: 18,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TrText(
+                  'شريط المواقيت الدائم',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12.5,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                TrText(
+                  'يعرض الصلاة القادمة والعد التنازلي في شريط الإشعارات، '
+                  'حتى والتطبيق مقفول.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                    height: 1.55,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Switch.adaptive(value: value, onChanged: onChanged),
         ],
       ),
     );

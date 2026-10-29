@@ -15,6 +15,7 @@ const List<int> kReminderMinutesOptions = <int>[5, 10, 15, 20, 30];
 class AdhanSettings {
   const AdhanSettings({
     this.enabled = false,
+    this.statusBarEnabled = true,
     this.enabledPrayers = const <PrayerName, bool>{},
     this.voices = const <PrayerName, String>{},
     this.fajrVoiceId = kDefaultFajrVoiceId,
@@ -26,6 +27,10 @@ class AdhanSettings {
   /// Master switch.  When off, all scheduled prayer notifications are
   /// cancelled — the per-prayer choices are kept for next time.
   final bool enabled;
+
+  /// Whether the ongoing prayer bar is shown.  It still needs the master
+  /// switch, a saved location and the notification permission.
+  final bool statusBarEnabled;
 
   /// Per-prayer switches; a missing entry means enabled.
   final Map<PrayerName, bool> enabledPrayers;
@@ -61,6 +66,7 @@ class AdhanSettings {
 
   AdhanSettings copyWith({
     bool? enabled,
+    bool? statusBarEnabled,
     Map<PrayerName, bool>? enabledPrayers,
     Map<PrayerName, String>? voices,
     String? fajrVoiceId,
@@ -70,6 +76,7 @@ class AdhanSettings {
   }) {
     return AdhanSettings(
       enabled: enabled ?? this.enabled,
+      statusBarEnabled: statusBarEnabled ?? this.statusBarEnabled,
       enabledPrayers: enabledPrayers ?? this.enabledPrayers,
       voices: voices ?? this.voices,
       fajrVoiceId: fajrVoiceId ?? this.fajrVoiceId,
@@ -80,16 +87,20 @@ class AdhanSettings {
   }
 
   Map<String, dynamic> toJson() => {
-    'enabled': enabled,
-    'prayers': {
-      for (final entry in enabledPrayers.entries) entry.key.name: entry.value,
-    },
-    'voices': {for (final entry in voices.entries) entry.key.name: entry.value},
-    'fajrVoice': fajrVoiceId,
-    'reminders': remindersEnabled,
-    'reminderMinutes': reminderMinutes,
-    'silenceOnHardware': silenceOnHardware,
-  };
+        'enabled': enabled,
+        'statusBar': statusBarEnabled,
+        'prayers': {
+          for (final entry in enabledPrayers.entries)
+            entry.key.name: entry.value,
+        },
+        'voices': {
+          for (final entry in voices.entries) entry.key.name: entry.value
+        },
+        'fajrVoice': fajrVoiceId,
+        'reminders': remindersEnabled,
+        'reminderMinutes': reminderMinutes,
+        'silenceOnHardware': silenceOnHardware,
+      };
 
   /// Reads persisted settings, dropping unknown voice ids and invalid values.
   static AdhanSettings fromJson(Map<String, dynamic>? json) {
@@ -120,11 +131,12 @@ class AdhanSettings {
     final rawMinutes = json['reminderMinutes'];
     final minutes =
         rawMinutes is int && kReminderMinutesOptions.contains(rawMinutes)
-        ? rawMinutes
-        : 10;
+            ? rawMinutes
+            : 10;
 
     return AdhanSettings(
       enabled: json['enabled'] == true,
+      statusBarEnabled: json['statusBar'] != false,
       enabledPrayers: prayers,
       voices: voices,
       fajrVoiceId: fajrVoice?.id ?? kDefaultFajrVoiceId,
@@ -138,6 +150,7 @@ class AdhanSettings {
   bool operator ==(Object other) =>
       other is AdhanSettings &&
       other.enabled == enabled &&
+      other.statusBarEnabled == statusBarEnabled &&
       mapEquals(other.enabledPrayers, enabledPrayers) &&
       mapEquals(other.voices, voices) &&
       other.fajrVoiceId == fajrVoiceId &&
@@ -147,14 +160,15 @@ class AdhanSettings {
 
   @override
   int get hashCode => Object.hash(
-    enabled,
-    fajrVoiceId,
-    remindersEnabled,
-    reminderMinutes,
-    silenceOnHardware,
-    Object.hashAll(
-      enabledPrayers.entries.map((e) => Object.hash(e.key, e.value)),
-    ),
-    Object.hashAll(voices.entries.map((e) => Object.hash(e.key, e.value))),
-  );
+        enabled,
+        statusBarEnabled,
+        fajrVoiceId,
+        remindersEnabled,
+        reminderMinutes,
+        silenceOnHardware,
+        Object.hashAll(
+          enabledPrayers.entries.map((e) => Object.hash(e.key, e.value)),
+        ),
+        Object.hashAll(voices.entries.map((e) => Object.hash(e.key, e.value))),
+      );
 }
