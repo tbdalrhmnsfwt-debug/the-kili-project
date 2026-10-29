@@ -163,7 +163,9 @@ class Parser {
 
     if (lower == 'ans') return const VariableExpr('Ans');
     if (lower == 'pi') return const ConstantExpr('pi');
-    if (lower == 'e') return const ConstantExpr('e');
+    // Only lowercase `e` is Euler's number. Uppercase `E` is one of the
+    // Casio session variables (STO/RCL E), so it must reach the evaluator.
+    if (raw == 'e') return const ConstantExpr('e');
     if (lower == 'i') return const ConstantExpr('i');
     if (lower == 'θ' || lower == 'theta') return const VariableExpr('θ');
 
