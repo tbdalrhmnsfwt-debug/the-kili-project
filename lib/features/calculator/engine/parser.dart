@@ -170,45 +170,29 @@ class Parser {
     if (lower == 'θ' || lower == 'theta') return const VariableExpr('θ');
 
     if (knownFunctionNames.contains(lower)) {
-      final arguments = <Expr>[];
-      if (_peek.kind == TokenKind.leftParen) {
-        _position++;
-        if (_peek.kind != TokenKind.rightParen) {
-          arguments.add(_additive());
-          while (_matchKind(TokenKind.comma)) {
-            arguments.add(_additive());
-          }
-        }
-        _expect(TokenKind.rightParen, 'قوس قافل )');
-      } else {
-        // Casio-style `sin 30` without parentheses.
-        arguments.add(_unary());
-      }
-      validateFunctionArity(lower, arguments.length);
-      return FunctionExpr(lower, arguments);
+      if (_peek.kind == TokenKind.leftParen) return _functionCall(lower);
+      // Casio-style `sin 30` without parentheses.
+      final argument = _unary();
+      validateFunctionArity(lower, 1);
+      return FunctionExpr(lower, [argument]);
     }
 
     if (raw.length == 1) {
       return VariableExpr(raw);
     }
 
+    // `Anse` (the Ans key followed by the e key) means Ans·e, `AnsAns` means
+    // Ans·Ans, and `Anssin(30)` means Ans·sin(30). The run has to be handled
+    // before the unknown-function check below, because `Anssin(` would
+    // otherwise throw.
+    final reserved = _reservedRun(raw);
+    if (reserved != null) return reserved;
+
     if (_peek.kind == TokenKind.leftParen) {
       throw CalcError(
         CalcErrorKind.syntax,
         detail: 'دالة غير معروفة «$raw».',
       );
-    }
-
-    // `Anse` (the Ans key followed by the e key) means Ans·e. The single-letter
-    // split below would read it as A·n·s·e, and the unset n and s turn the
-    // whole product into 0 with no error.
-    final reserved = _splitReservedPrefix(raw);
-    if (reserved != null) {
-      Expr run = _simpleName(reserved.first);
-      for (final part in reserved.skip(1)) {
-        run = BinaryExpr('*', run, _simpleName(part));
-      }
-      return run;
     }
 
     // `xy` is read as x·y, matching the way students type implicit products.
@@ -218,21 +202,58 @@ class Parser {
         detail: 'اسم غير صالح «$raw».',
       );
     }
-    Expr product = VariableExpr(raw[0]);
+    Expr product = _simpleName(raw[0]);
     for (var i = 1; i < raw.length; i++) {
-      product = BinaryExpr('*', product, VariableExpr(raw[i]));
+      product = BinaryExpr('*', product, _simpleName(raw[i]));
     }
     return product;
   }
 
-  /// Splits a letter run that begins with a reserved multi-letter name.
-  List<String>? _splitReservedPrefix(String raw) {
-    if (raw.length > 3 && raw.substring(0, 3).toLowerCase() == 'ans') {
-      final rest = raw.substring(3);
-      if (!RegExp(r'^[A-Za-z]+$').hasMatch(rest)) return null;
-      return <String>['Ans', ...rest.split('')];
+  /// Reads `name(...)` after the caller has seen the opening parenthesis.
+  Expr _functionCall(String lower) {
+    final arguments = <Expr>[];
+    _expect(TokenKind.leftParen, 'قوس فاتح (');
+    if (_peek.kind != TokenKind.rightParen) {
+      arguments.add(_additive());
+      while (_matchKind(TokenKind.comma)) {
+        arguments.add(_additive());
+      }
     }
-    return null;
+    _expect(TokenKind.rightParen, 'قوس قافل )');
+    validateFunctionArity(lower, arguments.length);
+    return FunctionExpr(lower, arguments);
+  }
+
+  /// Splits a letter run that starts with the reserved `Ans` name.
+  ///
+  /// Returns `null` when the run does not start with `Ans`, so the caller
+  /// keeps the generic handling. A trailing function name followed by `(`
+  /// stays whole, so `Anssin(30)` calls `sin` instead of reading `s·i·n`.
+  Expr? _reservedRun(String raw) {
+    if (!RegExp(r'^[A-Za-z]+$').hasMatch(raw)) return null;
+    var rest = raw;
+    final parts = <Expr>[];
+    while (rest.length >= 3 && rest.substring(0, 3).toLowerCase() == 'ans') {
+      parts.add(const VariableExpr('Ans'));
+      rest = rest.substring(3);
+    }
+    if (parts.isEmpty) return null;
+    if (rest.isNotEmpty) {
+      final restLower = rest.toLowerCase();
+      if (_peek.kind == TokenKind.leftParen &&
+          knownFunctionNames.contains(restLower)) {
+        parts.add(_functionCall(restLower));
+      } else {
+        for (final part in rest.split('')) {
+          parts.add(_simpleName(part));
+        }
+      }
+    }
+    var product = parts.first;
+    for (final part in parts.skip(1)) {
+      product = BinaryExpr('*', product, part);
+    }
+    return product;
   }
 
   /// Resolves one part of a split run the same way a whole identifier is.

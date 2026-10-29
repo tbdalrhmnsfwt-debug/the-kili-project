@@ -319,8 +319,14 @@ class EvalValue {
   bool get isExact => exact != null;
   bool get isReal => imaginaryPart == 0;
   bool get isComplex => imaginaryPart != 0;
-  bool get isZero =>
-      (exact?.isZero ?? false) || (isReal && realPart.abs() < 1e-15);
+
+  /// The epsilon only applies to approximations. An exact rational knows
+  /// whether it is zero, and `1e-16` is a perfectly good divisor.
+  bool get isZero {
+    final value = exact;
+    if (value != null) return value.isZero;
+    return isReal && realPart.abs() < 1e-15;
+  }
 
   double get magnitude => isReal
       ? realPart.abs()

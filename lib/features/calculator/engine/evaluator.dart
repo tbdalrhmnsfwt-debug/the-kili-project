@@ -506,7 +506,7 @@ class Evaluator {
         final value = arguments.length > 1
             ? math.log(first.realPart) / math.log(base.realPart)
             : math.log(first.realPart) / math.ln10;
-        return EvalValue.real(_stabilize(value));
+        return EvalValue.real(_stabilizeTranscendental(value));
       case 'sqrt':
         return _sqrt(first);
       case 'cbrt':
@@ -652,7 +652,9 @@ class Evaluator {
       throw const CalcError(CalcErrorKind.math);
     }
     final result = context.fromRadians(function(argument));
-    return EvalValue.real(_stabilize(result));
+    // atan(1e-14) is legitimately tiny; the absolute floor in [_stabilize]
+    // would turn it into 0.
+    return EvalValue.real(_stabilizeTranscendental(result));
   }
 
   EvalValue _realFunction(

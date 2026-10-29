@@ -75,6 +75,28 @@ EvalValue evaluate(
   ).evaluate(parseExpression(source));
 }
 
+/// [evaluate], but a [CalcError] comes back as `ERROR <detail>` instead of
+/// aborting the whole run.
+String displayOrError(
+  String source, {
+  AngleUnit angle = AngleUnit.degrees,
+  Map<String, EvalValue>? variables,
+  bool complex = false,
+  EvalValue? answer,
+}) {
+  try {
+    return evaluate(
+      source,
+      angle: angle,
+      variables: variables,
+      complex: complex,
+      answer: answer,
+    ).displayValue;
+  } on CalcError catch (error) {
+    return 'ERROR ${error.detail ?? error.kind}';
+  }
+}
+
 void throwsCalc(
   void Function() body,
   String description, {
@@ -973,6 +995,70 @@ void verifyAnsRuns() {
   );
 }
 
+/// Gaps found by the whole-branch review after the twelve planned tasks.
+void verifyReviewGaps() {
+  // An exact value smaller than the approximate zero floor is still a value:
+  // dividing by it must compute, not raise division by zero.
+  equal(
+    displayOrError('1/1e-16'),
+    displayOrError('1e16'),
+    'dividing by an exact tiny value is not division by zero',
+  );
+  equal(
+    displayOrError('(1e-16)^-1'),
+    displayOrError('1e16'),
+    'a negative power of an exact tiny value stays exact',
+  );
+  equal(
+    displayOrError('1/(1/6.022e23)'),
+    displayOrError('6.022e23'),
+    'a reciprocal of a reciprocal restores the exact value',
+  );
+  equal(
+    displayOrError('(1e-400)^(-1)'),
+    displayOrError('1e400'),
+    'a tiny out-of-range exact value can be inverted',
+  );
+
+  // Letter runs are products, and `Ans` can start one.
+  final answer = EvalValue.integer(25);
+  equal(
+    evaluate('AnsAns', answer: answer).displayValue,
+    '625',
+    'the Ans key pressed twice is Ans times Ans',
+  );
+  equal(
+    displayOrError('Anssin(30)', answer: answer),
+    evaluate('Ans*sin(30)', answer: answer).displayValue,
+    'Ans followed by a function is Ans times the function',
+  );
+  equal(
+    evaluate('ee').displayValue,
+    evaluate('e*e').displayValue,
+    'the e key pressed twice is e squared',
+  );
+  equal(
+    evaluate('Ee', variables: {'E': EvalValue.integer(7)}).displayValue,
+    evaluate('E*e', variables: {'E': EvalValue.integer(7)}).displayValue,
+    'E followed by e keeps both meanings',
+  );
+
+  // Inverse trig and log of a tiny argument are tiny, not zero.
+  const radians = AngleUnit.radians;
+  check(
+    evaluate('atan(1e-14)', angle: radians).realPart != 0,
+    'atan of a tiny argument is not zero',
+  );
+  check(
+    evaluate('asin(1e-14)', angle: radians).realPart != 0,
+    'asin of a tiny argument is not zero',
+  );
+  check(
+    evaluate('log(1+1e-14)', angle: radians).realPart != 0,
+    'log of one plus epsilon is not zero',
+  );
+}
+
 void verifyRationalLimits() {
   check(
     Rational.tryParse('1e100000') == null,
@@ -1051,6 +1137,7 @@ void main() {
   verifyRandomness();
   verifyNumericalStability();
   verifyRationalLimits();
+  verifyReviewGaps();
   verifyAnsRuns();
   verifyVariablePersistence();
   verifySession();
