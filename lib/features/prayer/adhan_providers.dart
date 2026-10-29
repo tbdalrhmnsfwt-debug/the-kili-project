@@ -14,13 +14,13 @@ const String _adhanSettingsKey = 'adhan_settings';
 /// The user's notification choices, persisted in [LocalStore].
 final adhanSettingsProvider =
     StateNotifierProvider<AdhanSettingsController, AdhanSettings>((ref) {
-      return AdhanSettingsController(ref.watch(localStoreProvider));
-    });
+  return AdhanSettingsController(ref.watch(localStoreProvider));
+});
 
 class AdhanSettingsController extends StateNotifier<AdhanSettings> {
   AdhanSettingsController(LocalStore store)
-    : _store = store,
-      super(_read(store));
+      : _store = store,
+        super(_read(store));
 
   final LocalStore _store;
 
@@ -35,6 +35,12 @@ class AdhanSettingsController extends StateNotifier<AdhanSettings> {
   void setEnabled(bool value) {
     if (state.enabled == value) return;
     state = state.copyWith(enabled: value);
+    _save();
+  }
+
+  void setStatusBarEnabled(bool value) {
+    if (state.statusBarEnabled == value) return;
+    state = state.copyWith(statusBarEnabled: value);
     _save();
   }
 
