@@ -11,6 +11,7 @@ import '../calc_session.dart';
 import '../engine/calculator_error.dart';
 import '../engine/evaluator.dart';
 import '../engine/input_editing.dart';
+import '../engine/lexer.dart';
 import '../engine/math_value.dart';
 import '../engine/number_format.dart';
 import '../engine/parser.dart';
@@ -676,72 +677,104 @@ class ComputationModeState extends State<ComputationMode> {
     final whole = TextEditingController();
     final numerator = TextEditingController();
     final denominator = TextEditingController(text: '1');
+    String? error;
     final result = await showDialog<String>(
       context: context,
       builder: (context) {
         final palette = _calcPalette;
+        final errorColor = _calcTheme.colorScheme.error;
         return Theme(
           data: _calcTheme,
-          child: AlertDialog(
-            backgroundColor: palette.panelStrong,
-            title: Text(
-              'إدخال كسر',
-              style: CalcTypography.title(palette),
-              textDirection: TextDirection.rtl,
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CalcLabeledField(
-                  label: 'العدد الصحيح (اختياري)',
-                  controller: whole,
-                  hint: '0',
-                  keyboardType: TextInputType.number,
+          child: StatefulBuilder(
+            builder: (context, setDialogState) => AlertDialog(
+              backgroundColor: palette.panelStrong,
+              title: Text(
+                'إدخال كسر',
+                style: CalcTypography.title(palette),
+                textDirection: TextDirection.rtl,
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CalcLabeledField(
+                    label: 'العدد الصحيح (اختياري)',
+                    controller: whole,
+                    hint: '0',
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 10),
+                  CalcLabeledField(
+                    label: 'البسط',
+                    controller: numerator,
+                    hint: '1',
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
+                  ),
+                  const SizedBox(height: 10),
+                  CalcLabeledField(
+                    label: 'المقام',
+                    controller: denominator,
+                    hint: '2',
+                    keyboardType: TextInputType.number,
+                  ),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        error!,
+                        textDirection: TextDirection.rtl,
+                        style: TextStyle(fontSize: 11, color: errorColor),
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('إلغاء'),
                 ),
-                const SizedBox(height: 10),
-                CalcLabeledField(
-                  label: 'البسط',
-                  controller: numerator,
-                  hint: '1',
-                  keyboardType: TextInputType.number,
-                  autofocus: true,
-                ),
-                const SizedBox(height: 10),
-                CalcLabeledField(
-                  label: 'المقام',
-                  controller: denominator,
-                  hint: '2',
-                  keyboardType: TextInputType.number,
+                FilledButton(
+                  onPressed: () {
+                    // Arabic-Indic digits are normalized exactly as the main
+                    // expression field does before anything is parsed.
+                    final rawWhole = normalizeCalculatorInput(
+                      whole.text.trim(),
+                    );
+                    final w = rawWhole.isEmpty ? 0 : int.tryParse(rawWhole);
+                    final n = int.tryParse(
+                      normalizeCalculatorInput(numerator.text.trim()),
+                    );
+                    final d = int.tryParse(
+                      normalizeCalculatorInput(denominator.text.trim()),
+                    );
+                    if (w == null || n == null || d == null) {
+                      setDialogState(
+                        () => error =
+                            'اكتب أرقامًا صحيحة — الأرقام العربية مقبولة.',
+                      );
+                      return;
+                    }
+                    if (d == 0) {
+                      setDialogState(() => error = 'المقام مينفعش يكون صفر.');
+                      return;
+                    }
+                    final total = w.abs() * d.abs() + n.abs();
+                    if (total == 0) {
+                      Navigator.pop(context, '0');
+                      return;
+                    }
+                    final negative = w != 0 ? w < 0 : (n < 0) != (d < 0);
+                    Navigator.pop(
+                      context,
+                      negative
+                          ? '(-($total/${d.abs()}))'
+                          : '($total/${d.abs()})',
+                    );
+                  },
+                  child: const Text('إدراج'),
                 ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final w = int.tryParse(whole.text.trim()) ?? 0;
-                  final n = int.tryParse(numerator.text.trim());
-                  final d = int.tryParse(denominator.text.trim());
-                  if (n == null || d == null || d == 0) {
-                    return;
-                  }
-                  final total = w.abs() * d.abs() + n.abs();
-                  if (total == 0) {
-                    Navigator.pop(context, '0');
-                    return;
-                  }
-                  final negative = w != 0 ? w < 0 : (n < 0) != (d < 0);
-                  Navigator.pop(
-                    context,
-                    negative ? '(-($total/${d.abs()}))' : '($total/${d.abs()})',
-                  );
-                },
-                child: const Text('إدراج'),
-              ),
-            ],
           ),
         );
       },
@@ -755,62 +788,83 @@ class ComputationModeState extends State<ComputationMode> {
   Future<void> _showComplexPolar() async {
     final radius = TextEditingController();
     final angle = TextEditingController();
+    String? error;
     final result = await showDialog<String>(
       context: context,
       builder: (context) {
         final palette = _calcPalette;
+        final errorColor = _calcTheme.colorScheme.error;
         return Theme(
           data: _calcTheme,
-          child: AlertDialog(
-            backgroundColor: palette.panelStrong,
-            title: Text(
-              'إدخال قطبي r∠θ',
-              style: CalcTypography.title(palette),
-              textDirection: TextDirection.rtl,
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'θ بوحدة ${_session.settings.angleUnit.label} الحالية.',
-                  style: CalcTypography.label(palette, size: 11).copyWith(
-                    color: palette.mathMuted,
+          child: StatefulBuilder(
+            builder: (context, setDialogState) => AlertDialog(
+              backgroundColor: palette.panelStrong,
+              title: Text(
+                'إدخال قطبي r∠θ',
+                style: CalcTypography.title(palette),
+                textDirection: TextDirection.rtl,
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'θ بوحدة ${_session.settings.angleUnit.label} الحالية.',
+                    style: CalcTypography.label(palette, size: 11).copyWith(
+                      color: palette.mathMuted,
+                    ),
+                    textDirection: TextDirection.rtl,
                   ),
-                  textDirection: TextDirection.rtl,
+                  const SizedBox(height: 10),
+                  CalcLabeledField(
+                    label: 'المقدار r',
+                    controller: radius,
+                    hint: '5',
+                    autofocus: true,
+                  ),
+                  const SizedBox(height: 10),
+                  CalcLabeledField(
+                    label: 'الزاوية θ',
+                    controller: angle,
+                    hint: '30',
+                  ),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        error!,
+                        textDirection: TextDirection.rtl,
+                        style: TextStyle(fontSize: 11, color: errorColor),
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('إلغاء'),
                 ),
-                const SizedBox(height: 10),
-                CalcLabeledField(
-                  label: 'المقدار r',
-                  controller: radius,
-                  hint: '5',
-                  autofocus: true,
-                ),
-                const SizedBox(height: 10),
-                CalcLabeledField(
-                  label: 'الزاوية θ',
-                  controller: angle,
-                  hint: '30',
+                FilledButton(
+                  onPressed: () {
+                    // Arabic-Indic digits and the Arabic decimal separator are
+                    // accepted here too, matching the expression field.
+                    final r = double.tryParse(
+                      normalizeCalculatorInput(radius.text.trim()),
+                    );
+                    final t = double.tryParse(
+                      normalizeCalculatorInput(angle.text.trim()),
+                    );
+                    if (r == null || t == null) {
+                      setDialogState(
+                        () => error = 'اكتب مقدارًا وزاوية صحيحين.',
+                      );
+                      return;
+                    }
+                    Navigator.pop(context, '($r×cos($t)+$r×sin($t)×i)');
+                  },
+                  child: const Text('إدراج'),
                 ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final r = double.tryParse(radius.text.trim());
-                  final t = double.tryParse(angle.text.trim());
-                  if (r == null || t == null) return;
-                  Navigator.pop(
-                    context,
-                    '($r×cos($t)+$r×sin($t)×i)',
-                  );
-                },
-                child: const Text('إدراج'),
-              ),
-            ],
           ),
         );
       },
