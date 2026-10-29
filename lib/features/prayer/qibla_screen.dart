@@ -531,6 +531,9 @@ class _StatusChip extends StatelessWidget {
       _CompassMode.live => ('مباشر', theme.colorScheme.primary),
       _CompassMode.staticMode => ('ثابت', theme.colorScheme.onSurfaceVariant),
     };
+    // The dot and border keep the brand shade; the label has to clear the pill
+    // tint underneath it.
+    final ink = cardAccentOnTintOf(color, theme, alpha: 0.12);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
@@ -553,7 +556,7 @@ class _StatusChip extends StatelessWidget {
               fontFamily: 'Cairo',
               fontSize: 9.5,
               fontWeight: FontWeight.w800,
-              color: color,
+              color: ink,
             ),
           ),
         ],
@@ -610,7 +613,9 @@ class _CompassStatus extends StatelessWidget {
                   ? Icons.check_circle_rounded
                   : Icons.screen_rotation_alt_rounded,
               size: 16,
-              color: aligned ? ZakerColors.success : theme.colorScheme.primary,
+              color: aligned
+                  ? cardAccentOf(ZakerColors.success, theme)
+                  : theme.colorScheme.primary,
             ),
             const SizedBox(width: 7),
             Flexible(
@@ -620,7 +625,9 @@ class _CompassStatus extends StatelessWidget {
                     : 'لف الموبايل ببطء لحد ما تبقى فوقه السهم.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: aligned ? ZakerColors.success : muted,
+                  color: aligned
+                      ? cardAccentOf(ZakerColors.success, theme)
+                      : muted,
                   fontWeight: aligned ? FontWeight.w800 : FontWeight.w600,
                   fontSize: 10.5,
                   height: 1.5,

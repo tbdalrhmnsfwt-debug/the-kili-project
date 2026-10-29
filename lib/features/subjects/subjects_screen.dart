@@ -562,12 +562,16 @@ class _SubjectCard extends StatelessWidget {
                           color: ZakerColors.accent.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const TrText(
+                        child: TrText(
                           'قريبًا',
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
-                            color: ZakerColors.accent,
+                            color: cardAccentOnTintOf(
+                              ZakerColors.accent,
+                              theme,
+                              alpha: 0.15,
+                            ),
                           ),
                         ),
                       )

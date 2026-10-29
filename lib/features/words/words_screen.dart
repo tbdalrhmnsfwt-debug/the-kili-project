@@ -571,7 +571,11 @@ class _WordReviewScreenState extends ConsumerState<WordReviewScreen> {
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: ZakerColors.success,
+                      color: cardAccentOnTintOf(
+                        ZakerColors.success,
+                        theme,
+                        alpha: 0.12,
+                      ),
                     ),
                   ),
                   const SizedBox(height: ZakerSpacing.xs),

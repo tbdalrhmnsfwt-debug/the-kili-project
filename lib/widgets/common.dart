@@ -187,11 +187,10 @@ class StatChip extends StatelessWidget {
     // light instead of being adapted to the light card — the theme's muted
     // label colour used to disappear on navy.
     final onBanner = accent.computeLuminance() > 0.8;
-    final surface = cardSurfaceOf(theme);
     // Text has to clear the chip's own tint, not the bare card behind it.
     final chipSurface = Color.alphaBlend(
       accent.withValues(alpha: 0.10),
-      surface,
+      cardSurfaceOf(theme),
     );
     final foreground =
         onBanner ? accent : readableTextColor(accent, chipSurface);

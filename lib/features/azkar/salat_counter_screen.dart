@@ -230,7 +230,7 @@ class _SalatCounterScreenState extends ConsumerState<SalatCounterScreen> {
                           fontWeight: FontWeight.w900,
                           fontSize: 56,
                           height: 1,
-                          color: ZakerColors.accent,
+                          color: cardAccentOf(ZakerColors.accent, theme),
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
@@ -449,7 +449,7 @@ class _PhraseCard extends StatelessWidget {
                       Text(
                         'تسجيل متاح',
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: ZakerColors.success,
+                          color: cardAccentOf(ZakerColors.success, theme),
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),

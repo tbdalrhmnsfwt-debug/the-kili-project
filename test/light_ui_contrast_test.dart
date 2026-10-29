@@ -86,4 +86,28 @@ void main() {
       }
     });
   }
+
+  test('every brand accent clears 4.5:1 on its own tint', () {
+    const accents = <String, Color>{
+      'gold': ZakerColors.accent,
+      'green': ZakerColors.success,
+      'red': ZakerColors.danger,
+    };
+    for (final style in ZakerThemeStyle.values) {
+      final theme = ZakerTheme.forStyle(style);
+      final card = cardSurfaceOf(theme);
+      for (final accent in accents.entries) {
+        for (final alpha in const [0.11, 0.12, 0.14, 0.15, 0.16]) {
+          final tint =
+              Color.alphaBlend(accent.value.withValues(alpha: alpha), card);
+          final ink = cardAccentOnTintOf(accent.value, theme, alpha: alpha);
+          expect(
+            contrastRatio(ink, tint),
+            greaterThanOrEqualTo(4.5),
+            reason: '${accent.key} @$alpha on ${style.id}',
+          );
+        }
+      }
+    }
+  });
 }

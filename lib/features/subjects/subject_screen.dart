@@ -875,7 +875,10 @@ class _Meta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tint = color ?? theme.colorScheme.onSurfaceVariant;
+    final tint = readableTextColor(
+      color ?? theme.colorScheme.onSurfaceVariant,
+      cardSurfaceOf(theme),
+    );
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

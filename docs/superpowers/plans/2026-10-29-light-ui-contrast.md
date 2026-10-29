@@ -46,10 +46,13 @@
 **Interfaces:**
 - Consumes: `cardAccentOf(accent, theme)`.
 
-- [ ] Add contrast assertions for `ZakerColors.gold` and `ZakerColors.success` on the light card, and for `cardAccentOf(...)` on both light and dark themes.
-- [ ] Replace `color: ZakerColors.accent` / `ZakerColors.success` in those `TextStyle`s with `cardAccentOf(ZakerColors.accent, theme)` / `cardAccentOf(ZakerColors.success, theme)`; leave icon and fill colours untouched.
-- [ ] Analyze clean; commit.
-
+- [x] Add contrast assertions for `ZakerColors.gold` and `ZakerColors.success` on the light card, and for `cardAccentOf(...)` on both light and dark themes.
+- [x] Replace `color: ZakerColors.accent` / `ZakerColors.success` in those `TextStyle`s with `cardAccentOf(ZakerColors.accent, theme)` / `cardAccentOf(ZakerColors.success, theme)`; leave icon and fill colours untouched.
+- [x] Analyze clean; commit.
+- [x] Ruling: the audit found the same failure in four places the review did not list —
+  the big salat counter number, `_Meta` in the subject screen, the azkar settings status pill,
+  and gold/green icons on white (2.0–3.0:1, under the 3:1 icon floor) — so they were fixed with
+  the same helpers. Cost if wrong: slightly darker accent glyphs than the old brand shade.
 ## Task 3: The home-layout setting does nothing
 
 **Files:** `lib/core/appearance.dart:55-100`, `lib/features/settings/appearance_screen.dart:66-79`

@@ -175,8 +175,12 @@ class _AdhkarCard extends StatelessWidget {
                 ),
                 child: TrText(
                   '${entry['order'] ?? index + 1}',
-                  style: const TextStyle(
-                    color: ZakerColors.accent,
+                  style: TextStyle(
+                    color: cardAccentOnTintOf(
+                      ZakerColors.accent,
+                      theme,
+                      alpha: 0.14,
+                    ),
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
                   ),

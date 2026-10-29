@@ -234,7 +234,11 @@ class _BookHeader extends StatelessWidget {
                   color: accent.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(ZakerRadius.md),
                 ),
-                child: Icon(Icons.menu_book_rounded, color: accent, size: 28),
+                child: Icon(
+                  Icons.menu_book_rounded,
+                  color: cardAccentOf(accent, theme),
+                  size: 28,
+                ),
               ),
               const SizedBox(width: ZakerSpacing.md),
               Expanded(
@@ -801,7 +805,7 @@ class _SectionsBody extends StatelessWidget {
               'العناوين المستخرجة محتاجة مراجعة. الأقسام اللي مكتوب عليها '
               '«نطاق صفحات» مش عناوين رسمية، هي تقسيم مؤقت من غير تخمين.',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: ZakerColors.accent,
+                color: cardAccentOf(ZakerColors.accent, theme),
                 height: 1.5,
               ),
             ),
@@ -912,7 +916,7 @@ class _SectionTile extends StatelessWidget {
             TrText(
               '· نطاق صفحات',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: ZakerColors.accent,
+                color: cardAccentOf(ZakerColors.accent, theme),
               ),
             ),
           if (section.fromOcr)
