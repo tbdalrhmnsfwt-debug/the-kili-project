@@ -6,6 +6,7 @@
 /// library's own files stay where they are.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -24,6 +25,10 @@ class MyBagStore {
 
   final KeyValueStore _kv;
   final Directory _rootDir;
+
+  /// One queued write per folder; see [saveMedia].
+  final Map<String, Future<void>> _pendingSaves = {};
+  int _tempSeq = 0;
 
   Directory get bagDir => Directory(p.join(_rootDir.path, 'my_bag'));
 
@@ -87,7 +92,28 @@ class MyBagStore {
         links: _readPart(_linksFile(folderId)),
       );
 
-  Future<void> saveMedia(String folderId, MyBagFolderMedia media) async {
+  Future<void> saveMedia(String folderId, MyBagFolderMedia media) {
+    // An edit whose write is still in flight can be followed by a delete. The
+    // two must land in the order they were made, so one folder's saves queue
+    // behind each other instead of racing on meta.json and links.json.
+    final previous = _pendingSaves[folderId] ?? Future<void>.value();
+    final save = previous
+        .catchError((Object _) {})
+        .then((_) => _writeMedia(folderId, media));
+    _pendingSaves[folderId] = save;
+    unawaited(
+      save.whenComplete(() {
+        if (identical(_pendingSaves[folderId], save)) {
+          _pendingSaves.remove(folderId);
+        }
+      }).catchError((Object _) {
+        // The error already reached the caller through [save].
+      }),
+    );
+    return save;
+  }
+
+  Future<void> _writeMedia(String folderId, MyBagFolderMedia media) async {
     folderDir(folderId).createSync(recursive: true);
     await _writeJsonAtomic(_metaFile(folderId), media.toMetaJson());
     await _writeJsonAtomic(_linksFile(folderId), media.toLinksJson());
@@ -131,7 +157,9 @@ class MyBagStore {
   }
 
   Future<void> _writeJsonAtomic(File file, Map<String, dynamic> json) async {
-    final temp = File('${file.path}.tmp');
+    // Each write gets its own temp file: two stores over one directory (or a
+    // queued save and a direct write) must not rename away each other's temp.
+    final temp = File('${file.path}.${_tempSeq++}.tmp');
     try {
       await temp.writeAsString(jsonEncode(json), flush: true);
       await temp.rename(file.path);
