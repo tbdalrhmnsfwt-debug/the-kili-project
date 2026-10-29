@@ -30,6 +30,7 @@ import 'features/prayer/adhan_launch.dart';
 import 'features/prayer/adhan_sync_host.dart';
 import 'providers/app_providers.dart';
 import 'providers/batch_providers.dart';
+import 'providers/my_bag_providers.dart';
 import 'providers/pdf_providers.dart';
 
 Future<void> main() async {
@@ -73,6 +74,7 @@ Future<void> main() async {
         localStoreProvider.overrideWithValue(store),
         pdfLibraryStoreProvider.overrideWithValue(pdfStore),
         batchRootDirProvider.overrideWithValue(support),
+        myBagRootDirProvider.overrideWithValue(support),
       ],
       child: const ZakerlyApp(),
     ),
