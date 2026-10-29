@@ -180,6 +180,19 @@
             </intent-filter>
         </receiver>
 
+        <!-- Ongoing prayer bar: boundary alarms plus reboot/update/clock changes. -->
+        <receiver
+            android:name="com.zaker.zaker_ai.PrayerStatusReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="com.zaker.zaker_ai.PRAYER_STATUS_BOUNDARY" />
+            </intent-filter>
+        </receiver>
+
         <!-- Home-screen widgets (Glance). -->
         <receiver
             android:name="com.zaker.zaker_ai.widgets.ZToolsWidget"
