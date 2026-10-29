@@ -89,8 +89,8 @@
 
 **Files:** delete `lib/features/home/widgets/home_bag_preview.dart`, `lib/features/home/widgets/library_shortcut.dart`, `lib/features/bag/widgets/bag_folder_strip.dart`, `test/home_bag_preview_test.dart`
 
-- [ ] Re-verify with `grep -rn` that only the test imports `HomeBagPreview`/`LibraryShortcut` and only the preview imports `BagFolderStrip`.
-- [ ] Delete; `dart analyze lib test` clean; commit.
+- [x] Re-verify with `grep -rn` that only the test imports `HomeBagPreview`/`LibraryShortcut` and only the preview imports `BagFolderStrip`.
+- [x] Delete; `dart analyze lib test` clean; commit.
 
 ## Task 8: Final verification
 
