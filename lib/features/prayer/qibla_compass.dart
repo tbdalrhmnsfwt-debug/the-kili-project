@@ -39,6 +39,10 @@ class QiblaCompassDial extends StatelessWidget {
     final primary = theme.colorScheme.primary;
     final accent = theme.colorScheme.secondary;
     final needleColor = aligned ? ZakerColors.success : primary;
+    // The disc under the kaaba is primary-filled, which is gold in two of the
+    // four palettes: white on gold is 2.10:1 and 1.74:1 there, while onPrimary
+    // is 9.36:1 and 9.57:1. The aligned disc stays green with white on it.
+    final discInk = aligned ? Colors.white : theme.colorScheme.onPrimary;
     final isStatic = heading == null;
     final displayHeading = heading ?? 0;
 
@@ -134,10 +138,12 @@ class QiblaCompassDial extends StatelessWidget {
                       end: Alignment.bottomLeft,
                       colors: aligned
                           ? const [ZakerColors.success, Color(0xFF15803D)]
-                          : [primary, ZakerColors.primaryDark],
+                          // Darkening within the hue, not toward the navy, so
+                          // one ink stays legible on both ends of the disc.
+                          : [primary, Color.lerp(primary, Colors.black, 0.28)!],
                     ),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.85),
+                      color: discInk.withValues(alpha: 0.85),
                       width: 2,
                     ),
                     boxShadow: [
@@ -152,7 +158,7 @@ class QiblaCompassDial extends StatelessWidget {
                     child: HugeIcon(
                       icon: HugeIcons.strokeRoundedKaaba01,
                       size: side * 0.072,
-                      color: Colors.white,
+                      color: discInk,
                     ),
                   ),
                 ),

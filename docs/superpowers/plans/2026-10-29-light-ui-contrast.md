@@ -81,8 +81,9 @@
 
 **Files:** `lib/features/prayer/qibla_compass.dart:131-160`
 
-- [ ] When not aligned, the disc is painted with `primary` (gold in two themes); use `theme.colorScheme.onPrimary` for the icon and its ring in that branch, and keep white for the aligned green disc.
-- [ ] Analyze clean; commit.
+- [x] When not aligned, the disc is painted with `primary` (gold in two themes); use `theme.colorScheme.onPrimary` for the icon and its ring in that branch, and keep white for the aligned green disc.
+  - `Ruling:` the disc's gradient ran `[primary, primaryDark]`, and `primaryDark` is navy — so `onPrimary` alone would have fixed the gold end (2.10→9.36) and broken the navy end (white 18.29 → onPrimary 1.08). The second stop darkens within the hue instead (`lerp(primary, black, 0.28)`), which holds one ink across both: icon ≥5.03, ring ≥4.14 in every palette. Costs: the non-aligned disc no longer fades toward navy; if wrong, it reads as a flatter disc.
+- [x] Analyze clean; commit.
 
 ## Task 7: Dead home widgets carry light-only borders
 
