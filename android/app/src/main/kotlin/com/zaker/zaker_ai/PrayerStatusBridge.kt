@@ -132,6 +132,13 @@ object PrayerStatusBridge {
             .setUsesChronometer(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setPublicVersion(publicVersion)
+            // Below API 26 there is no channel, so LOW priority plus an
+            // explicit null sound/vibration is what keeps this bar silent. The
+            // channel handles it from 26 up, and the public version's builder
+            // settings are ignored by the platform.
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSound(null)
+            .setVibrate(null)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             builder.setChronometerCountDown(true)
         }
