@@ -52,9 +52,8 @@ void main() {
 
   test('a native openRoute reaches onOpenRoute', () async {
     String? route;
-    PrayerStatusBar.instance
-      ..onOpenRoute = (value) => route = value
-      ..attach();
+    PrayerStatusBar.instance.onOpenRoute = (value) => route = value;
+    PrayerStatusBar.instance.attach();
     await messenger.handlePlatformMessage(
       PrayerStatusBar.channelName,
       const StandardMethodCodec().encodeMethodCall(

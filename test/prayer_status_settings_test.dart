@@ -13,9 +13,8 @@ void main() {
   });
 
   test('an explicit off survives a JSON round trip', () {
-    final json = const AdhanSettings()
-        .copyWith(statusBarEnabled: false)
-        .toJson();
+    final json =
+        const AdhanSettings().copyWith(statusBarEnabled: false).toJson();
     expect(json['statusBar'], isFalse);
     expect(AdhanSettings.fromJson(json).statusBarEnabled, isFalse);
     expect(
