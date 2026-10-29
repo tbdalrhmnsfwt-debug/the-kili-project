@@ -20,10 +20,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../../core/my_bag/image_pdf_builder.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
@@ -46,11 +45,11 @@ class ScannedPage {
   final bool recognized;
 
   ScannedPage copyWith({String? text, bool? recognized}) => ScannedPage(
-    id: id,
-    imagePath: imagePath,
-    text: text ?? this.text,
-    recognized: recognized ?? this.recognized,
-  );
+        id: id,
+        imagePath: imagePath,
+        text: text ?? this.text,
+        recognized: recognized ?? this.recognized,
+      );
 }
 
 /// The scan / OCR screen.
@@ -147,21 +146,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     if (_pages.isEmpty || _working) return;
     setState(() => _working = true);
     try {
-      final doc = pw.Document();
-      for (final page in _pages) {
-        final file = File(page.imagePath);
-        if (!file.existsSync()) continue;
-        final image = pw.MemoryImage(await file.readAsBytes());
-        doc.addPage(
-          pw.Page(
-            pageFormat: PdfPageFormat.a4,
-            build: (context) => pw.Center(
-              child: pw.Image(image, fit: pw.BoxFit.contain),
-            ),
-          ),
-        );
-      }
-      final bytes = await doc.save();
+      final bytes = await buildImagePdf([
+        for (final page in _pages) page.imagePath,
+      ]);
       await Printing.sharePdf(
         bytes: bytes,
         filename: 'zaker-scan-${DateTime.now().millisecondsSinceEpoch}.pdf',
@@ -187,7 +174,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   /// Shows the recognised text so it can be read or copied.
   Future<void> _showText(ScannedPage page) async {
-    final text = page.text.isEmpty ? 'لسه مفيش نص مقروء من الصفحة دي.' : page.text;
+    final text =
+        page.text.isEmpty ? 'لسه مفيش نص مقروء من الصفحة دي.' : page.text;
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -208,13 +196,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               TrText(
                 'نص الصفحة ${page.id}',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
               const SizedBox(height: ZakerSpacing.md),
               Flexible(
                 child: SingleChildScrollView(
-                  child: SelectableText(text, style: const TextStyle(height: 1.7)),
+                  child:
+                      SelectableText(text, style: const TextStyle(height: 1.7)),
                 ),
               ),
               if (page.text.isNotEmpty) ...[

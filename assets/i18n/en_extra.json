@@ -1136,5 +1136,18 @@
 "افتح الإعدادات": "Open Settings",
 "حذف «{0}»؟": "Delete «{0}»?",
 "احذف": "Delete",
-"بنجهز الميكروفون…": "Getting the microphone ready…"
+"بنجهز الميكروفون…": "Getting the microphone ready…",
+"أضف صور": "Add images",
+"صوّر البورد أو اختار صور من المعرض.": "Photograph the board or pick images from the gallery.",
+"كاميرا": "Camera",
+"المعرض": "Gallery",
+"كوّن PDF": "Make a PDF",
+"بنكوّن ملف PDF…": "Building the PDF…",
+"تم تكوين ملف PDF": "PDF created",
+"أقصى 25 صورة في المرة.": "Up to 25 images at a time.",
+"حد أقصى 200 صورة في المجلد.": "A folder holds up to 200 images.",
+"حذف الصورة؟": "Delete the image?",
+"مقدرناش نكوّن ملف PDF.": "We could not build the PDF.",
+"مفيش صور تتكوّن في PDF.": "There are no images to put in a PDF.",
+"تم": "Done"
 }
