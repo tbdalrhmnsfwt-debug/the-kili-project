@@ -13,11 +13,14 @@ import '../ui/calc_widgets.dart';
 import 'mode_scaffold.dart';
 
 class VectorMode extends StatefulWidget {
-  const VectorMode({super.key, required this.angleUnit});
+  const VectorMode({super.key, required this.angleUnit, this.haptics = true});
 
   /// Components may contain trigonometric functions, so they follow the
   /// selected angle unit.
   final AngleUnit angleUnit;
+
+  /// Mirrors the calculator's haptics setting for the toggles in this mode.
+  final bool haptics;
 
   @override
   State<VectorMode> createState() => _VectorModeState();
@@ -162,6 +165,7 @@ class _VectorModeState extends State<VectorMode> {
                   values: const <int>[2, 3],
                   selected: _dimension,
                   labelFor: (value) => value == 2 ? '2D' : '3D',
+                  haptics: widget.haptics,
                   onChanged: _switchDimension,
                 ),
                 const SizedBox(height: 11),

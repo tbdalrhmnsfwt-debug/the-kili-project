@@ -14,11 +14,14 @@ import '../ui/calc_widgets.dart';
 import 'mode_scaffold.dart';
 
 class MatrixMode extends StatefulWidget {
-  const MatrixMode({super.key, required this.angleUnit});
+  const MatrixMode({super.key, required this.angleUnit, this.haptics = true});
 
   /// Cells may contain trigonometric functions, so they follow the selected
   /// angle unit.
   final AngleUnit angleUnit;
+
+  /// Mirrors the calculator's haptics setting for the toggles in this mode.
+  final bool haptics;
 
   @override
   State<MatrixMode> createState() => _MatrixModeState();
@@ -522,6 +525,7 @@ class _MatrixModeState extends State<MatrixMode> {
           selected: selected,
           labelFor: (value) => '$value',
           compact: true,
+          haptics: widget.haptics,
           onChanged: onChanged,
         ),
       ],

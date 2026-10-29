@@ -226,6 +226,7 @@ class _StatModeState extends State<StatMode> {
                   values: const <bool>[false, true],
                   selected: _twoVariable,
                   labelFor: (value) => value ? '2-VAR' : '1-VAR',
+                  haptics: widget.session.settings.haptics,
                   onChanged: _switchMode,
                 ),
                 const SizedBox(height: 11),
@@ -387,6 +388,7 @@ class _StatModeState extends State<StatMode> {
                         selected: _quadratic,
                         labelFor: (value) => value ? 'تربيعي' : 'خطي',
                         compact: true,
+                        haptics: widget.session.settings.haptics,
                         onChanged: (value) {
                           setState(() {
                             _quadratic = value;

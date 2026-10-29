@@ -19,11 +19,14 @@ import 'mode_scaffold.dart';
 enum _EquationKind { polynomial, system }
 
 class EqnMode extends StatefulWidget {
-  const EqnMode({super.key, required this.angleUnit});
+  const EqnMode({super.key, required this.angleUnit, this.haptics = true});
 
   /// Coefficients may contain trigonometric functions, so they must be read
   /// with the angle unit selected in settings.
   final AngleUnit angleUnit;
+
+  /// Mirrors the calculator's haptics setting for the toggles in this mode.
+  final bool haptics;
 
   @override
   State<EqnMode> createState() => _EqnModeState();
@@ -288,6 +291,7 @@ class _EqnModeState extends State<EqnMode> {
               selected: _kind,
               labelFor: (kind) =>
                   kind == _EquationKind.polynomial ? 'كثيرة حدود' : 'نظام خطي',
+              haptics: widget.haptics,
               onChanged: _changeKind,
             ),
           ),
@@ -372,6 +376,7 @@ class _EqnModeState extends State<EqnMode> {
                   selected: _degree,
                   labelFor: (degree) => 'درجة $degree',
                   compact: true,
+                  haptics: widget.haptics,
                   onChanged: _changeDegree,
                 ),
               ),
@@ -453,6 +458,7 @@ class _EqnModeState extends State<EqnMode> {
                   selected: _size,
                   labelFor: (size) => '${size}×$size',
                   compact: true,
+                  haptics: widget.haptics,
                   onChanged: _changeSize,
                 ),
               ),
