@@ -126,7 +126,8 @@ class _FormulasModeState extends State<FormulasMode> {
     final palette = CalcPalette.of(context);
     final categories = <String>{
       for (final formula in formulaLibrary) formula.category,
-    }.toList(growable: false)..sort();
+    }.toList(growable: false)
+      ..sort();
     var formulas = searchFormulas(_query);
     if (_category != null) {
       formulas = formulas
@@ -255,8 +256,7 @@ class _FormulasModeState extends State<FormulasMode> {
               _formulaCard(context, palette, formula),
           const CalcNote(
             icon: Icons.menu_book_outlined,
-            text:
-                'القوانين مرجع دراسي عام وليست قائمة منهج رسمي. '
+            text: 'القوانين مرجع دراسي عام وليست قائمة منهج رسمي. '
                 'الوحدات المكتوبة بجانب المتغيرات إرشادية، والحاسبة لا تحوّل الوحدات تلقائيًا داخل القانون.',
           ),
         ],

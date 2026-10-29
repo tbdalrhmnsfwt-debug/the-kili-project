@@ -5,7 +5,6 @@ library;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../calc_history.dart';
 import '../calc_session.dart';
@@ -112,7 +111,6 @@ class ComputationModeState extends State<ComputationMode> {
   }
 
   void _insert(String token) {
-    HapticFeedback.selectionClick();
     setState(() {
       _shift = false;
       _alpha = false;
@@ -166,7 +164,6 @@ class ComputationModeState extends State<ComputationMode> {
   }
 
   void _backspace() {
-    HapticFeedback.selectionClick();
     if (_justEvaluated) {
       setState(() {
         _expression = '';
@@ -240,7 +237,6 @@ class ComputationModeState extends State<ComputationMode> {
   }
 
   void _clear() {
-    HapticFeedback.mediumImpact();
     setState(() {
       _expression = '';
       _cursor = 0;
@@ -259,7 +255,6 @@ class ComputationModeState extends State<ComputationMode> {
   }
 
   void _equals() {
-    HapticFeedback.mediumImpact();
     final source = _expression.trim();
     if (source.isEmpty) {
       setState(() {
@@ -303,7 +298,6 @@ class ComputationModeState extends State<ComputationMode> {
         _notice = null;
         _justEvaluated = false;
       });
-      HapticFeedback.heavyImpact();
     } on FormatException catch (error) {
       setState(() {
         _error = CalcError(
@@ -320,7 +314,8 @@ class ComputationModeState extends State<ComputationMode> {
     final value = _justEvaluated ? _lastValue : _previewValue();
     if (value == null) {
       setState(() {
-        _notice = 'احسب تعبير الأول، وبعدها S⇔D بيبدّل بين الصورة الدقيقة والعشرية.';
+        _notice =
+            'احسب تعبير الأول، وبعدها S⇔D بيبدّل بين الصورة الدقيقة والعشرية.';
       });
       return;
     }
@@ -336,7 +331,6 @@ class ComputationModeState extends State<ComputationMode> {
     // decimal preference the shown form can be decimal even before the first
     // press, and a flag flip would then be a silent no-op.
     final showingExact = before.display == exact;
-    HapticFeedback.selectionClick();
     setState(() {
       _forceDecimal = showingExact;
       final format = _session.format(
@@ -371,7 +365,6 @@ class ComputationModeState extends State<ComputationMode> {
   }
 
   void _toggleSign() {
-    HapticFeedback.selectionClick();
     final result = _lastValue;
     if (_justEvaluated && result != null) {
       // After `=`, ± negates the result itself (including exact fractions and
@@ -414,7 +407,6 @@ class ComputationModeState extends State<ComputationMode> {
       });
       return;
     }
-    HapticFeedback.selectionClick();
     _session.memory = _session.memory + value;
     setState(() {
       _notice = 'M+ اتضافت — الذاكرة = ${_session.memoryDisplay}';
@@ -546,7 +538,8 @@ class ComputationModeState extends State<ComputationMode> {
         _notice = 'M = ${_session.memoryDisplay}';
       } else {
         _session.variables[target] = value;
-        _notice = '$target = ${_session.format(value, complex: widget.complex).display}';
+        _notice =
+            '$target = ${_session.format(value, complex: widget.complex).display}';
       }
     });
     widget.onChanged();
@@ -601,9 +594,7 @@ class ComputationModeState extends State<ComputationMode> {
               ? '(${value.exact!.numerator}/${value.exact!.denominator})'
               : formatReal(value.realPart).replaceAll('−', '-'));
     }
-    if (value.exact?.isInteger == true ||
-        value.exact != null ||
-        value.isReal) {
+    if (value.exact?.isInteger == true || value.exact != null || value.isReal) {
       // Variables are dynamic: recalling the name keeps the stored value live.
       return name;
     }
@@ -692,67 +683,65 @@ class ComputationModeState extends State<ComputationMode> {
         return Theme(
           data: _calcTheme,
           child: AlertDialog(
-          backgroundColor: palette.panelStrong,
-          title: Text(
-            'إدخال كسر',
-            style: CalcTypography.title(palette),
-            textDirection: TextDirection.rtl,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CalcLabeledField(
-                label: 'العدد الصحيح (اختياري)',
-                controller: whole,
-                hint: '0',
-                keyboardType: TextInputType.number,
+            backgroundColor: palette.panelStrong,
+            title: Text(
+              'إدخال كسر',
+              style: CalcTypography.title(palette),
+              textDirection: TextDirection.rtl,
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CalcLabeledField(
+                  label: 'العدد الصحيح (اختياري)',
+                  controller: whole,
+                  hint: '0',
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 10),
+                CalcLabeledField(
+                  label: 'البسط',
+                  controller: numerator,
+                  hint: '1',
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                ),
+                const SizedBox(height: 10),
+                CalcLabeledField(
+                  label: 'المقام',
+                  controller: denominator,
+                  hint: '2',
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إلغاء'),
               ),
-              const SizedBox(height: 10),
-              CalcLabeledField(
-                label: 'البسط',
-                controller: numerator,
-                hint: '1',
-                keyboardType: TextInputType.number,
-                autofocus: true,
-              ),
-              const SizedBox(height: 10),
-              CalcLabeledField(
-                label: 'المقام',
-                controller: denominator,
-                hint: '2',
-                keyboardType: TextInputType.number,
+              FilledButton(
+                onPressed: () {
+                  final w = int.tryParse(whole.text.trim()) ?? 0;
+                  final n = int.tryParse(numerator.text.trim());
+                  final d = int.tryParse(denominator.text.trim());
+                  if (n == null || d == null || d == 0) {
+                    return;
+                  }
+                  final total = w.abs() * d.abs() + n.abs();
+                  if (total == 0) {
+                    Navigator.pop(context, '0');
+                    return;
+                  }
+                  final negative = w != 0 ? w < 0 : (n < 0) != (d < 0);
+                  Navigator.pop(
+                    context,
+                    negative ? '(-($total/${d.abs()}))' : '($total/${d.abs()})',
+                  );
+                },
+                child: const Text('إدراج'),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final w = int.tryParse(whole.text.trim()) ?? 0;
-                final n = int.tryParse(numerator.text.trim());
-                final d = int.tryParse(denominator.text.trim());
-                if (n == null || d == null || d == 0) {
-                  return;
-                }
-                final total = w.abs() * d.abs() + n.abs();
-                if (total == 0) {
-                  Navigator.pop(context, '0');
-                  return;
-                }
-                final negative = w != 0 ? w < 0 : (n < 0) != (d < 0);
-                Navigator.pop(
-                  context,
-                  negative
-                      ? '(-($total/${d.abs()}))'
-                      : '($total/${d.abs()})',
-                );
-              },
-              child: const Text('إدراج'),
-            ),
-          ],
           ),
         );
       },
@@ -773,55 +762,55 @@ class ComputationModeState extends State<ComputationMode> {
         return Theme(
           data: _calcTheme,
           child: AlertDialog(
-          backgroundColor: palette.panelStrong,
-          title: Text(
-            'إدخال قطبي r∠θ',
-            style: CalcTypography.title(palette),
-            textDirection: TextDirection.rtl,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'θ بوحدة ${_session.settings.angleUnit.label} الحالية.',
-                style: CalcTypography.label(palette, size: 11).copyWith(
-                  color: palette.mathMuted,
+            backgroundColor: palette.panelStrong,
+            title: Text(
+              'إدخال قطبي r∠θ',
+              style: CalcTypography.title(palette),
+              textDirection: TextDirection.rtl,
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'θ بوحدة ${_session.settings.angleUnit.label} الحالية.',
+                  style: CalcTypography.label(palette, size: 11).copyWith(
+                    color: palette.mathMuted,
+                  ),
+                  textDirection: TextDirection.rtl,
                 ),
-                textDirection: TextDirection.rtl,
+                const SizedBox(height: 10),
+                CalcLabeledField(
+                  label: 'المقدار r',
+                  controller: radius,
+                  hint: '5',
+                  autofocus: true,
+                ),
+                const SizedBox(height: 10),
+                CalcLabeledField(
+                  label: 'الزاوية θ',
+                  controller: angle,
+                  hint: '30',
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إلغاء'),
               ),
-              const SizedBox(height: 10),
-              CalcLabeledField(
-                label: 'المقدار r',
-                controller: radius,
-                hint: '5',
-                autofocus: true,
-              ),
-              const SizedBox(height: 10),
-              CalcLabeledField(
-                label: 'الزاوية θ',
-                controller: angle,
-                hint: '30',
+              FilledButton(
+                onPressed: () {
+                  final r = double.tryParse(radius.text.trim());
+                  final t = double.tryParse(angle.text.trim());
+                  if (r == null || t == null) return;
+                  Navigator.pop(
+                    context,
+                    '($r×cos($t)+$r×sin($t)×i)',
+                  );
+                },
+                child: const Text('إدراج'),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final r = double.tryParse(radius.text.trim());
-                final t = double.tryParse(angle.text.trim());
-                if (r == null || t == null) return;
-                Navigator.pop(
-                  context,
-                  '($r×cos($t)+$r×sin($t)×i)',
-                );
-              },
-              child: const Text('إدراج'),
-            ),
-          ],
           ),
         );
       },
@@ -839,38 +828,44 @@ class ComputationModeState extends State<ComputationMode> {
       builder: (context) => Theme(
         data: _calcTheme,
         child: _FunctionSheet(
-        onInsert: (token) {
-          Navigator.pop(context);
-          _insert(token);
-        },
-        onSeries: () {
-          Navigator.pop(context);
-          _showSeries(product: false);
-        },
-        onProduct: () {
-          Navigator.pop(context);
-          _showSeries(product: true);
-        },
-        onIntegral: () {
-          Navigator.pop(context);
-          _showAdvanced(
-            title: 'التكامل العددي المحدد',
-            fields: const <String>['التعبير', 'المتغير', 'الحد الأدنى', 'الحد الأعلى'],
-            defaults: const <String>['', 'x', '0', '1'],
-            build: (values) =>
-                'integral((${values[0]}), ${values[1]}, ${values[2]}, ${values[3]})',
-          );
-        },
-        onDerivative: () {
-          Navigator.pop(context);
-          _showAdvanced(
-            title: 'المشتقة العددية',
-            fields: const <String>['التعبير', 'المتغير', 'النقطة'],
-            defaults: const <String>['', 'x', '1'],
-            build: (values) => 'diff((${values[0]}), ${values[1]}, ${values[2]})',
-          );
-        },
-      ),
+          onInsert: (token) {
+            Navigator.pop(context);
+            _insert(token);
+          },
+          onSeries: () {
+            Navigator.pop(context);
+            _showSeries(product: false);
+          },
+          onProduct: () {
+            Navigator.pop(context);
+            _showSeries(product: true);
+          },
+          onIntegral: () {
+            Navigator.pop(context);
+            _showAdvanced(
+              title: 'التكامل العددي المحدد',
+              fields: const <String>[
+                'التعبير',
+                'المتغير',
+                'الحد الأدنى',
+                'الحد الأعلى'
+              ],
+              defaults: const <String>['', 'x', '0', '1'],
+              build: (values) =>
+                  'integral((${values[0]}), ${values[1]}, ${values[2]}, ${values[3]})',
+            );
+          },
+          onDerivative: () {
+            Navigator.pop(context);
+            _showAdvanced(
+              title: 'المشتقة العددية',
+              fields: const <String>['التعبير', 'المتغير', 'النقطة'],
+              defaults: const <String>['', 'x', '1'],
+              build: (values) =>
+                  'diff((${values[0]}), ${values[1]}, ${values[2]})',
+            );
+          },
+        ),
       ),
     );
   }
@@ -902,46 +897,46 @@ class ComputationModeState extends State<ComputationMode> {
         return Theme(
           data: _calcTheme,
           child: AlertDialog(
-          backgroundColor: palette.panelStrong,
-          title: Text(
-            title,
-            style: CalcTypography.title(palette),
-            textDirection: TextDirection.rtl,
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var i = 0; i < fields.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 9),
-                  CalcLabeledField(
-                    label: fields[i],
-                    controller: controllers[i],
-                    autofocus: i == 0,
-                  ),
+            backgroundColor: palette.panelStrong,
+            title: Text(
+              title,
+              style: CalcTypography.title(palette),
+              textDirection: TextDirection.rtl,
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < fields.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 9),
+                    CalcLabeledField(
+                      label: fields[i],
+                      controller: controllers[i],
+                      autofocus: i == 0,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final values = [for (final c in controllers) c.text.trim()];
-                if (values.isEmpty || values.first.isEmpty) return;
-                if (values.length > 1 &&
-                    (values[1].length != 1 ||
-                        !RegExp(r'^[A-Za-zθ]$').hasMatch(values[1]))) {
-                  return;
-                }
-                Navigator.pop(context, build(values));
-              },
-              child: const Text('إدراج'),
-            ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final values = [for (final c in controllers) c.text.trim()];
+                  if (values.isEmpty || values.first.isEmpty) return;
+                  if (values.length > 1 &&
+                      (values[1].length != 1 ||
+                          !RegExp(r'^[A-Za-zθ]$').hasMatch(values[1]))) {
+                    return;
+                  }
+                  Navigator.pop(context, build(values));
+                },
+                child: const Text('إدراج'),
+              ),
+            ],
           ),
         );
       },
@@ -963,199 +958,194 @@ class ComputationModeState extends State<ComputationMode> {
       radius: 20,
       color: palette.display,
       child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: SizedBox(
+              height: 24,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  CalcPill(
+                    label: widget.complex ? 'CMPLX' : 'COMP',
+                    compact: true,
+                    active: true,
+                    color: widget.complex ? palette.alpha : palette.accent,
+                  ),
+                  const SizedBox(width: 5),
+                  CalcPill(
+                    label: _session.settings.angleUnit.label,
+                    compact: true,
+                    color: palette.label,
+                  ),
+                  const SizedBox(width: 5),
+                  CalcPill(
+                    label: _session.settings.naturalInput ? 'MATH' : 'LINE',
+                    compact: true,
+                    color: palette.label,
+                  ),
+                  if (_session.memoryActive) ...[
+                    const SizedBox(width: 5),
+                    CalcPill(
+                      label: 'M',
+                      compact: true,
+                      color: palette.shift,
+                      active: true,
+                      onTap: _showMemory,
+                    ),
+                  ],
+                  if (exact) ...[
+                    const SizedBox(width: 5),
+                    CalcPill(
+                      label: 'EXACT',
+                      compact: true,
+                      color: palette.accent,
+                    ),
+                  ],
+                  if (widget.complex) ...[
+                    const SizedBox(width: 5),
+                    CalcPill(
+                      label: 'i',
+                      compact: true,
+                      color: palette.alpha,
+                      onTap: () => _insert('i'),
+                    ),
+                    const SizedBox(width: 5),
+                    CalcPill(
+                      label: 'r∠θ',
+                      compact: true,
+                      color: palette.alpha,
+                      onTap: _showComplexPolar,
+                    ),
+                    const SizedBox(width: 5),
+                    CalcPill(
+                      label: _session.settings.polarComplex ? 'POLAR' : 'RECT',
+                      compact: true,
+                      color: palette.accent,
+                      onTap: () {
+                        _session.settings = _session.settings.copyWith(
+                          polarComplex: !_session.settings.polarComplex,
+                        );
+                        if (_lastValue != null) {
+                          _lastFormat = _session.format(
+                            _lastValue!,
+                            complex: true,
+                            forceDecimal: _forceDecimal,
+                          );
+                        }
+                        setState(() {});
+                        widget.onChanged();
+                      },
+                    ),
+                  ],
+                  const SizedBox(width: 5),
+                  CalcPill(
+                    label: 'سجل',
+                    icon: Icons.history_rounded,
+                    compact: true,
+                    color: palette.accent,
+                    onTap: widget.onHistory,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                reverse: true,
+                child: NaturalMathView(
+                  source: _expression,
+                  cursor: _justEvaluated ? null : _cursor,
+                  raw: !_session.settings.naturalInput,
+                  fontSize: 25,
+                  maxLines: 2,
+                  alignEnd: true,
+                  color: palette.math,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 34,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: SizedBox(
-                    height: 24,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        CalcPill(
-                          label: widget.complex ? 'CMPLX' : 'COMP',
-                          compact: true,
-                          active: true,
-                          color: widget.complex ? palette.alpha : palette.accent,
-                        ),
-                        const SizedBox(width: 5),
-                        CalcPill(
-                          label: _session.settings.angleUnit.label,
-                          compact: true,
-                          color: palette.label,
-                        ),
-                        const SizedBox(width: 5),
-                        CalcPill(
-                          label: _session.settings.naturalInput ? 'MATH' : 'LINE',
-                          compact: true,
-                          color: palette.label,
-                        ),
-                        if (_session.memoryActive) ...[
-                          const SizedBox(width: 5),
-                          CalcPill(
-                            label: 'M',
-                            compact: true,
-                            color: palette.shift,
-                            active: true,
-                            onTap: _showMemory,
-                          ),
-                        ],
-                        if (exact) ...[
-                          const SizedBox(width: 5),
-                          CalcPill(
-                            label: 'EXACT',
-                            compact: true,
-                            color: palette.accent,
-                          ),
-                        ],
-                        if (widget.complex) ...[
-                          const SizedBox(width: 5),
-                          CalcPill(
-                            label: 'i',
-                            compact: true,
-                            color: palette.alpha,
-                            onTap: () => _insert('i'),
-                          ),
-                          const SizedBox(width: 5),
-                          CalcPill(
-                            label: 'r∠θ',
-                            compact: true,
-                            color: palette.alpha,
-                            onTap: _showComplexPolar,
-                          ),
-                          const SizedBox(width: 5),
-                          CalcPill(
-                            label: _session.settings.polarComplex
-                                ? 'POLAR'
-                                : 'RECT',
-                            compact: true,
-                            color: palette.accent,
-                            onTap: () {
-                              _session.settings = _session.settings.copyWith(
-                                polarComplex:
-                                    !_session.settings.polarComplex,
-                              );
-                              if (_lastValue != null) {
-                                _lastFormat = _session.format(
-                                  _lastValue!,
-                                  complex: true,
-                                  forceDecimal: _forceDecimal,
-                                );
-                              }
-                              setState(() {});
-                              widget.onChanged();
-                            },
-                          ),
-                        ],
-                        const SizedBox(width: 5),
-                        CalcPill(
-                          label: 'سجل',
-                          icon: Icons.history_rounded,
-                          compact: true,
-                          color: palette.accent,
-                          onTap: widget.onHistory,
-                        ),
-                      ],
+                if (_justEvaluated)
+                  Text(
+                    '=',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: palette.math,
                     ),
                   ),
-                ),
-                const SizedBox(height: 4),
+                if (_justEvaluated) const SizedBox(width: 7),
                 Expanded(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      reverse: true,
-                      child: NaturalMathView(
-                        source: _expression,
-                        cursor: _justEvaluated ? null : _cursor,
-                        raw: !_session.settings.naturalInput,
-                        fontSize: 25,
-                        maxLines: 2,
-                        alignEnd: true,
-                        color: palette.math,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 34,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (_justEvaluated)
-                        Text(
-                          '=',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: palette.math,
-                          ),
-                        ),
-                      if (_justEvaluated) const SizedBox(width: 7),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          reverse: true,
-                          child: Text(
-                            _error?.label ?? resultText,
-                            maxLines: 1,
-                            textDirection: TextDirection.ltr,
-                            style: CalcTypography.math(
-                              palette,
-                              size: 25,
-                              color: _error != null
-                                  ? palette.danger
-                                  : (exact && !_forceDecimal
-                                      ? palette.accent
-                                      : palette.math),
-                            ).copyWith(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ),
-                      if (_justEvaluated &&
-                          format != null &&
-                          format.canToggle) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          _forceDecimal ? 'EXACT' : 'DEC',
-                          style: CalcTypography.label(palette, size: 9).copyWith(
-                            color: palette.mathMuted,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    reverse: true,
                     child: Text(
-                      '${_error!.hint}${_error!.detail == null ? '' : ' ${_error!.detail}'}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textDirection: TextDirection.rtl,
-                      style: CalcTypography.label(palette, size: 9.5).copyWith(
-                        color: palette.danger,
-                        height: 1.25,
-                      ),
-                    ),
-                  )
-                else if (_notice != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      _notice!,
+                      _error?.label ?? resultText,
                       maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textDirection: TextDirection.rtl,
-                      style: CalcTypography.label(palette, size: 9.5).copyWith(
-                        color: palette.accent,
-                      ),
+                      textDirection: TextDirection.ltr,
+                      style: CalcTypography.math(
+                        palette,
+                        size: 25,
+                        color: _error != null
+                            ? palette.danger
+                            : (exact && !_forceDecimal
+                                ? palette.accent
+                                : palette.math),
+                      ).copyWith(fontWeight: FontWeight.w600),
                     ),
                   ),
+                ),
+                if (_justEvaluated && format != null && format.canToggle) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    _forceDecimal ? 'EXACT' : 'DEC',
+                    style: CalcTypography.label(palette, size: 9).copyWith(
+                      color: palette.mathMuted,
+                    ),
+                  ),
+                ],
               ],
             ),
-        );
+          ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                '${_error!.hint}${_error!.detail == null ? '' : ' ${_error!.detail}'}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textDirection: TextDirection.rtl,
+                style: CalcTypography.label(palette, size: 9.5).copyWith(
+                  color: palette.danger,
+                  height: 1.25,
+                ),
+              ),
+            )
+          else if (_notice != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                _notice!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textDirection: TextDirection.rtl,
+                style: CalcTypography.label(palette, size: 9.5).copyWith(
+                  color: palette.accent,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
     final keyboard = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1164,14 +1154,12 @@ class ComputationModeState extends State<ComputationMode> {
           alpha: _alpha,
           haptics: _session.settings.haptics,
           onShift: () {
-            HapticFeedback.selectionClick();
             setState(() {
               _shift = !_shift;
               if (_shift) _alpha = false;
             });
           },
           onAlpha: () {
-            HapticFeedback.selectionClick();
             setState(() {
               _alpha = !_alpha;
               if (_alpha) _shift = false;
@@ -1222,8 +1210,7 @@ class ComputationModeState extends State<ComputationMode> {
         // In landscape the screen is wider than it is tall, so the display
         // and the keypad sit side by side instead of squeezing seven key rows
         // into a short column.
-        final landscape =
-            constraints.maxWidth > constraints.maxHeight &&
+        final landscape = constraints.maxWidth > constraints.maxHeight &&
             constraints.maxHeight < 560;
         if (landscape) {
           return Row(
@@ -1267,49 +1254,50 @@ class _CalcSheet extends StatelessWidget {
     return Theme(
       data: theme,
       child: SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: calcPanelDecoration(palette, color: palette.panelStrong),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: palette.divider,
-                    borderRadius: BorderRadius.circular(2),
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration:
+                calcPanelDecoration(palette, color: palette.panelStrong),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: palette.divider,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: CalcTypography.title(palette),
-                textDirection: TextDirection.rtl,
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 12),
                 Text(
-                  subtitle!,
-                  style: CalcTypography.label(palette, size: 11).copyWith(
-                    color: palette.mathMuted,
-                    height: 1.4,
-                  ),
+                  title,
+                  style: CalcTypography.title(palette),
                   textDirection: TextDirection.rtl,
                 ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle!,
+                    style: CalcTypography.label(palette, size: 11).copyWith(
+                      color: palette.mathMuted,
+                      height: 1.4,
+                    ),
+                    textDirection: TextDirection.rtl,
+                  ),
+                ],
+                const SizedBox(height: 14),
+                child,
               ],
-              const SizedBox(height: 14),
-              child,
-            ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }

@@ -90,7 +90,8 @@ class _VectorModeState extends State<VectorMode> {
     ]);
   }
 
-  void _run(String label, String Function(VectorValue a, VectorValue b) action) {
+  void _run(
+      String label, String Function(VectorValue a, VectorValue b) action) {
     try {
       final a = _vector(_a, 'a');
       final b = _vector(_b, 'b');
@@ -169,8 +170,7 @@ class _VectorModeState extends State<VectorMode> {
                 _vectorEditor(palette, 'b', _b, palette.shift),
                 const SizedBox(height: 9),
                 const CalcNote(
-                  text:
-                      'الضرب الاتجاهي (a×b) متاح لـ 3D فقط. '
+                  text: 'الضرب الاتجاهي (a×b) متاح لـ 3D فقط. '
                       'الزاوية بين المتجهين بتتحسب بالدرجات دائمًا.',
                 ),
               ],
@@ -190,12 +190,14 @@ class _VectorModeState extends State<VectorMode> {
                     CalcSoftButton(
                       label: 'a + b',
                       expanded: true,
-                      onPressed: () => _run('a + b', (a, b) => (a + b).format()),
+                      onPressed: () =>
+                          _run('a + b', (a, b) => (a + b).format()),
                     ),
                     CalcSoftButton(
                       label: 'a − b',
                       expanded: true,
-                      onPressed: () => _run('a − b', (a, b) => (a - b).format()),
+                      onPressed: () =>
+                          _run('a − b', (a, b) => (a - b).format()),
                     ),
                     CalcSoftButton(
                       label: 'a · b',
@@ -211,8 +213,7 @@ class _VectorModeState extends State<VectorMode> {
                       expanded: true,
                       onPressed: () => _run(
                         'a × b',
-                        (a, b) =>
-                            'a × b = ${a.cross(b).format()}',
+                        (a, b) => 'a × b = ${a.cross(b).format()}',
                       ),
                     ),
                     CalcSoftButton(
