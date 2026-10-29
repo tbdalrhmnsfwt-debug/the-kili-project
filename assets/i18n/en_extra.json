@@ -1080,5 +1080,21 @@
   "يمكن اتمسحت. ارجع لقائمة المواعيد جرّب تاني.": "It may have been deleted. Go back to the schedule list and try again.",
   "يمكن المادة اتمسحت من الدفعة.": "The subject may have been deleted from the batch.",
   "يمكن الملف اتمسح من الدفعة.": "The file may have been deleted from the batch.",
-  "⭐ الحاجات المهمة — دوس تروحلها": "⭐ Important things — tap to go"
+  "⭐ الحاجات المهمة — دوس تروحلها": "⭐ Important things — tap to go",
+  "أضف مادة": "Add a subject",
+  "الحد الأقصى اتملى في المجلد ده.": "This folder is full.",
+  "التسجيلات وصور البورد والروابط هتتحذف. ملفات PDF هتفضل في المكتبة من غير وسم.": "Recordings, board images and links are deleted. PDFs stay in the library, untagged.",
+  "الصف الحالي": "Current grade",
+  "المواد بتتضاف أوتوماتيك من الصف اللي مختاره.": "Subjects are added automatically from your selected grade.",
+  "المكتبة الدراسية": "Study library",
+  "بحث في شنطتي": "Search my bag",
+  "تغيير اللون": "Change colour",
+  "حذف المجلد": "Delete folder",
+  "خيارات المجلد": "Folder options",
+  "صورة بورد": "Board image",
+  "كل الصفوف": "All grades",
+  "كل موادك في شنطة واحدة": "All your subjects, one bag",
+  "لسه مفيش مواد في الشنطة": "No subjects in the bag yet",
+  "مجلداتي": "My folders",
+  "نتائج البحث": "Search results"
 }

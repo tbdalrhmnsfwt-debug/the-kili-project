@@ -112,6 +112,10 @@ class ZakerRoutes {
   static const String home = '/';
   static const String courses = '/courses';
   static const String bag = '/bag';
+
+  /// The folder screen under the bag tab.
+  static String bagFolderPath(String folderId) =>
+      '$bag/${Uri.encodeComponent(folderId)}';
   static const String library = '/library';
   static const String subjects = '/subjects';
   static const String exams = '/exams';
