@@ -9,6 +9,7 @@ import 'package:zaker_ai/core/local_store.dart';
 import 'package:zaker_ai/core/shad_theme.dart';
 import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/features/home/home_screen.dart';
+import 'package:zaker_ai/features/home/widgets/home_style.dart';
 import 'package:zaker_ai/features/home/widgets/home_top_bar.dart';
 import 'package:zaker_ai/features/prayer/prayer_models.dart';
 import 'package:zaker_ai/features/prayer/prayer_providers.dart';
@@ -153,10 +154,7 @@ void main() {
       find.byKey(const Key('home-header')),
     );
     final gradient = (header.decoration! as BoxDecoration).gradient!;
-    expect(
-      (gradient as LinearGradient).colors,
-      const [ZakerColors.navy, ZakerColors.navyLight],
-    );
+    expect((gradient as LinearGradient).colors, HomePalette.headerGradient);
   });
 
   testWidgets('the six core feature cards make up the home grid', (
@@ -221,10 +219,11 @@ void main() {
       find.byKey(const Key('home-body')),
       const Offset(0, -400),
     );
-    expect(find.text(RafiqBrand.copyright), findsOneWidget);
+    expect(find.text(RafiqBrand.developer), findsOneWidget);
+    expect(find.textContaining('سوفت'), findsNothing);
   });
 
-  testWidgets('the three primary actions sit side by side in pastels', (
+  testWidgets('the three primary actions sit side by side in navy glass', (
     tester,
   ) async {
     await _pumpAt(tester, width: 400);
@@ -248,10 +247,10 @@ void main() {
     expect(find.text('ملفاتي بالمادة'), findsOneWidget);
     expect(find.text('مهامي'), findsOneWidget);
 
-    const gradients = {
-      'home-card-assistant': [Color(0xFFF0EBFF), Color(0xFFE5DBFF)],
-      'home-card-bag': [Color(0xFFE8F9F1), Color(0xFFD1F4E2)],
-      'home-card-tasks': [Color(0xFFEBF5FF), Color(0xFFD6EAFF)],
+    final gradients = {
+      'home-card-assistant': HomePalette.assistantGradient,
+      'home-card-bag': HomePalette.bagGradient,
+      'home-card-tasks': HomePalette.tasksGradient,
     };
     for (final entry in gradients.entries) {
       final card = tester.widget<Container>(find.byKey(Key(entry.key)));

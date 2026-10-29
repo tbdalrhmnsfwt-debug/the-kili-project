@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router.dart';
-import '../../../core/theme.dart';
 import '../../../widgets/tr_text.dart';
+import 'home_style.dart';
 
 /// The six primary study features, presented as a rounded card grid.
 ///
@@ -33,6 +33,7 @@ class CoreFeaturesGrid extends StatelessWidget {
       String title,
       String subtitle,
       String route,
+      Color accent,
     })>[
       (
         id: 'textbooks',
@@ -40,6 +41,7 @@ class CoreFeaturesGrid extends StatelessWidget {
         title: 'الكتب الدراسية الرقمية',
         subtitle: 'منهجك ومراجعك',
         route: ZakerRoutes.courses,
+        accent: HomePalette.emerald,
       ),
       (
         id: 'pdf-reader',
@@ -47,6 +49,7 @@ class CoreFeaturesGrid extends StatelessWidget {
         title: 'قارئ PDF التفاعلي',
         subtitle: 'مع أدوات التحديد',
         route: ZakerRoutes.pdfLibrary,
+        accent: HomePalette.champagne,
       ),
       (
         id: 'calculator',
@@ -54,6 +57,7 @@ class CoreFeaturesGrid extends StatelessWidget {
         title: 'الآلة الحاسبة العلمية',
         subtitle: 'دوال ورسم بياني',
         route: ZakerRoutes.calculator,
+        accent: HomePalette.coral,
       ),
       (
         id: 'notebooks',
@@ -61,6 +65,7 @@ class CoreFeaturesGrid extends StatelessWidget {
         title: 'دفاتر الملاحظات',
         subtitle: 'نظّم أفكارك',
         route: ZakerRoutes.notebooks,
+        accent: HomePalette.amber,
       ),
       (
         id: 'mind-maps',
@@ -68,6 +73,7 @@ class CoreFeaturesGrid extends StatelessWidget {
         title: 'الخرائط الذهنية',
         subtitle: 'اربط المفاهيم',
         route: ZakerRoutes.mindMap,
+        accent: HomePalette.emeraldLight,
       ),
       (
         id: 'ai-explanations',
@@ -75,6 +81,7 @@ class CoreFeaturesGrid extends StatelessWidget {
         title: 'الشروحات بمساعدة الذكاء الاصطناعي',
         subtitle: 'شرح خطوة بخطوة',
         route: ZakerRoutes.chat,
+        accent: HomePalette.champagneLight,
       ),
     ];
 
@@ -125,6 +132,7 @@ class CoreFeaturesGrid extends StatelessWidget {
                   title: feature.title,
                   subtitle: feature.subtitle,
                   route: feature.route,
+                  accent: feature.accent,
                   maxTitleLines: titleLines,
                 ),
               ),
@@ -142,6 +150,7 @@ class _FeatureCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.route,
+    required this.accent,
     required this.maxTitleLines,
   });
 
@@ -149,20 +158,13 @@ class _FeatureCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String route;
+  final Color accent;
   final int maxTitleLines;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final radius = BorderRadius.circular(22);
-    final surface = Color.alphaBlend(
-      ZakerColors.navy.withValues(alpha: isDark ? 0.22 : 0.035),
-      theme.cardTheme.color ?? theme.colorScheme.surface,
-    );
-    final border = isDark
-        ? ZakerColors.gold.withValues(alpha: 0.22)
-        : ZakerColors.navy.withValues(alpha: 0.10);
+    final glyph = Color.lerp(accent, Colors.white, 0.22)!;
 
     return Semantics(
       button: true,
@@ -171,16 +173,23 @@ class _FeatureCard extends StatelessWidget {
         color: Colors.transparent,
         child: Ink(
           decoration: BoxDecoration(
-            color: surface,
+            gradient: LinearGradient(
+              begin: AlignmentDirectional.topEnd,
+              end: AlignmentDirectional.bottomStart,
+              colors: HomePalette.tintedCardGradient(accent),
+            ),
             borderRadius: radius,
-            border: Border.all(color: border),
+            border: Border.all(color: accent.withValues(alpha: 0.26)),
             boxShadow: [
               BoxShadow(
-                color: isDark
-                    ? Colors.black.withValues(alpha: 0.28)
-                    : ZakerColors.navy.withValues(alpha: 0.07),
+                color: Colors.black.withValues(alpha: 0.20),
                 blurRadius: 18,
-                offset: const Offset(0, 8),
+                offset: const Offset(0, 9),
+              ),
+              BoxShadow(
+                color: accent.withValues(alpha: 0.10),
+                blurRadius: 22,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
@@ -198,14 +207,13 @@ class _FeatureCard extends StatelessWidget {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
+                          color: accent.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: accent.withValues(alpha: 0.28),
+                          ),
                         ),
-                        child: Icon(
-                          icon,
-                          size: 23,
-                          color: theme.colorScheme.onPrimary,
-                        ),
+                        child: Icon(icon, size: 23, color: glyph),
                       ),
                       const Spacer(),
                       Icon(
@@ -213,7 +221,7 @@ class _FeatureCard extends StatelessWidget {
                         // forward (left in Arabic) on the card.
                         Icons.arrow_forward_rounded,
                         size: 18,
-                        color: cardAccentOf(ZakerColors.gold, theme),
+                        color: HomePalette.champagne,
                       ),
                     ],
                   ),
@@ -223,7 +231,7 @@ class _FeatureCard extends StatelessWidget {
                     maxLines: maxTitleLines,
                     overflow: TextOverflow.ellipsis,
                     style: CoreFeaturesGrid._titleStyle.copyWith(
-                      color: theme.colorScheme.onSurface,
+                      color: HomePalette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -232,7 +240,7 @@ class _FeatureCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: CoreFeaturesGrid._subtitleStyle.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color: HomePalette.textSecondary,
                     ),
                   ),
                 ],

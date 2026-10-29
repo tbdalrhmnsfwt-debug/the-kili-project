@@ -21,7 +21,7 @@ void main() {
     expect(fallback.assistant, light.assistant);
   });
 
-  test('the home uses the palette accents, not the old rainbow', () {
+  test('the home uses its own navy-glass palette, not the old rainbow', () {
     final source =
         File('lib/features/home/home_screen.dart').readAsStringSync();
     expect(source.contains('_Accents.'), isFalse);
@@ -37,6 +37,6 @@ void main() {
     ]) {
       expect(source.contains(old), isFalse, reason: old);
     }
-    expect(source.contains('featureAccentsOf'), isTrue);
+    expect(source.contains('HomePalette'), isTrue);
   });
 }

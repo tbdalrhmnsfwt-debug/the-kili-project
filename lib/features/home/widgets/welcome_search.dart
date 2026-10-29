@@ -6,6 +6,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/router.dart';
 import '../../../core/theme.dart';
 import '../../../widgets/tr_text.dart';
+import 'home_style.dart';
 
 /// The greeting for a 24-hour clock [hour].
 String greetingFor(int hour) => hour < 12 ? 'صباح الخير' : 'مساء الخير';
@@ -39,7 +40,7 @@ class WelcomeSearch extends StatelessWidget {
                 gradient: const LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [ZakerColors.goldLight, ZakerColors.gold],
+                  colors: [HomePalette.champagneLight, HomePalette.champagne],
                 ),
                 borderRadius: BorderRadius.circular(ZakerRadius.pill),
               ),
@@ -55,7 +56,7 @@ class WelcomeSearch extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: HomePalette.textPrimary,
                       fontSize: 21,
                       fontWeight: FontWeight.w800,
                       height: 1.2,
@@ -67,7 +68,7 @@ class WelcomeSearch extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: ZakerColors.goldLight,
+                      color: HomePalette.champagneLight,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       height: 1.25,
@@ -116,14 +117,20 @@ class _SearchPillState extends State<_SearchPill> {
     return Container(
       padding: const EdgeInsetsDirectional.only(start: 14, end: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(ZakerRadius.pill),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+        border: Border.all(
+          color: HomePalette.champagne.withValues(alpha: 0.28),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
+            color: Colors.black.withValues(alpha: 0.22),
             blurRadius: 18,
             offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: HomePalette.emerald.withValues(alpha: 0.08),
+            blurRadius: 24,
           ),
         ],
       ),
@@ -132,7 +139,7 @@ class _SearchPillState extends State<_SearchPill> {
           const HugeIcon(
             icon: HugeIcons.strokeRoundedAiSparkles,
             size: 19,
-            color: ZakerColors.goldLight,
+            color: HomePalette.champagneLight,
           ),
           const SizedBox(width: 9),
           Expanded(
@@ -142,7 +149,7 @@ class _SearchPillState extends State<_SearchPill> {
               padding: const EdgeInsets.symmetric(vertical: 11),
               cursorColor: Colors.white,
               style: const TextStyle(
-                color: Colors.white,
+                color: HomePalette.textPrimary,
                 fontFamily: ZakerTheme.fontUi,
                 fontSize: 13.5,
               ),
@@ -151,7 +158,7 @@ class _SearchPillState extends State<_SearchPill> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Color(0xFFE3F4F2),
+                  color: HomePalette.textSecondary,
                   fontFamily: ZakerTheme.fontUi,
                   fontSize: 13.5,
                 ),
@@ -179,15 +186,29 @@ class _SearchPillState extends State<_SearchPill> {
                     child: Container(
                       width: 32,
                       height: 32,
-                      decoration: const BoxDecoration(
-                        color: ZakerColors.gold,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            HomePalette.champagneLight,
+                            HomePalette.champagne,
+                          ],
+                        ),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: HomePalette.champagne.withValues(alpha: 0.4),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
                       child: const Center(
                         child: HugeIcon(
                           icon: HugeIcons.strokeRoundedArrowLeft01,
                           size: 16,
-                          color: ZakerColors.navy,
+                          color: HomePalette.midnight,
                         ),
                       ),
                     ),

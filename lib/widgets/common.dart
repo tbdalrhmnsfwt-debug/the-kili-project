@@ -60,6 +60,11 @@ class FeatureTile extends StatelessWidget {
     this.onTap,
     this.color,
     this.art,
+    this.gradient,
+    this.borderColor,
+    this.titleColor,
+    this.subtitleColor,
+    this.iconOnDark = false,
   });
 
   final String title;
@@ -71,10 +76,22 @@ class FeatureTile extends StatelessWidget {
   /// Replaces the glyph tile with a custom mark, such as the aurora icon.
   final Widget? art;
 
+  /// An optional dark-glass field. When omitted the tile keeps the classic
+  /// themed card, so other screens are untouched.
+  final LinearGradient? gradient;
+  final Color? borderColor;
+  final Color? titleColor;
+  final Color? subtitleColor;
+
+  /// Lifts the glyph so the accent stays readable on a dark glass field.
+  final bool iconOnDark;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = color ?? theme.colorScheme.primary;
+    final glyphAccent =
+        iconOnDark ? Color.lerp(accent, Colors.white, 0.35)! : accent;
 
     return ZakerPressScale(
       child: Material(
@@ -90,10 +107,12 @@ class FeatureTile extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(ZakerSpacing.md),
             decoration: BoxDecoration(
-              color: theme.cardTheme.color,
+              color: gradient == null ? theme.cardTheme.color : null,
+              gradient: gradient,
               borderRadius: ZakerRadius.card,
               border: Border.all(
-                color: theme.dividerTheme.color ?? Colors.black12,
+                color:
+                    borderColor ?? theme.dividerTheme.color ?? Colors.black12,
               ),
               boxShadow: ZakerShadows.card,
             ),
@@ -104,7 +123,7 @@ class FeatureTile extends StatelessWidget {
                 art ??
                     ZakerGlassGlyph(
                       icon: icon,
-                      accent: accent,
+                      accent: glyphAccent,
                       size: 38,
                       iconSize: 22,
                       radius: ZakerRadius.sm,
@@ -116,6 +135,7 @@ class FeatureTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: titleColor,
                   ),
                 ),
                 if (subtitle != null) ...[
@@ -125,7 +145,8 @@ class FeatureTile extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color:
+                          subtitleColor ?? theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],

@@ -5,6 +5,7 @@ import 'package:hugeicons/hugeicons.dart';
 import '../../../core/brand/rafiq_brand.dart';
 import '../../../core/theme.dart';
 import '../../../widgets/tr_text.dart';
+import 'home_style.dart';
 
 /// The top bar's content height for a [screenHeight].
 ///
@@ -65,9 +66,19 @@ class HomeTopBar extends StatelessWidget {
         key: const Key('home-top-bar'),
         height: media.padding.top + height,
         decoration: BoxDecoration(
-          color: ZakerColors.navy,
+          gradient: const LinearGradient(
+            begin: AlignmentDirectional.centerStart,
+            end: AlignmentDirectional.centerEnd,
+            colors: [
+              HomePalette.midnight,
+              HomePalette.navy,
+              HomePalette.midnight
+            ],
+          ),
           border: Border(
-            bottom: BorderSide(color: ZakerColors.gold.withValues(alpha: 0.34)),
+            bottom: BorderSide(
+              color: HomePalette.champagne.withValues(alpha: 0.30),
+            ),
           ),
         ),
         // The inset is part of the box's height, so it has to be part of its
@@ -139,9 +150,16 @@ class HomeTopBar extends StatelessWidget {
                         key: const Key('home-top-bar-badge'),
                         width: 8,
                         height: 8,
-                        decoration: const BoxDecoration(
-                          color: ZakerColors.gold,
+                        decoration: BoxDecoration(
+                          color: HomePalette.champagne,
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  HomePalette.champagne.withValues(alpha: 0.6),
+                              blurRadius: 6,
+                            ),
+                          ],
                         ),
                       ),
                     ),

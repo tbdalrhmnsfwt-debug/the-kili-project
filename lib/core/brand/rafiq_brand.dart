@@ -6,9 +6,11 @@
 abstract final class RafiqBrand {
   static const String appName = 'رفيق الطالب';
   static const String developer = 'عبد الرحمن صفوت عطا';
-  static const String studio = 'عبد الرحمن سوفت';
+
+  /// The name shown under the app name in the shell and the drawer.
+  static const String studio = developer;
   static const String credit = 'من تطوير: $developer';
 
   /// The short credit shown at the bottom of the home screen.
-  static const String copyright = 'المطور عبد الرحمن سوفت';
+  static const String copyright = 'المطور $developer';
 }

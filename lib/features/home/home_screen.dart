@@ -1,10 +1,14 @@
 /// The home screen.
 ///
 /// The compact order from the approved mockup: the navy top strip with the
-/// app name, the navy welcome panel with the live prayer badge and
-/// [WelcomeSearch], the stat chips, the three side-by-side pastel action cards,
-/// the six core-feature cards, the countdown and daily-advice banners, the
-/// all-tools grid, and the developer credit at the bottom.
+/// app name, the navy-slate hero with the live prayer badge, [WelcomeSearch]
+/// and the glass stat chips, the three side-by-side action cards, the six
+/// core-feature cards, the countdown and daily-advice banners, the all-tools
+/// grid, and the developer credit at the bottom.
+///
+/// The hero, action cards, feature cards and tools all share the
+/// [HomePalette] navy-glass treatment: deep navy slate anchored by champagne
+/// gold, with emerald teal, amber and coral carrying the data and actions.
 ///
 /// The data is the app's own: the display name comes from
 /// [authUserProvider], the streak/minutes from [studyStatsProvider], the
@@ -20,6 +24,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:shadcn_ui/shadcn_ui.dart' show ShadDecoration, ShadIconButton;
 
 import '../../core/brand/rafiq_brand.dart';
+import '../../core/brand/rafiq_mark.dart';
 import '../../core/router.dart';
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
@@ -31,36 +36,11 @@ import '../../widgets/zaker_visuals.dart';
 import '../focus/focus_screen.dart';
 import 'shell_screen.dart';
 import 'widgets/core_features_grid.dart';
+import 'widgets/home_style.dart';
 import 'widgets/home_top_bar.dart';
 import 'widgets/prayer_pill.dart';
 import 'widgets/stats_strip.dart';
 import 'widgets/welcome_search.dart';
-
-/// The all-tools grid's accent cycle, drawn from the active appearance.
-List<Color> _allToolsAccents(ZakerFeatureAccents accents) => [
-      accents.assistant,
-      accents.study,
-      accents.tasks,
-      accents.islamic,
-      accents.qibla,
-      accents.azkar,
-      accents.hifz,
-    ];
-
-/// A pastel wash of [accent] that still works on the dark theme.
-Color _wash(BuildContext context, Color accent) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
-  return Color.alphaBlend(
-    accent.withValues(alpha: isDark ? 0.16 : 0.07),
-    theme.scaffoldBackgroundColor,
-  );
-}
-
-Color _hairline(BuildContext context, Color accent) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  return accent.withValues(alpha: isDark ? 0.32 : 0.20);
-}
 
 Color _depth(BuildContext context, Color accent) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -117,18 +97,17 @@ class HomeScreen extends ConsumerWidget {
                     key: const Key('home-body'),
                     padding: EdgeInsets.zero,
                     children: [
-                      _HomeHeader(name: user?.displayName ?? 'ضيف'),
+                      _HomeHeader(
+                        name: user?.displayName ?? 'ضيف',
+                        streakDays: stats.streakDays,
+                        minutesToday: stats.minutesToday,
+                        pendingCount: pending.length,
+                      ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            HomeStatsStrip(
-                              streakDays: stats.streakDays,
-                              minutesToday: stats.minutesToday,
-                              pendingCount: pending.length,
-                            ),
-                            const SizedBox(height: ZakerSpacing.md),
                             const _OrganicActionCards(),
                             const SizedBox(height: 22),
                             const _SectionTitle(
@@ -194,41 +173,86 @@ class HomeScreen extends ConsumerWidget {
 /// carries the compact prayer badge and continues the same navy field into the
 /// greeting and the AI search, then softly rounds back into the off-white body.
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.name});
+  const _HomeHeader({
+    required this.name,
+    required this.streakDays,
+    required this.minutesToday,
+    required this.pendingCount,
+  });
 
   final String name;
+  final int streakDays;
+  final int minutesToday;
+  final int pendingCount;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       key: const Key('home-header'),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [ZakerColors.navy, ZakerColors.navyLight],
+          begin: AlignmentDirectional.topEnd,
+          end: AlignmentDirectional.bottomStart,
+          colors: HomePalette.headerGradient,
         ),
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
-            color: ZakerColors.navy.withValues(alpha: 0.16),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            color: HomePalette.midnight.withValues(alpha: 0.30),
+            blurRadius: 30,
+            offset: const Offset(0, 14),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
         children: [
-          // The live badge sits just under the app bar so the app name can
-          // stay the top strip's clear, permanent title.
-          const Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: PrayerPill(compact: true),
+          // Three soft colour fields keep the navy from reading as a flat bar:
+          // champagne warms the top, emerald lifts the stats, coral grounds
+          // the lower edge.
+          const Positioned.fill(child: HomeHeaderAtmosphere()),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // The live badge sits just under the app bar so the app name
+                // can stay the top strip's clear, permanent title.
+                const Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: PrayerPill(compact: true),
+                ),
+                const SizedBox(height: 6),
+                WelcomeSearch(name: name),
+                const SizedBox(height: 14),
+                HomeStatsStrip(
+                  streakDays: streakDays,
+                  minutesToday: minutesToday,
+                  pendingCount: pendingCount,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-          WelcomeSearch(name: name),
+          // A hairline of champagne closes the hero into the page.
+          PositionedDirectional(
+            bottom: 0,
+            start: 28,
+            end: 28,
+            child: IgnorePointer(
+              child: Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      HomePalette.champagne.withValues(alpha: 0),
+                      HomePalette.champagne.withValues(alpha: 0.45),
+                      HomePalette.champagne.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -237,7 +261,7 @@ class _HomeHeader extends StatelessWidget {
 
 // ------------------------------------------------------------ organic cards
 
-/// The three primary actions, always side by side in their own pastel world.
+/// The three primary actions, always side by side in their own glass fields.
 ///
 /// The row is deliberately not a responsive stack: the brief asks for one
 /// horizontal three-column band, so each child gets an [Expanded] share and
@@ -255,10 +279,9 @@ class _OrganicActionCards extends StatelessWidget {
             child: _OrganicActionCard(
               cardKey: const Key('home-card-assistant'),
               icon: HugeIcons.strokeRoundedAiSparkles,
-              accent: const Color(0xFF6C47FF),
-              gradient: const [Color(0xFFF0EBFF), Color(0xFFE5DBFF)],
-              titleColor: const Color(0xFF2D1B69),
-              subtitleColor: const Color(0xFF5B3FE0),
+              accent: HomePalette.champagne,
+              accentSoft: HomePalette.champagneLight,
+              gradient: HomePalette.assistantGradient,
               title: 'المساعد الذكي',
               subtitle: 'اسأل عن أي حاجة',
               onTap: () => context.push(ZakerRoutes.chat),
@@ -269,10 +292,9 @@ class _OrganicActionCards extends StatelessWidget {
             child: _OrganicActionCard(
               cardKey: const Key('home-card-bag'),
               icon: HugeIcons.strokeRoundedShoppingBag01,
-              accent: const Color(0xFF0F9F59),
-              gradient: const [Color(0xFFE8F9F1), Color(0xFFD1F4E2)],
-              titleColor: const Color(0xFF064E3B),
-              subtitleColor: const Color(0xFF0A7A46),
+              accent: HomePalette.emerald,
+              accentSoft: HomePalette.emeraldLight,
+              gradient: HomePalette.bagGradient,
               title: 'ملفاتي بالمادة',
               subtitle: 'شنطة كل مادة',
               onTap: () => context.push(ZakerRoutes.bag),
@@ -283,10 +305,9 @@ class _OrganicActionCards extends StatelessWidget {
             child: _OrganicActionCard(
               cardKey: const Key('home-card-tasks'),
               icon: HugeIcons.strokeRoundedCheckList,
-              accent: const Color(0xFF1A73E8),
-              gradient: const [Color(0xFFEBF5FF), Color(0xFFD6EAFF)],
-              titleColor: const Color(0xFF0C4A6E),
-              subtitleColor: const Color(0xFF155FC0),
+              accent: HomePalette.coral,
+              accentSoft: HomePalette.coralLight,
+              gradient: HomePalette.tasksGradient,
               title: 'مهامي',
               subtitle: 'رتب مهام يومك',
               onTap: () => context.push(ZakerRoutes.tasks),
@@ -298,16 +319,15 @@ class _OrganicActionCards extends StatelessWidget {
   }
 }
 
-/// One tall pastel pill: a tinted badge, a two-line title block and a solid
+/// One tall glass card: a tinted badge, a two-line title block and a solid
 /// circular arrow that anchors the bottom edge.
 class _OrganicActionCard extends StatelessWidget {
   const _OrganicActionCard({
     required this.cardKey,
     required this.icon,
     required this.accent,
+    required this.accentSoft,
     required this.gradient,
-    required this.titleColor,
-    required this.subtitleColor,
     required this.title,
     required this.subtitle,
     required this.onTap,
@@ -316,9 +336,8 @@ class _OrganicActionCard extends StatelessWidget {
   final Key cardKey;
   final List<List<dynamic>> icon;
   final Color accent;
+  final Color accentSoft;
   final List<Color> gradient;
-  final Color titleColor;
-  final Color subtitleColor;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -346,35 +365,75 @@ class _OrganicActionCard extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
+            begin: AlignmentDirectional.topEnd,
+            end: AlignmentDirectional.bottomStart,
             colors: gradient,
           ),
           borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: accent.withValues(alpha: 0.16)),
+          border: Border.all(color: accent.withValues(alpha: 0.30)),
           boxShadow: [
             BoxShadow(
-              color: accent.withValues(alpha: 0.12),
+              color: Colors.black.withValues(alpha: 0.22),
               blurRadius: 18,
-              offset: const Offset(0, 8),
+              offset: const Offset(0, 9),
+            ),
+            BoxShadow(
+              color: accent.withValues(alpha: 0.16),
+              blurRadius: 24,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            // A soft, clipped orb keeps the card organic without adding a
-            // second illustration or another tap target.
+            // Two soft accent orbs keep the card organic without adding an
+            // illustration or another tap target.
             PositionedDirectional(
-              top: -20,
-              end: -16,
+              top: -24,
+              end: -18,
               child: IgnorePointer(
                 child: Container(
-                  width: 58,
-                  height: 58,
+                  width: 66,
+                  height: 66,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.34),
+                    color: accent.withValues(alpha: 0.20),
                     shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+            PositionedDirectional(
+              bottom: 8,
+              start: -22,
+              child: IgnorePointer(
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+            // The glass sheen: a narrow white wash along the top edge.
+            PositionedDirectional(
+              top: 0,
+              start: 0,
+              end: 0,
+              height: 48,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white.withValues(alpha: 0.08),
+                        Colors.white.withValues(alpha: 0),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -387,17 +446,24 @@ class _OrganicActionCard extends StatelessWidget {
                   width: badgeSize,
                   height: badgeSize,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.66),
+                    color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(13),
                     border: Border.all(
-                      color: accent.withValues(alpha: 0.14),
+                      color: accent.withValues(alpha: 0.32),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.12),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Center(
                     child: HugeIcon(
                       icon: icon,
                       size: tight ? 19 : 21,
-                      color: accent,
+                      color: accentSoft,
                     ),
                   ),
                 ),
@@ -414,8 +480,8 @@ class _OrganicActionCard extends StatelessWidget {
                           maxLines: 1,
                           softWrap: false,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: titleColor,
+                          style: const TextStyle(
+                            color: HomePalette.textPrimary,
                             fontSize: 13,
                             height: 1.2,
                             fontWeight: FontWeight.w800,
@@ -432,7 +498,7 @@ class _OrganicActionCard extends StatelessWidget {
                           softWrap: false,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: subtitleColor,
+                            color: accentSoft,
                             fontSize: 11,
                             height: 1.2,
                             fontWeight: FontWeight.w600,
@@ -446,12 +512,16 @@ class _OrganicActionCard extends StatelessWidget {
                   width: arrowSize,
                   height: arrowSize,
                   decoration: BoxDecoration(
-                    color: accent,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [accentSoft, accent],
+                    ),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: accent.withValues(alpha: 0.28),
-                        blurRadius: 10,
+                        color: accent.withValues(alpha: 0.32),
+                        blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
                     ],
@@ -460,7 +530,7 @@ class _OrganicActionCard extends StatelessWidget {
                     child: HugeIcon(
                       icon: HugeIcons.strokeRoundedArrowLeft01,
                       size: tight ? 14 : 15,
-                      color: Colors.white,
+                      color: HomePalette.midnight,
                     ),
                   ),
                 ),
@@ -536,7 +606,7 @@ class _CountdownBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accents = featureAccentsOf(theme);
+    const accent = HomePalette.amber;
     final entry = nextDeadline;
     final due = entry?.dueAt;
 
@@ -569,17 +639,29 @@ class _CountdownBanner extends StatelessWidget {
             '${due.minute.toString().padLeft(2, '0')}';
 
     return _Pressable3D(
-      accent: accents.islamic,
+      accent: accent,
       depth: 4,
       radius: 20,
       onTap: onTap,
       semanticLabel: 'العد التنازلي',
       child: Container(
+        clipBehavior: Clip.antiAlias,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _wash(context, accents.islamic),
+          gradient: const LinearGradient(
+            begin: AlignmentDirectional.topEnd,
+            end: AlignmentDirectional.bottomStart,
+            colors: HomePalette.countdownGradient,
+          ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _hairline(context, accents.islamic)),
+          border: Border.all(color: accent.withValues(alpha: 0.30)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.20),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -587,14 +669,15 @@ class _CountdownBanner extends StatelessWidget {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: accents.islamic.withValues(alpha: 0.16),
+                color: accent.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: accent.withValues(alpha: 0.24)),
               ),
-              child: Center(
+              child: const Center(
                 child: HugeIcon(
                   icon: HugeIcons.strokeRoundedHourglass,
                   size: 26,
-                  color: accents.islamic,
+                  color: accent,
                 ),
               ),
             ),
@@ -612,6 +695,7 @@ class _CountdownBanner extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
+                      color: HomePalette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -622,7 +706,7 @@ class _CountdownBanner extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color: HomePalette.textSecondary,
                       height: 1.4,
                     ),
                   ),
@@ -636,8 +720,8 @@ class _CountdownBanner extends StatelessWidget {
                 children: [
                   Text(
                     daysText,
-                    style: TextStyle(
-                      color: cardAccentOf(accents.islamic, theme),
+                    style: const TextStyle(
+                      color: HomePalette.champagne,
                       fontSize: 26,
                       height: 1,
                       fontWeight: FontWeight.w800,
@@ -647,7 +731,7 @@ class _CountdownBanner extends StatelessWidget {
                   TrText(
                     unitText,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color: HomePalette.textSecondary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -662,14 +746,14 @@ class _CountdownBanner extends StatelessWidget {
                   width: 38,
                   height: 38,
                   padding: EdgeInsets.zero,
-                  backgroundColor: accents.islamic.withValues(alpha: 0.16),
-                  hoverBackgroundColor: accents.islamic.withValues(alpha: 0.24),
+                  backgroundColor: accent.withValues(alpha: 0.16),
+                  hoverBackgroundColor: accent.withValues(alpha: 0.24),
                   decoration: const ShadDecoration(shape: BoxShape.circle),
                   onPressed: onTap,
-                  icon: HugeIcon(
+                  icon: const HugeIcon(
                     icon: HugeIcons.strokeRoundedArrowLeft01,
                     size: 18,
-                    color: accents.islamic,
+                    color: accent,
                   ),
                 ),
               ),
@@ -699,24 +783,36 @@ class _AdviceBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accents = featureAccentsOf(theme);
+    const accent = HomePalette.emerald;
     final now = DateTime.now();
     final dayOfYear = now.difference(DateTime(now.year, 1, 1)).inDays;
     final tip = _tips[dayOfYear % _tips.length];
 
     return _Pressable3D(
-      accent: accents.tasks,
+      accent: accent,
       depth: 4,
       radius: 20,
       onTap: () => Navigator.of(context)
           .push(MaterialPageRoute<void>(builder: (_) => const FocusScreen())),
       semanticLabel: 'نصيحة النهاردة',
       child: Container(
+        clipBehavior: Clip.antiAlias,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _wash(context, accents.tasks),
+          gradient: const LinearGradient(
+            begin: AlignmentDirectional.topEnd,
+            end: AlignmentDirectional.bottomStart,
+            colors: HomePalette.adviceGradient,
+          ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _hairline(context, accents.tasks)),
+          border: Border.all(color: accent.withValues(alpha: 0.30)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.20),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -725,14 +821,15 @@ class _AdviceBanner extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: accents.tasks.withValues(alpha: 0.16),
+                color: accent.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: accent.withValues(alpha: 0.24)),
               ),
-              child: Center(
+              child: const Center(
                 child: HugeIcon(
                   icon: HugeIcons.strokeRoundedIdea01,
                   size: 23,
-                  color: accents.tasks,
+                  color: HomePalette.emeraldLight,
                 ),
               ),
             ),
@@ -746,7 +843,7 @@ class _AdviceBanner extends StatelessWidget {
                     'نصيحة النهاردة',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: cardAccentOf(accents.tasks, theme),
+                      color: HomePalette.emeraldLight,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -755,7 +852,7 @@ class _AdviceBanner extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface,
+                      color: HomePalette.textSecondary,
                       height: 1.5,
                     ),
                   ),
@@ -843,7 +940,7 @@ class _AllToolsSection extends StatelessWidget {
   }
 
   List<Widget> _tiles(BuildContext context) {
-    final colors = _allToolsAccents(featureAccentsOf(Theme.of(context)));
+    const colors = HomePalette.toolAccents;
     final tiles =
         <({String title, IconData icon, String? subtitle, VoidCallback onTap})>[
       (
@@ -1012,21 +1109,48 @@ class _AllToolsSection extends StatelessWidget {
       ),
     ];
 
+    Widget glassTile({
+      required String title,
+      required String? subtitle,
+      required IconData icon,
+      required Color accent,
+      Widget? art,
+      required VoidCallback onTap,
+    }) {
+      return FeatureTile(
+        title: title,
+        subtitle: subtitle,
+        icon: icon,
+        art: art,
+        color: accent,
+        gradient: LinearGradient(
+          begin: AlignmentDirectional.topEnd,
+          end: AlignmentDirectional.bottomStart,
+          colors: HomePalette.tintedCardGradient(accent),
+        ),
+        borderColor: accent.withValues(alpha: 0.26),
+        titleColor: HomePalette.textPrimary,
+        subtitleColor: HomePalette.textSecondary,
+        iconOnDark: true,
+        onTap: onTap,
+      );
+    }
+
     return [
-      FeatureTile(
+      glassTile(
         title: 'معلم AI',
         subtitle: 'اسأل واشرح',
         icon: Icons.auto_awesome_rounded,
         art: const AuroraAssistantMark(size: 38, radius: ZakerRadius.sm),
-        color: colors[0],
+        accent: colors[0],
         onTap: () => context.push(ZakerRoutes.chat),
       ),
       for (var i = 0; i < tiles.length; i++)
-        FeatureTile(
+        glassTile(
           title: tiles[i].title,
           subtitle: tiles[i].subtitle,
           icon: tiles[i].icon,
-          color: colors[(i + 1) % colors.length],
+          accent: colors[(i + 1) % colors.length],
           onTap: tiles[i].onTap,
         ),
     ];
@@ -1079,29 +1203,76 @@ class _HomeFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
+    return HomeGlassPanel(
       key: const Key('home-footer'),
-      children: [
-        Container(
-          width: 44,
-          height: 2,
-          decoration: BoxDecoration(
-            color: ZakerColors.gold,
-            borderRadius: BorderRadius.circular(ZakerRadius.pill),
+      accent: HomePalette.champagne,
+      radius: 24,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: HomePalette.champagne.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(
+                    color: HomePalette.champagne.withValues(alpha: 0.30),
+                  ),
+                ),
+                child: const Center(child: RafiqMark(size: 20)),
+              ),
+              const SizedBox(width: ZakerSpacing.sm),
+              TrText(
+                RafiqBrand.appName,
+                style: const TextStyle(
+                  color: HomePalette.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: ZakerSpacing.sm),
-        TrText(
-          RafiqBrand.copyright,
-          key: const Key('home-footer-copyright'),
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
+          const SizedBox(height: 12),
+          Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  HomePalette.champagne.withValues(alpha: 0),
+                  HomePalette.champagne.withValues(alpha: 0.42),
+                  HomePalette.champagne.withValues(alpha: 0),
+                ],
+              ),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          const TrText(
+            'من تطوير',
+            style: TextStyle(
+              color: HomePalette.textFaint,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 3),
+          const TrText(
+            RafiqBrand.developer,
+            key: Key('home-footer-copyright'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: HomePalette.champagne,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

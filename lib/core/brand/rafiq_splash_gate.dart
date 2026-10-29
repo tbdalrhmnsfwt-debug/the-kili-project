@@ -181,16 +181,6 @@ class _SplashBody extends StatelessWidget {
                     fontSize: 14,
                   ),
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  RafiqBrand.studio,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: ZakerTheme.fontUi,
-                    color: ZakerColors.goldLight,
-                    fontSize: 13,
-                  ),
-                ),
               ],
             ),
           ),

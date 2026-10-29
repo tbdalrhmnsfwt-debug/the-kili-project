@@ -9,23 +9,34 @@ void main() {
   test('brand strings are fixed', () {
     expect(RafiqBrand.appName, 'رفيق الطالب');
     expect(RafiqBrand.developer, 'عبد الرحمن صفوت عطا');
-    expect(RafiqBrand.studio, 'عبد الرحمن سوفت');
+    expect(RafiqBrand.studio, 'عبد الرحمن صفوت عطا');
     expect(RafiqBrand.credit, 'من تطوير: عبد الرحمن صفوت عطا');
-    expect(RafiqBrand.copyright, 'المطور عبد الرحمن سوفت');
+    expect(RafiqBrand.copyright, 'المطور عبد الرحمن صفوت عطا');
+  });
+
+  test('the old studio suffix is gone from the shipped source', () {
+    final offenders = <String>[];
+    for (final entity in Directory('lib').listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      if (entity.readAsStringSync().contains('سوفت')) {
+        offenders.add(entity.path);
+      }
+    }
+    expect(offenders, isEmpty);
   });
 
   test('brand strings have English entries', () async {
     TestWidgetsFlutterBinding.ensureInitialized();
     final localizations = await AppLocalizations.load(const Locale('en'));
     expect(localizations.t('رفيق الطالب'), 'Rafiq Al-Talib');
-    expect(localizations.t('عبد الرحمن سوفت'), 'Abdurrahman Soft');
+    expect(localizations.t('عبد الرحمن صفوت عطا'), 'Abdurrahman Safwat Atta');
     expect(
       localizations.t('من تطوير: عبد الرحمن صفوت عطا'),
       'Developed by: Abdurrahman Safwat Atta',
     );
     expect(
-      localizations.t('المطور عبد الرحمن سوفت'),
-      'Developer: Abdurrahman Soft',
+      localizations.t('المطور عبد الرحمن صفوت عطا'),
+      'Developer: Abdurrahman Safwat Atta',
     );
   });
 
