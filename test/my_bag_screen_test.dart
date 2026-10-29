@@ -235,6 +235,9 @@ void main() {
   });
 
   testWidgets('the bag controls follow the English table', (tester) async {
+    await store.saveIndex(
+      MyBagIndex(folders: [folder('sec1', 'الرياضيات')]),
+    );
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
