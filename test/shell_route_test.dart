@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +14,7 @@ import 'package:zaker_ai/features/home/shell_screen.dart';
 import 'package:zaker_ai/features/prayer/prayer_models.dart';
 import 'package:zaker_ai/features/prayer/prayer_providers.dart';
 import 'package:zaker_ai/providers/app_providers.dart';
+import 'package:zaker_ai/providers/my_bag_providers.dart';
 
 class _OnboardedSettings extends PrayerSettingsController {
   _OnboardedSettings() : super(LocalStore.memory()) {
@@ -27,12 +30,16 @@ void main() {
     tester.view.physicalSize = const Size(400, 900);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    // The bag tab now owns real folders, so its store needs a root.
+    final bagRoot = Directory.systemTemp.createTempSync('zaker_shell_bag_');
+    addTearDown(() => bagRoot.deleteSync(recursive: true));
 
     appRouter.go(ZakerRoutes.bag);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           localStoreProvider.overrideWithValue(LocalStore.memory()),
+          myBagRootDirProvider.overrideWithValue(bagRoot),
           authUserProvider.overrideWith(
             (ref) => const AuthUser(uid: 'u1', displayName: 'طالب'),
           ),
