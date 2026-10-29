@@ -682,10 +682,19 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
           session: _session,
           onChanged: _onSessionChanged,
         ),
-      4 => EqnMode(angleUnit: _session.settings.angleUnit),
-      5 => MatrixMode(angleUnit: _session.settings.angleUnit),
+      4 => EqnMode(
+          angleUnit: _session.settings.angleUnit,
+          haptics: _session.settings.haptics,
+        ),
+      5 => MatrixMode(
+          angleUnit: _session.settings.angleUnit,
+          haptics: _session.settings.haptics,
+        ),
       6 => TableMode(session: _session),
-      7 => VectorMode(angleUnit: _session.settings.angleUnit),
+      7 => VectorMode(
+          angleUnit: _session.settings.angleUnit,
+          haptics: _session.settings.haptics,
+        ),
       8 => GraphMode(session: _session),
       9 => CasMode(session: _session),
       10 => FormulasMode(session: _session),
@@ -1399,12 +1408,18 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
             final settings = _session.settings;
 
             void apply(CalcSettings next) {
+              final hapticsChanged = next.haptics != _session.settings.haptics;
               setState(() {
                 _session.settings = next;
               });
               setSheetState(() {});
               _persist();
-              if (next.haptics) HapticFeedback.selectionClick();
+              // The segmented controls and the haptics switch gate their own
+              // feedback; this only confirms turning haptics on, which would
+              // otherwise be the one control that stays silent.
+              if (hapticsChanged && next.haptics) {
+                HapticFeedback.selectionClick();
+              }
             }
 
             Widget sectionTitle(String title, String subtitle) {
@@ -1455,6 +1470,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                         selected: value,
                         labelFor: (item) => item ? 'ON' : 'OFF',
                         compact: true,
+                        haptics: settings.haptics,
                         onChanged: onChanged,
                       ),
                     ),
@@ -1491,6 +1507,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                               values: AngleUnit.values,
                               selected: settings.angleUnit,
                               labelFor: (unit) => unit.label,
+                              haptics: settings.haptics,
                               onChanged: (unit) =>
                                   apply(settings.copyWith(angleUnit: unit)),
                             ),
@@ -1507,6 +1524,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                               values: const <bool>[true, false],
                               selected: settings.naturalInput,
                               labelFor: (value) => value ? 'MATH' : 'LINE',
+                              haptics: settings.haptics,
                               onChanged: (value) =>
                                   apply(settings.copyWith(naturalInput: value)),
                             ),
@@ -1592,6 +1610,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                                 CalcFinish.midnight => 'MIDNIGHT',
                                 CalcFinish.paper => 'PAPER',
                               },
+                              haptics: settings.haptics,
                               onChanged: (finish) =>
                                   apply(settings.copyWith(finish: finish)),
                             ),

@@ -241,6 +241,7 @@ class BaseNModeState extends State<BaseNMode> {
                             selected: _base,
                             labelFor: (value) => value.label,
                             compact: true,
+                            haptics: widget.session.settings.haptics,
                             onChanged: _switchBase,
                           ),
                         ),

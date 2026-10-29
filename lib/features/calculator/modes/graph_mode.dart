@@ -820,6 +820,7 @@ class _GraphModeState extends State<GraphMode> {
                   values: _GraphKind.values,
                   selected: _kind,
                   labelFor: (kind) => kind.label,
+                  haptics: widget.session.settings.haptics,
                   onChanged: _switchKind,
                 ),
                 const SizedBox(height: 10),

@@ -125,8 +125,8 @@ class CalcPill extends StatelessWidget {
     final tint = color ?? palette.accent;
     final foreground = active
         ? (ThemeData.estimateBrightnessForColor(tint) == Brightness.dark
-              ? Colors.white
-              : Colors.black)
+            ? Colors.white
+            : Colors.black)
         : tint;
     final background = active
         ? tint
@@ -176,7 +176,8 @@ class CalcPill extends StatelessWidget {
   }
 }
 
-class CalcSoftButton extends StatelessWidget {  const CalcSoftButton({
+class CalcSoftButton extends StatelessWidget {
+  const CalcSoftButton({
     super.key,
     required this.label,
     this.icon,
@@ -289,6 +290,7 @@ class CalcSegmented<T> extends StatelessWidget {
     required this.labelFor,
     required this.onChanged,
     this.compact = false,
+    this.haptics = true,
   });
 
   final List<T> values;
@@ -296,6 +298,10 @@ class CalcSegmented<T> extends StatelessWidget {
   final String Function(T) labelFor;
   final ValueChanged<T> onChanged;
   final bool compact;
+
+  /// The calculator's haptics setting. Every caller in the calculator passes
+  /// it, so switching the setting off silences these toggles too.
+  final bool haptics;
 
   @override
   Widget build(BuildContext context) {
@@ -319,7 +325,7 @@ class CalcSegmented<T> extends StatelessWidget {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    HapticFeedback.selectionClick();
+                    if (haptics) HapticFeedback.selectionClick();
                     onChanged(value);
                   },
                   child: AnimatedContainer(
@@ -510,7 +516,11 @@ class _CalcKeyButtonState extends State<CalcKeyButton> {
     final palette = CalcPalette.of(context);
     final spec = widget.spec;
     final (Color base, Color top, Color text) = switch (spec.tone) {
-      CalcKeyTone.basic => (palette.basicKey, palette.basicKeyTop, palette.keyText),
+      CalcKeyTone.basic => (
+          palette.basicKey,
+          palette.basicKeyTop,
+          palette.keyText
+        ),
       CalcKeyTone.operation => (
           palette.operationKey,
           palette.operationKeyTop,
@@ -570,7 +580,8 @@ class _CalcKeyButtonState extends State<CalcKeyButton> {
               border: Border.all(
                 color: active
                     ? Color.lerp(base, Colors.white, 0.55)!
-                    : Colors.white.withValues(alpha: palette.isDark ? 0.09 : 0.55),
+                    : Colors.white
+                        .withValues(alpha: palette.isDark ? 0.09 : 0.55),
               ),
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
