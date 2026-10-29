@@ -828,6 +828,17 @@ void verifyLexerNormalization() {
   equal(evaluate('٣+٤').displayValue, '7', 'Arabic digits evaluate');
 }
 
+void verifyVariables() {
+  final variables = <String, EvalValue>{'E': EvalValue.integer(7)};
+  equal(evaluate('E+1', variables: variables).displayValue, '8',
+      'uppercase E is the session variable');
+  equal(evaluate('E', variables: variables).displayValue, '7',
+      'uppercase E alone is the session variable');
+  equal(evaluate('e').displayValue, '2.71828182846', 'lowercase e is Euler');
+  equal(evaluate('E', variables: {'E': EvalValue.exact(Rational.fromInt(3, 2))})
+      .displayValue, '3/2', 'E keeps an exact value');
+}
+
 void main() {
   verifyParserAndEvaluator();
   verifyAngles();
@@ -846,6 +857,7 @@ void main() {
   verifyVector();
   verifyHistoryAndSettings();
   verifyLexerNormalization();
+  verifyVariables();
   verifySession();
   verifyInputEditing();
 
