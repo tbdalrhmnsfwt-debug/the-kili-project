@@ -81,6 +81,52 @@ void main() {
     );
   });
 
+  test('concurrent saves to one folder do not collide', () async {
+    // A delete can land while an edit is still saving, and both write the
+    // same meta.json/links.json. A shared `<file>.tmp` lets one write's
+    // rename or cleanup take the other's temp file mid-write.
+    await Future.wait([
+      for (var i = 0; i < 20; i++)
+        store.saveMedia(
+          'f1',
+          MyBagFolderMedia(
+            links: [
+              MyBagLink(
+                id: 'l$i',
+                title: 'درس $i',
+                url: 'https://example.com/$i',
+                createdAtMs: i,
+              ),
+            ],
+          ),
+        ),
+    ]);
+
+    expect(store.loadMedia('f1').links, isNotEmpty);
+    expect(
+      store.folderDir('f1').listSync().where((e) => e.path.endsWith('.tmp')),
+      isEmpty,
+    );
+  });
+
+  test('the last save wins when two saves overlap', () async {
+    // An edit whose write is still in flight, then a delete: the disk must
+    // end up holding the second save, not whichever write finished last.
+    final first = store.saveMedia(
+      'f1',
+      const MyBagFolderMedia(
+        links: [
+          MyBagLink(
+              id: 'l1', title: 'درس', url: 'https://e.com', createdAtMs: 1),
+        ],
+      ),
+    );
+    final second = store.saveMedia('f1', const MyBagFolderMedia());
+    await Future.wait([first, second]);
+
+    expect(store.loadMedia('f1').links, isEmpty);
+  });
+
   test('a corrupt meta.json keeps the links readable', () async {
     final dir = store.folderDir('f1')..createSync(recursive: true);
     File('${dir.path}/meta.json').writeAsStringSync('{oops');
