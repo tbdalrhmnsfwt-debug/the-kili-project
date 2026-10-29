@@ -936,6 +936,43 @@ void verifyVariables() {
       'E keeps an exact value');
 }
 
+void verifyNumericalStability() {
+  final exposed = evaluate('exp(-30)').displayValue;
+  final powered = evaluate('e^(-30)').displayValue;
+  equal(exposed, powered, 'exp and the power form agree on tiny results');
+  equal(exposed, '9.35762296884e-14', 'exp(-30) keeps its tiny value');
+  var reciprocal = '';
+  try {
+    reciprocal = evaluate('1/exp(-30)').displayValue;
+  } on CalcError catch (error) {
+    reciprocal = 'ERROR ${error.detail}';
+  }
+  check(
+    !reciprocal.contains('ERROR'),
+    'dividing by exp(-30) is not a Math ERROR',
+  );
+  equal(evaluate('(-1)^0.5', complex: true).displayValue, 'i',
+      'a zero real part is snapped in a complex result');
+  equal(evaluate('sin(180)').displayValue, '0', 'trig noise stays zero');
+}
+
+void verifyRandomness() {
+  final session = CalcSession();
+  check(
+    identical(session.contextFor().random, session.contextFor().random),
+    'a session reuses one random source',
+  );
+  final values = <String>{};
+  for (var i = 0; i < 20; i++) {
+    values.add(
+      Evaluator(session.contextFor())
+          .evaluate(parseExpression('rand(1000000)'))
+          .displayValue,
+    );
+  }
+  check(values.length > 1, 'rand changes between evaluations');
+}
+
 void main() {
   verifyParserAndEvaluator();
   verifyAngles();
@@ -955,6 +992,8 @@ void main() {
   verifyHistoryAndSettings();
   verifyLexerNormalization();
   verifyVariables();
+  verifyRandomness();
+  verifyNumericalStability();
   verifySession();
   verifyInputEditing();
 
