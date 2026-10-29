@@ -139,7 +139,14 @@ void main() {
   ) async {
     await _pumpAt(tester);
     expect(find.byKey(const Key('home-app-name')), findsOneWidget);
-    expect(find.text(RafiqBrand.appName), findsOneWidget);
+    // The footer repeats the brand, so scope this to the bar itself.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('home-top-bar')),
+        matching: find.text(RafiqBrand.appName),
+      ),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('home-header')), findsOneWidget);
     expect(find.byKey(const Key('home-prayer-pill')), findsOneWidget);
     expect(

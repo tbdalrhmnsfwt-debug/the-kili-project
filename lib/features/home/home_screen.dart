@@ -1226,12 +1226,19 @@ class _HomeFooter extends StatelessWidget {
                 child: const Center(child: RafiqMark(size: 20)),
               ),
               const SizedBox(width: ZakerSpacing.sm),
-              TrText(
-                RafiqBrand.appName,
-                style: const TextStyle(
-                  color: HomePalette.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
+              // Flexible so the name wraps instead of overflowing the footer
+              // row at 2.0x text on a 320 dp screen.
+              Flexible(
+                child: TrText(
+                  RafiqBrand.appName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: HomePalette.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
