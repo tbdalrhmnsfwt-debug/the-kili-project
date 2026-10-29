@@ -24,9 +24,12 @@ enum ZakerHomeLayout {
   final String label;
   final bool available;
 
+  /// The layout stored under [id], falling back to [calm] for ids this build
+  /// has no layout for — a save from a later version must not put the home
+  /// screen in a state it cannot render.
   static ZakerHomeLayout fromId(String? id) {
     for (final layout in values) {
-      if (layout.id == id) return layout;
+      if (layout.id == id && layout.available) return layout;
     }
     return calm;
   }
@@ -92,8 +95,4 @@ class AppearanceController extends StateNotifier<AppearanceSettings> {
     if (!layout.available || layout == state.homeLayout) return;
     _commit(state.copyWith(homeLayout: layout));
   }
-
-  /// Makes the current palette available to widgets that are not built from
-  /// the Material theme context (painters, native-facing helpers).
-  ZakerPalette get palette => ZakerTheme.paletteFor(state.themeStyle);
 }

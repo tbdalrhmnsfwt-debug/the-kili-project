@@ -57,10 +57,10 @@
 
 **Files:** `lib/core/appearance.dart:55-100`, `lib/features/settings/appearance_screen.dart:66-79`
 
-- [ ] `AppearanceSettings.fromJson` only accepts layouts whose `available` is true, falling back to `calm`.
-- [ ] Delete the unused `AppearanceController.palette` getter.
-- [ ] Render the «شكل الصفحة الرئيسية» section only when at least two layouts are available.
-- [ ] Analyze clean; commit.
+- [x] `AppearanceSettings.fromJson` only accepts layouts whose `available` is true, falling back to `calm`.
+- [x] Delete the unused `AppearanceController.palette` getter.
+- [x] Render the «شكل الصفحة الرئيسية» section only when at least two layouts are available.
+- [x] Analyze clean; commit.
 
 ## Task 4: `white70` labels on the red bag banner
 
