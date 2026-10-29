@@ -143,7 +143,11 @@ class QiblaCompassDial extends StatelessWidget {
                           : [primary, Color.lerp(primary, Colors.black, 0.28)!],
                     ),
                     border: Border.all(
-                      color: discInk.withValues(alpha: 0.85),
+                      // 85% ink over the green disc composites to 2.79:1, so
+                      // the aligned ring stays opaque.
+                      color: aligned
+                          ? Colors.white
+                          : discInk.withValues(alpha: 0.85),
                       width: 2,
                     ),
                     boxShadow: [

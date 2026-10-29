@@ -91,40 +91,55 @@ void main() {
   }
 
   for (final style in ZakerThemeStyle.values) {
-    testWidgets(
-        'the qibla disc keeps its icon visible on every stop '
-        '(${style.id})', (tester) async {
-      final theme = ZakerTheme.forStyle(style);
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: theme,
-          home: const Scaffold(
-            body: Center(
-              child: SizedBox.square(
-                dimension: 320,
-                child: QiblaCompassDial(
-                  qiblaBearing: 120,
-                  heading: null,
-                  aligned: false,
+    for (final aligned in const [false, true]) {
+      testWidgets(
+          'the qibla disc keeps its icon and ring visible on every stop '
+          '(${style.id}, aligned: $aligned)', (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ZakerTheme.forStyle(style),
+            home: Scaffold(
+              body: Center(
+                child: SizedBox.square(
+                  dimension: 320,
+                  child: QiblaCompassDial(
+                    qiblaBearing: 120,
+                    heading: null,
+                    aligned: aligned,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-
-      final icon = tester.widget<HugeIcon>(find.byType(HugeIcon));
-      final primary = theme.colorScheme.primary;
-      // The disc gradients from the primary down 28% toward black.
-      final deep = Color.lerp(primary, Colors.black, 0.28)!;
-      for (final stop in <Color>[primary, deep]) {
-        expect(
-          contrastRatio(icon.color!, stop),
-          greaterThanOrEqualTo(3),
-          reason: 'kaaba icon on $stop (${style.id})',
         );
-      }
-    });
+
+        final icon = tester.widget<HugeIcon>(find.byType(HugeIcon));
+        // The disc is the Container that paints the icon; measure its real
+        // gradient and ring rather than a copy of what the code should build.
+        final disc = tester.widget<Container>(
+          find
+              .ancestor(
+                of: find.byType(HugeIcon),
+                matching: find.byType(Container),
+              )
+              .first,
+        );
+        final decoration = disc.decoration! as BoxDecoration;
+        final ring = (decoration.border! as Border).top.color;
+        for (final stop in (decoration.gradient! as LinearGradient).colors) {
+          expect(
+            contrastRatio(icon.color!, stop),
+            greaterThanOrEqualTo(3),
+            reason: 'kaaba icon on $stop (${style.id}, aligned: $aligned)',
+          );
+          expect(
+            contrastRatio(Color.alphaBlend(ring, stop), stop),
+            greaterThanOrEqualTo(3),
+            reason: 'disc ring on $stop (${style.id}, aligned: $aligned)',
+          );
+        }
+      });
+    }
   }
 
   test('white copy is kept only where it is readable', () {

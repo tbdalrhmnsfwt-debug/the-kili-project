@@ -444,7 +444,9 @@ class _AzkarCard extends ConsumerWidget {
                             theme,
                             alpha: 0.16,
                           )
-                        : Colors.white,
+                        // primary is gold in two palettes; white on it is
+                        // 1.74:1, while onPrimary is 9.57:1.
+                        : theme.colorScheme.onPrimary,
                     shape: const CircleBorder(),
                   ),
                   icon: Icon(
