@@ -6,6 +6,7 @@ import '../../providers/my_bag_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import 'pockets/boards_pocket_body.dart';
+import 'pockets/links_pocket_body.dart';
 import 'pockets/pdf_pocket_body.dart';
 import 'pockets/voice_pocket_body.dart';
 import 'widgets/bag_pocket_tile.dart';
@@ -47,6 +48,9 @@ class BagPocketScreen extends ConsumerWidget {
     if (kind == BagPocketKind.boards) {
       return BoardsPocketBody(folderId: folderId);
     }
+    if (kind == BagPocketKind.links) {
+      return LinksPocketBody(folderId: folderId);
+    }
 
     return Scaffold(
       key: Key('bag-pocket-screen-${kind.name}'),
@@ -59,22 +63,6 @@ class BagPocketScreen extends ConsumerWidget {
         BagPocketKind.pdfs => PdfPocketBody(folderId: folderId),
         BagPocketKind.voice => VoicePocketBody(folderId: folderId),
         BagPocketKind.boards => BoardsPocketBody(folderId: folderId),
-        BagPocketKind.links => _PocketPlaceholder(kind: kind),
+        BagPocketKind.links => LinksPocketBody(folderId: folderId),
       };
-}
-
-/// A pocket that holds nothing yet.
-class _PocketPlaceholder extends StatelessWidget {
-  const _PocketPlaceholder({required this.kind});
-
-  final BagPocketKind kind;
-
-  @override
-  Widget build(BuildContext context) {
-    return EmptyState(
-      icon: Icons.inbox_outlined,
-      title: BagPocketTile.labelOf(kind),
-      message: 'لسه مفيش حاجة هنا',
-    );
-  }
 }

@@ -1149,5 +1149,19 @@
 "حذف الصورة؟": "Delete the image?",
 "مقدرناش نكوّن ملف PDF.": "We could not build the PDF.",
 "مفيش صور تتكوّن في PDF.": "There are no images to put in a PDF.",
-"تم": "Done"
+"تم": "Done",
+"أضف رابط": "Add link",
+"رابط جديد": "New link",
+"تعديل الرابط": "Edit link",
+"العنوان": "Title",
+"الرابط": "Link",
+"حفظ": "Save",
+"إلغاء": "Cancel",
+"ضيف رابط محاضرة أو مراجعة هنا.": "Add a lecture or revision link here.",
+"مقدرناش نفتح الرابط.": "We could not open the link.",
+"الرابط فاضي.": "The link is empty.",
+"الرابط فيه مسافة.": "The link contains a space.",
+"الرابط لازم يبدأ بـ http أو https.": "The link must start with http or https.",
+"الرابط مش كامل.": "The link is incomplete.",
+"حد أقصى 100 رابط في المجلد.": "A folder holds up to 100 links."
 }
