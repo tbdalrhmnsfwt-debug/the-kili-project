@@ -1,7 +1,7 @@
 # Live prayer times and a persistent prayer bar — Design
 
 **Date:** 2026-10-29
-**Status:** Draft — awaiting user approval
+**Status:** Approved — implemented (plan: `docs/superpowers/plans/2026-10-29-live-prayer-status-bar.md`)
 **Approach:** C — OS-rendered chronometer notification + native boundary alarms
 **Scope decision:** keep the existing in-app live clock; add the missing system
 surface; harden the clock's timezone/lifecycle edges.

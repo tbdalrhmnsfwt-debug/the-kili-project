@@ -118,8 +118,8 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen>
     if (!await _explainNotifications()) return;
     await NotificationService.instance.requestPermission();
     if (!mounted) return;
-    final allowed = await NotificationService.instance
-        .areNotificationsEnabled();
+    final allowed =
+        await NotificationService.instance.areNotificationsEnabled();
     if (!allowed && mounted) {
       await AdhanPlatform.openAppSettings();
       return;
@@ -344,6 +344,18 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen>
                       TrText(
                         'ولو غيّرت توقيت الجهاز أو منطقتك، افتح التطبيق مرة '
                         'عشان المواعيد والأذان يتظبطوا من جديد.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.7,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TrText(
+                        'العد التنازلي جوه التطبيق بيتحدّث كل ثانية وهو مفتوح. '
+                        'لو قفلت التطبيق، شريط المواقيت الدائم هو اللي بيكمّل '
+                        'العد — بيفضل في شريط الإشعارات ويعدّ من غير ما '
+                        'التطبيق يشتغل.',
                         style: TextStyle(
                           fontSize: 12,
                           height: 1.7,
