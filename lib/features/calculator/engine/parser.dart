@@ -199,6 +199,18 @@ class Parser {
       );
     }
 
+    // `Anse` (the Ans key followed by the e key) means Ans·e. The single-letter
+    // split below would read it as A·n·s·e, and the unset n and s turn the
+    // whole product into 0 with no error.
+    final reserved = _splitReservedPrefix(raw);
+    if (reserved != null) {
+      Expr run = _simpleName(reserved.first);
+      for (final part in reserved.skip(1)) {
+        run = BinaryExpr('*', run, _simpleName(part));
+      }
+      return run;
+    }
+
     // `xy` is read as x·y, matching the way students type implicit products.
     if (!RegExp(r'^[A-Za-z]+$').hasMatch(raw)) {
       throw CalcError(
@@ -211,6 +223,27 @@ class Parser {
       product = BinaryExpr('*', product, VariableExpr(raw[i]));
     }
     return product;
+  }
+
+  /// Splits a letter run that begins with a reserved multi-letter name.
+  List<String>? _splitReservedPrefix(String raw) {
+    if (raw.length > 3 && raw.substring(0, 3).toLowerCase() == 'ans') {
+      final rest = raw.substring(3);
+      if (!RegExp(r'^[A-Za-z]+$').hasMatch(rest)) return null;
+      return <String>['Ans', ...rest.split('')];
+    }
+    return null;
+  }
+
+  /// Resolves one part of a split run the same way a whole identifier is.
+  Expr _simpleName(String part) {
+    final lower = part.toLowerCase();
+    if (lower == 'ans') return const VariableExpr('Ans');
+    if (lower == 'pi') return const ConstantExpr('pi');
+    if (part == 'e') return const ConstantExpr('e');
+    if (lower == 'i') return const ConstantExpr('i');
+    if (part == 'θ' || lower == 'theta') return const VariableExpr('θ');
+    return VariableExpr(part);
   }
 
   bool _startsValue(Token token) {

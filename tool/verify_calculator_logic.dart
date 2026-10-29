@@ -936,6 +936,25 @@ void verifyVariables() {
       'E keeps an exact value');
 }
 
+void verifyAnsRuns() {
+  final answer = EvalValue.integer(25);
+  final x = <String, EvalValue>{'x': EvalValue.integer(3)};
+  check(
+    evaluate('Anse', answer: answer).displayValue != '0',
+    'Ans followed by e is not a zero product',
+  );
+  equal(
+    evaluate('Anse', answer: answer).displayValue,
+    evaluate('Ans*e', answer: answer).displayValue,
+    'Anse means Ans times e',
+  );
+  equal(
+    evaluate('Ansx', answer: answer, variables: x).displayValue,
+    evaluate('Ans*x', answer: answer, variables: x).displayValue,
+    'Ansx means Ans times x',
+  );
+}
+
 void verifyRationalLimits() {
   check(
     Rational.tryParse('1e100000') == null,
@@ -1014,6 +1033,7 @@ void main() {
   verifyRandomness();
   verifyNumericalStability();
   verifyRationalLimits();
+  verifyAnsRuns();
   verifySession();
   verifyInputEditing();
 
