@@ -33,6 +33,10 @@ class MainActivity : FlutterActivity() {
     private var audioPlayerChannel: AudioPlayerChannel? = null
     private var audioRecorderChannel: AudioRecorderChannel? = null
 
+    /** The ongoing prayer bar, and the route a tap asked for. */
+    private var prayerStatusChannel: MethodChannel? = null
+    private var pendingPrayerRoute: String? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -142,6 +146,33 @@ class MainActivity : FlutterActivity() {
         // Tiled page rendering for the PDF reader.
         PdfRenderChannel(flutterEngine.dartExecutor.binaryMessenger).register()
 
+        // The ongoing prayer bar: Dart hands over the boundary window, and a
+        // tap forwards its route once the Dart handler exists.
+        pendingPrayerRoute = intent?.getStringExtra("route") ?: pendingPrayerRoute
+        prayerStatusChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            PrayerStatusBridge.CHANNEL,
+        ).also { channel ->
+            channel.setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "sync" -> result.success(
+                        PrayerStatusBridge.sync(this, call.arguments as? Map<*, *>),
+                    )
+                    "cancel" -> {
+                        PrayerStatusBridge.cancel(this)
+                        result.success(true)
+                    }
+                    "takeLaunchRoute" -> {
+                        val route = pendingPrayerRoute ?: intent?.getStringExtra("route")
+                        pendingPrayerRoute = null
+                        intent?.removeExtra("route")
+                        result.success(route)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        }
+
         // Audio resources and microphone voice notes for batch chat.
         audioPlayerChannel = AudioPlayerChannel(flutterEngine.dartExecutor.binaryMessenger)
             .also { it.register(this) }
@@ -173,6 +204,11 @@ class MainActivity : FlutterActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         showOverLockScreenIfAdhan(intent)
+        val route = intent.getStringExtra("route")
+        if (route != null) {
+            pendingPrayerRoute = route
+            prayerStatusChannel?.invokeMethod("openRoute", route)
+        }
     }
 
     /**
@@ -222,6 +258,8 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         stopPreview()
+        prayerStatusChannel?.setMethodCallHandler(null)
+        prayerStatusChannel = null
         audioPlayerChannel?.dispose()
         audioRecorderChannel?.dispose()
         audioPlayerChannel = null
