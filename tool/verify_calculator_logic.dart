@@ -936,6 +936,22 @@ void verifyVariables() {
       'E keeps an exact value');
 }
 
+void verifyVariablePersistence() {
+  final variables = <String, EvalValue>{
+    'A': EvalValue.integer(7),
+    'θ': EvalValue.exact(Rational.fromInt(1, 3)),
+    'F': EvalValue.real(2.5),
+  };
+  final restored =
+      CalcSession.decodeVariables(CalcSession.encodeVariables(variables));
+  equal(restored.length, 3, 'variables round trip');
+  equal(restored['A']?.displayValue, '7', 'integer variable survives');
+  equal(restored['θ']?.displayValue, '1/3', 'theta keeps its exact value');
+  equal(restored['F']?.displayValue, '2.5', 'decimal variable survives');
+  equal(CalcSession.decodeVariables('').length, 0, 'empty payload decodes');
+  equal(CalcSession.decodeVariables(null).length, 0, 'missing payload decodes');
+}
+
 void verifyAnsRuns() {
   final answer = EvalValue.integer(25);
   final x = <String, EvalValue>{'x': EvalValue.integer(3)};
@@ -1034,6 +1050,7 @@ void main() {
   verifyNumericalStability();
   verifyRationalLimits();
   verifyAnsRuns();
+  verifyVariablePersistence();
   verifySession();
   verifyInputEditing();
 

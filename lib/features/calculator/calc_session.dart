@@ -20,9 +20,11 @@ class CalcSession {
     List<CalcHistoryEntry>? history,
     EvalValue? answer,
     EvalValue? memory,
+    Map<String, EvalValue>? variables,
   })  : history = history ?? <CalcHistoryEntry>[],
         answer = answer ?? EvalValue.integer(0),
-        memory = memory ?? EvalValue.integer(0);
+        memory = memory ?? EvalValue.integer(0),
+        variables = variables ?? <String, EvalValue>{};
 
   CalcSettings settings;
 
@@ -33,7 +35,7 @@ class CalcSession {
   EvalValue memory;
 
   /// Casio A–F, X, Y and θ.
-  final Map<String, EvalValue> variables = <String, EvalValue>{};
+  final Map<String, EvalValue> variables;
 
   /// One time-seeded source for `rand`, shared by every evaluation in the
   /// session. A fresh source per context would repeat the same first value.
@@ -92,6 +94,23 @@ class CalcSession {
     if (exact != null) return 'r:${exact.numerator}/${exact.denominator}';
     if (value.isReal) return 'd:${value.realPart}';
     return 'c:${value.realPart}:${value.imaginaryPart}';
+  }
+
+  /// `A=r:7/1|F=d:2.5` — variable names never contain `=` or `|`.
+  static String encodeVariables(Map<String, EvalValue> variables) =>
+      variables.entries
+          .map((entry) => '${entry.key}=${encodeValue(entry.value)}')
+          .join('|');
+
+  static Map<String, EvalValue> decodeVariables(String? raw) {
+    final result = <String, EvalValue>{};
+    if (raw == null || raw.isEmpty) return result;
+    for (final part in raw.split('|')) {
+      final index = part.indexOf('=');
+      if (index <= 0) continue;
+      result[part.substring(0, index)] = decodeValue(part.substring(index + 1));
+    }
+    return result;
   }
 
   static EvalValue decodeValue(String? raw) {
