@@ -4,9 +4,11 @@
 ///
 ///     dart run tool/verify_calculator_logic.dart
 ///
+/// Exits non-zero when any check fails, so CI gates on the result.
 /// Every assertion here is deterministic and offline.
 library;
 
+import 'dart:io' show exitCode;
 import 'dart:math' as math;
 
 import '../lib/features/calculator/calc_history.dart';
@@ -1061,5 +1063,6 @@ void main() {
     for (final failure in _failures) {
       print(' • $failure');
     }
+    exitCode = 1;
   }
 }

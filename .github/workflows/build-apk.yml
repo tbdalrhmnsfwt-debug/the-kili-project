@@ -257,6 +257,12 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      # The calculator engine is covered by a Flutter-free assertion harness
+      # rather than widget tests; nothing else runs it, so without this step
+      # the engine checks would never gate a merge.
+      - name: Verify calculator logic
+        run: dart run tool/verify_calculator_logic.dart
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
