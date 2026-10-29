@@ -355,7 +355,7 @@ class _PageTile extends StatelessWidget {
                     page.recognized ? 'اتقرا' : 'مستني القراءة',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: page.recognized
-                          ? ZakerColors.success
+                          ? cardAccentOf(ZakerColors.success, theme)
                           : theme.colorScheme.onSurfaceVariant,
                     ),
                   ),

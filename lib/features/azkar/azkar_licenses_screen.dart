@@ -122,10 +122,14 @@ class AzkarLicensesScreen extends StatelessWidget {
                             color: ZakerColors.accent.withValues(alpha: 0.11),
                             borderRadius: BorderRadius.circular(999),
                           ),
-                          child: const Text(
+                          child: Text(
                             'نص فقط',
                             style: TextStyle(
-                              color: ZakerColors.accent,
+                              color: cardAccentOnTintOf(
+                                ZakerColors.accent,
+                                theme,
+                                alpha: 0.11,
+                              ),
                               fontSize: 8,
                               fontWeight: FontWeight.w800,
                             ),

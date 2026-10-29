@@ -121,6 +121,21 @@ Color cardSurfaceOf(ThemeData theme) =>
 Color cardAccentOf(Color accent, ThemeData theme) =>
     readableTextColor(accent, cardSurfaceOf(theme));
 
+/// [accent] adapted for text or an icon sitting on a pill tinted with the same
+/// accent at [alpha] over the active card.
+///
+/// The tint raises the surface's luminance, so a shade that just passes on the
+/// bare card (green, notably) can still come up short on its own pill.
+Color cardAccentOnTintOf(Color accent, ThemeData theme,
+        {double alpha = 0.12}) =>
+    readableTextColor(
+      accent,
+      Color.alphaBlend(
+        accent.withValues(alpha: alpha),
+        cardSurfaceOf(theme),
+      ),
+    );
+
 final ZakerFeatureAccents _fallbackAccents =
     ZakerTheme.light().extension<ZakerFeatureAccents>()!;
 

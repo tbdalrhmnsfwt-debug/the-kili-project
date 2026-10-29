@@ -132,7 +132,7 @@ class _BadgeTile extends StatelessWidget {
           children: [
             CircleAvatar(
               backgroundColor: accent.withValues(alpha: 0.12),
-              child: Icon(icon, color: accent),
+              child: Icon(icon, color: cardAccentOf(accent, theme)),
             ),
             const SizedBox(width: ZakerSpacing.md),
             Expanded(

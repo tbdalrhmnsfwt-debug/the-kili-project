@@ -361,7 +361,7 @@ class _PeriodCard extends StatelessWidget {
                         ? HugeIcons.strokeRoundedSunrise
                         : HugeIcons.strokeRoundedMoon02,
                     size: 20,
-                    color: accent,
+                    color: cardAccentOf(accent, theme),
                   ),
                 ),
               ),
@@ -369,7 +369,7 @@ class _PeriodCard extends StatelessWidget {
               Icon(
                 Icons.arrow_outward_rounded,
                 size: 16,
-                color: accent.withValues(alpha: 0.7),
+                color: cardAccentOf(accent, theme).withValues(alpha: 0.7),
               ),
             ],
           ),
