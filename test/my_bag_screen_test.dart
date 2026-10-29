@@ -277,12 +277,17 @@ void main() {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
-    final title = tester.widget<Text>(find.text('شنطتي'));
-    final subtitle = tester.widget<Text>(find.text('كل موادك في شنطة واحدة'));
-    final stops = <Color>[
-      ZakerColors.backpack,
-      Color.lerp(ZakerColors.backpack, Colors.black, 0.25)!,
-    ];
+    // «شنطتي» is also the app-bar title, so the copy is read inside the hero.
+    final hero = find.byKey(const Key('my-bag-hero'));
+    final title = tester.widget<Text>(
+      find.descendant(of: hero, matching: find.text('شنطتي')),
+    );
+    final subtitle = tester.widget<Text>(
+      find.descendant(of: hero, matching: find.text('كل موادك في شنطة واحدة')),
+    );
+    final decoration =
+        tester.widget<Container>(hero).decoration! as BoxDecoration;
+    final stops = (decoration.gradient! as LinearGradient).colors;
     for (final text in <(String, Text)>[
       ('title', title),
       ('subtitle', subtitle),
