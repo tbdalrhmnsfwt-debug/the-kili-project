@@ -184,6 +184,31 @@ void main() {
     expect(find.byKey(Key('bag-voice-${clip.id}')), findsOneWidget);
   });
 
+  testWidgets('leaving while recording discards it, as the hint says', (
+    tester,
+  ) async {
+    final recorder = _FakeRecorder(resultPath: clipPath);
+    await tester.pumpWidget(app(recorder, _FakePlayer()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('bag-pocket-add')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(
+      find.text('الحد الأقصى ١٥ دقيقة. لو سبت الشاشة، التسجيل هيتلغي.'),
+      findsOneWidget,
+    );
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(recorder.cancelled, isTrue);
+    expect(find.byKey(const Key('bag-voice-recorder-sheet')), findsNothing);
+    expect(store.loadMedia(folderId).voice, isEmpty);
+  });
+
   testWidgets('a denied microphone explains and offers settings', (
     tester,
   ) async {

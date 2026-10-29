@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zaker_ai/core/local_store.dart';
+import 'package:zaker_ai/core/localization.dart';
 import 'package:zaker_ai/core/my_bag/my_bag_models.dart';
 import 'package:zaker_ai/core/my_bag/my_bag_store.dart';
 import 'package:zaker_ai/core/router.dart';
@@ -232,4 +233,59 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('root'), findsOneWidget);
   });
+
+  testWidgets('the bag controls follow the English table', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localStoreProvider.overrideWithValue(LocalStore.memory()),
+          myBagStoreProvider.overrideWithValue(store),
+          bagSeedSubjectsProvider.overrideWithValue(const []),
+          bagSubjectProgressProvider.overrideWithValue(const {}),
+        ],
+        child: MaterialApp(
+          theme: ZakerTheme.light(),
+          locale: const Locale('en'),
+          supportedLocales: const [Locale('en')],
+          localizationsDelegates: const [_EnglishDelegate()],
+          home: const MyBagScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Search my bag'), findsOneWidget);
+    expect(find.byTooltip('Current grade'), findsOneWidget);
+    expect(find.byTooltip('Folder options'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('my-bag-search')));
+    await tester.pumpAndSettle();
+    expect(find.text('Search my bag'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('my-bag-add-custom')));
+    await tester.pumpAndSettle();
+    expect(find.text('Subject name'), findsOneWidget);
+  });
+}
+
+/// Installs the English table the bag's controls look up.
+class _EnglishDelegate extends LocalizationsDelegate<AppLocalizations> {
+  const _EnglishDelegate();
+
+  @override
+  bool isSupported(Locale locale) => true;
+
+  @override
+  Future<AppLocalizations> load(Locale locale) async => AppLocalizations(
+        const Locale('en'),
+        const {
+          'بحث في شنطتي': 'Search my bag',
+          'الصف الحالي': 'Current grade',
+          'خيارات المجلد': 'Folder options',
+          'اسم المادة': 'Subject name',
+        },
+      );
+
+  @override
+  bool shouldReload(_EnglishDelegate old) => false;
 }

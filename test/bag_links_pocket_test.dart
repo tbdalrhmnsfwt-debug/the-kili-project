@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zaker_ai/core/local_store.dart';
+import 'package:zaker_ai/core/localization.dart';
 import 'package:zaker_ai/core/my_bag/my_bag_models.dart';
 import 'package:zaker_ai/core/my_bag/my_bag_store.dart';
 import 'package:zaker_ai/core/theme.dart';
@@ -36,7 +37,7 @@ void main() {
 
   tearDown(() => root.deleteSync(recursive: true));
 
-  Widget app() => ProviderScope(
+  Widget app({Locale? locale}) => ProviderScope(
         overrides: [
           localStoreProvider.overrideWithValue(LocalStore.memory()),
           myBagStoreProvider.overrideWithValue(store),
@@ -49,6 +50,10 @@ void main() {
         ],
         child: MaterialApp(
           theme: ZakerTheme.light(),
+          locale: locale,
+          supportedLocales: const [Locale('ar'), Locale('en')],
+          localizationsDelegates:
+              locale == null ? null : const [_EnglishDelegate()],
           home: const BagPocketScreen(
             folderId: folderId,
             kind: BagPocketKind.links,
@@ -92,6 +97,23 @@ void main() {
     expect(store.loadMedia(folderId).links, isEmpty);
   });
 
+  testWidgets('the refusal is written in the active language', (tester) async {
+    await tester.pumpWidget(app(locale: const Locale('en')));
+    await tester.pumpAndSettle();
+
+    await addLink(tester, 'خطر', 'javascript:alert(1)');
+    await waitFor(
+      tester,
+      () => find.byKey(const Key('bag-link-error')).evaluate().isNotEmpty,
+    );
+
+    expect(
+      find.text('The link must start with http or https.'),
+      findsOneWidget,
+    );
+    expect(find.text('الرابط لازم يبدأ بـ http أو https.'), findsNothing);
+  });
+
   testWidgets('a valid link opens in the external app', (tester) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
@@ -133,4 +155,24 @@ void main() {
     await waitFor(tester, () => store.loadMedia(folderId).links.isEmpty);
     expect(store.loadMedia(folderId).links, isEmpty);
   });
+}
+
+/// Installs the English table the link dialog's error line looks up.
+class _EnglishDelegate extends LocalizationsDelegate<AppLocalizations> {
+  const _EnglishDelegate();
+
+  @override
+  bool isSupported(Locale locale) => true;
+
+  @override
+  Future<AppLocalizations> load(Locale locale) async => AppLocalizations(
+        const Locale('en'),
+        const {
+          'الرابط لازم يبدأ بـ http أو https.':
+              'The link must start with http or https.',
+        },
+      );
+
+  @override
+  bool shouldReload(_EnglishDelegate old) => false;
 }

@@ -10,6 +10,7 @@ import '../../core/study_library.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/my_bag_providers.dart';
+import '../../providers/pdf_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import '../home/shell_screen.dart';
@@ -97,9 +98,9 @@ class _MyBagScreenState extends ConsumerState<MyBagScreen> {
                     key: const Key('my-bag-search-field'),
                     controller: _search,
                     autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'بحث في شنطتي',
-                      prefixIcon: Icon(Icons.search),
+                    decoration: InputDecoration(
+                      hintText: context.tr('بحث في شنطتي'),
+                      prefixIcon: const Icon(Icons.search),
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
@@ -253,7 +254,7 @@ class _MyBagScreenState extends ConsumerState<MyBagScreen> {
         Flexible(
           child: PopupMenuButton<String>(
             key: const Key('my-bag-grade-filter'),
-            tooltip: 'الصف الحالي',
+            tooltip: context.tr('الصف الحالي'),
             onSelected: (value) =>
                 setState(() => _gradeFilter = value.isEmpty ? null : value),
             itemBuilder: (context) => [
@@ -303,7 +304,7 @@ class _MyBagScreenState extends ConsumerState<MyBagScreen> {
         const SizedBox(width: ZakerSpacing.sm),
         IconButton(
           key: const Key('my-bag-search'),
-          tooltip: 'بحث في شنطتي',
+          tooltip: context.tr('بحث في شنطتي'),
           icon: Icon(_searching ? Icons.close : Icons.search),
           onPressed: () => setState(() {
             _searching = !_searching;
@@ -416,6 +417,30 @@ class _MyBagScreenState extends ConsumerState<MyBagScreen> {
     await _run(
       () => ref.read(myBagControllerProvider.notifier).deleteFolder(folder.id),
     );
+    await _untagFolderPdfs(folder);
+  }
+
+  /// The dialog promises the folder's PDFs stay in the library «من غير وسم»:
+  /// clear the tag on every document the folder owned, matching either the
+  /// folder id recorded by «كوّن PDF» or the grade+subject tag an import sets.
+  Future<void> _untagFolderPdfs(MyBagFolder folder) async {
+    if (ref.read(myBagControllerProvider).folderById(folder.id) != null) {
+      return; // The delete failed; the folder still owns its documents.
+    }
+    if (folder.pdfIds.isEmpty) return; // Nothing to untag, nothing to read.
+    if (folder.gradeId.isEmpty && folder.subjectKey.isEmpty) return;
+    final library = ref.read(pdfLibraryControllerProvider);
+    final controller = ref.read(pdfLibraryControllerProvider.notifier);
+    for (final id in folder.pdfIds) {
+      final entry = library.entryById(id);
+      if (entry == null) continue;
+      final taggedHere = entry.sourceDocId.isNotEmpty
+          ? entry.sourceDocId == folder.id
+          : entry.gradeId == folder.gradeId &&
+              entry.subjectKey == folder.subjectKey;
+      if (!taggedHere) continue;
+      await controller.clearSubjectTag(id);
+    }
   }
 
   Future<String?> _promptName({
@@ -488,7 +513,7 @@ class _NamePromptDialogState extends State<_NamePromptDialog> {
         controller: _controller,
         autofocus: true,
         textInputAction: TextInputAction.done,
-        decoration: const InputDecoration(labelText: 'اسم المادة'),
+        decoration: InputDecoration(labelText: context.tr('اسم المادة')),
         onFieldSubmitted: (value) => Navigator.of(context).pop(value.trim()),
       ),
       actions: [

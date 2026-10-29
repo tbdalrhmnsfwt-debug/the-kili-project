@@ -109,6 +109,7 @@ class LinksPocketBody extends ConsumerWidget {
       );
       return;
     }
+    final l10n = context.l10nOrNull;
     final draft = await showDialog<_LinkDraft>(
       context: context,
       builder: (dialogContext) => const _LinkDialog(),
@@ -119,8 +120,10 @@ class LinksPocketBody extends ConsumerWidget {
           .read(myBagControllerProvider.notifier)
           .addLink(folderId, title: draft.title, url: draft.url);
     } on ArgumentError catch (error) {
+      // The explanation is in `message`; `invalidValue` is the URL itself.
+      final reason = '${error.message ?? ''}';
       messenger.showSnackBar(
-        SnackBar(content: Text('${error.invalidValue ?? error.message}')),
+        SnackBar(content: Text(l10n?.t(reason) ?? reason)),
       );
     } on StateError {
       messenger.showSnackBar(
@@ -135,6 +138,7 @@ class LinksPocketBody extends ConsumerWidget {
     MyBagLink link,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10nOrNull;
     final draft = await showDialog<_LinkDraft>(
       context: context,
       builder: (dialogContext) => _LinkDialog(link: link),
@@ -145,8 +149,9 @@ class LinksPocketBody extends ConsumerWidget {
           .read(myBagControllerProvider.notifier)
           .updateLink(folderId, link.id, title: draft.title, url: draft.url);
     } on ArgumentError catch (error) {
+      final reason = '${error.message ?? ''}';
       messenger.showSnackBar(
-        SnackBar(content: Text('${error.invalidValue ?? error.message}')),
+        SnackBar(content: Text(l10n?.t(reason) ?? reason)),
       );
     }
   }
@@ -346,7 +351,7 @@ class _LinkDialogState extends State<_LinkDialog> {
           if (_error != null) ...[
             const SizedBox(height: ZakerSpacing.sm),
             Text(
-              _error!,
+              context.tr(_error!),
               key: const Key('bag-link-error'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: ZakerColors.danger,

@@ -172,6 +172,57 @@ void main() {
     );
   });
 
+  testWidgets('pruning one folder leaves the other folders\' references alone',
+      (
+    tester,
+  ) async {
+    const otherFolderId = 'subject:sec1:الفيزياء';
+    await seed(
+      library: [entry('p1', 'ملزمة الرياضيات'), entry('p2', 'ملزمة الفيزياء')],
+      pdfIds: const ['ghost', 'p1'],
+    );
+    await store.saveIndex(
+      store.loadIndex().upsert(
+            MyBagFolder.subject(
+              gradeId: 'sec1',
+              subjectKey: 'الفيزياء',
+              name: 'الفيزياء',
+              colorValue: 0xFF2F5EA8,
+              createdAt: DateTime.utc(2026, 10, 1),
+            ).copyWith(pdfIds: const ['p2']),
+          ),
+    );
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(BagPocketScreen)),
+    );
+    // The prune writes the index on the real event loop.
+    for (var i = 0; i < 50; i++) {
+      if (!container
+          .read(myBagControllerProvider)
+          .folderById(folderId)!
+          .pdfIds
+          .contains('ghost')) {
+        break;
+      }
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump();
+    }
+
+    expect(
+      container.read(myBagControllerProvider).folderById(folderId)!.pdfIds,
+      ['p1'],
+    );
+    expect(
+      container.read(myBagControllerProvider).folderById(otherFolderId)!.pdfIds,
+      ['p2'],
+    );
+  });
+
   testWidgets('a PDF whose file vanished is stale, not fatal', (tester) async {
     await seed(
       library: [entry('p2', 'ملزمة قديمة')],

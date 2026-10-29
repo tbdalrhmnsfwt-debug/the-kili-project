@@ -372,7 +372,7 @@ class _BagVoiceRecorderSheetState extends ConsumerState<BagVoiceRecorderSheet> {
           ),
           const SizedBox(height: ZakerSpacing.sm),
           TrText(
-            'الحد الأقصى ١٥ دقيقة. لو سبت الشاشة، التسجيل هيتوقف ويتحفظ.',
+            'الحد الأقصى ١٥ دقيقة. لو سبت الشاشة، التسجيل هيتلغي.',
             textAlign: TextAlign.center,
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,

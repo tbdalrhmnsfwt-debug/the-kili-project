@@ -321,6 +321,14 @@ class _BoardsPocketBodyState extends ConsumerState<BoardsPocketBody> {
     final boards = ref.read(myBagControllerProvider).mediaOf(_folderId).boards;
     final pdfController = ref.read(pdfLibraryControllerProvider.notifier);
     if (folder == null || boards.isEmpty || pdfController.isBusy) return;
+    // A compile is capped at 25 images so a 200-image folder cannot be turned
+    // into one enormous in-memory PDF.
+    if (boards.length > kMaxBoardsPerPick) {
+      messenger.showSnackBar(
+        const SnackBar(content: TrText('أقصى 25 صورة في المرة.')),
+      );
+      return;
+    }
     final store = ref.read(myBagStoreProvider);
     setState(() => _compiling = true);
     try {

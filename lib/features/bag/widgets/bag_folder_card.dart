@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import '../../../core/localization.dart';
 import '../../../core/my_bag/my_bag_models.dart';
 import '../../../core/theme.dart';
 import '../../../widgets/common.dart';
@@ -73,7 +74,7 @@ class BagFolderCard extends StatelessWidget {
                   const Spacer(),
                   PopupMenuButton<String>(
                     key: Key('bag-folder-menu-${folder.id}'),
-                    tooltip: 'خيارات المجلد',
+                    tooltip: context.tr('خيارات المجلد'),
                     iconSize: 20,
                     icon: HugeIcon(
                       icon: HugeIcons.strokeRoundedMoreVertical,

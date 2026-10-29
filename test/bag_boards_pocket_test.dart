@@ -194,4 +194,39 @@ void main() {
     );
     expect(find.text('تم تكوين ملف PDF'), findsOneWidget);
   });
+
+  testWidgets('«كوّن PDF» refuses more than 25 images at once', (tester) async {
+    final bytes = base64Decode(_pngBase64);
+    final boards = <MyBagBoardImage>[];
+    for (var i = 0; i < 26; i++) {
+      final fileName = 'seed$i.png';
+      await store.writeBoardImage(folderId, fileName, bytes);
+      boards.add(
+        MyBagBoardImage(
+          id: 'seed$i',
+          fileName: fileName,
+          width: 1,
+          height: 1,
+          createdAtMs: 0,
+        ),
+      );
+    }
+    await store.saveMedia(folderId, MyBagFolderMedia(boards: boards));
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('bag-boards-compile')));
+    await tester.pump();
+
+    expect(find.text('أقصى 25 صورة في المرة.'), findsOneWidget);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(BagPocketScreen)),
+    );
+    expect(container.read(pdfLibraryControllerProvider).entries, isEmpty);
+    expect(
+      container.read(myBagControllerProvider).folderById(folderId)!.pdfIds,
+      isEmpty,
+    );
+  });
 }

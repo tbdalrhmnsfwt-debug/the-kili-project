@@ -8,6 +8,39 @@ import 'package:flutter/material.dart';
 
 import '../../../core/localization.dart';
 
+/// Where a tap at [dx] falls on the clip, with the bar order mirrored in RTL.
+double waveformSeekFraction({
+  required double dx,
+  required double width,
+  required bool rtl,
+}) {
+  if (width <= 0) return 0;
+  final fromLeft = dx / width;
+  final fraction = rtl ? 1 - fromLeft : fromLeft;
+  return fraction.isFinite ? fraction.clamp(0.0, 1.0) : 0;
+}
+
+/// The playhead's x, measured from the left edge, for [progress] on [width].
+///
+/// In RTL the bars run right-to-left, so the playhead starts at the right
+/// edge and moves left as the clip plays.
+double waveformPlayheadX({
+  required double width,
+  required double progress,
+  required bool rtl,
+}) {
+  final value = rtl ? 1 - progress : progress;
+  return value * width;
+}
+
+/// Whether a bar centered at [center] sits behind the playhead.
+bool waveformBarIsPlayed({
+  required double center,
+  required double playheadX,
+  required bool rtl,
+}) =>
+    rtl ? center >= playheadX : center <= playheadX;
+
 class BagWaveform extends StatelessWidget {
   const BagWaveform({
     super.key,
@@ -46,9 +79,11 @@ class BagWaveform extends StatelessWidget {
             onTapDown: onSeek == null
                 ? null
                 : (details) => onSeek!(
-                      width <= 0
-                          ? 0
-                          : (details.localPosition.dx / width).clamp(0.0, 1.0),
+                      waveformSeekFraction(
+                        dx: details.localPosition.dx,
+                        width: width,
+                        rtl: rtl,
+                      ),
                     ),
             child: SizedBox(
               width: double.infinity,
@@ -98,7 +133,11 @@ class _WaveformPainter extends CustomPainter {
     const gap = 2.0;
     final slot = size.width / samples.length;
     final barWidth = (slot - gap).clamp(1.0, 6.0);
-    final playhead = progress * size.width;
+    final playhead = waveformPlayheadX(
+      width: size.width,
+      progress: progress,
+      rtl: rtl,
+    );
     final face = Paint()..style = PaintingStyle.fill;
     final radius = Radius.circular(barWidth / 2);
 
@@ -109,9 +148,13 @@ class _WaveformPainter extends CustomPainter {
       final left =
           rtl ? size.width - center - barWidth / 2 : center - barWidth / 2;
       final top = (size.height - barHeight) / 2;
-      face.color = rtl
-          ? (left >= playhead ? played : idle)
-          : (left <= playhead ? played : idle);
+      face.color = waveformBarIsPlayed(
+        center: center,
+        playheadX: playhead,
+        rtl: rtl,
+      )
+          ? played
+          : idle;
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(left, top, barWidth, barHeight),

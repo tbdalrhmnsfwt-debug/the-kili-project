@@ -1165,5 +1165,6 @@
 "الرابط مش كامل.": "The link is incomplete.",
 "حد أقصى 100 رابط في المجلد.": "A folder holds up to 100 links.",
 "الملف مش موجود في المكتبة.": "The file is not in the library.",
-"شيل من المكتبة": "Remove from library"
+"شيل من المكتبة": "Remove from library",
+"الحد الأقصى ١٥ دقيقة. لو سبت الشاشة، التسجيل هيتلغي.": "The maximum is 15 minutes. If you leave the screen, the recording is discarded."
 }

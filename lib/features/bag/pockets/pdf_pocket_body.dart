@@ -48,11 +48,11 @@ class _PdfPocketBodyState extends ConsumerState<PdfPocketBody> {
         ref.read(myBagControllerProvider).folderById(widget.folderId);
     if (folder == null || folder.pdfIds.isEmpty) return;
     final library = ref.read(pdfLibraryControllerProvider);
-    final known = <String>{
-      for (final id in folder.pdfIds)
-        if (library.entryById(id) != null) id,
-    };
-    if (known.length == folder.pdfIds.length) return;
+    // prunePdfRefs filters every folder's references, so the set it keeps must
+    // be the whole library: passing only this folder's ids would strip the
+    // references of every other folder.
+    final known = <String>{for (final entry in library.entries) entry.id};
+    if (folder.pdfIds.every(known.contains)) return;
     unawaited(ref.read(myBagControllerProvider.notifier).prunePdfRefs(known));
   }
 
