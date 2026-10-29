@@ -30,6 +30,10 @@ class Rational implements Comparable<Rational> {
     return Rational._(n, d);
   }
 
+  /// Upper bound on a literal's exponent and decimal places, matching
+  /// `Evaluator._maxExactExponent`.
+  static const int maxLiteralExponent = 10000;
+
   factory Rational.fromInt(int value, [int denominator = 1]) =>
       Rational(BigInt.from(value), BigInt.from(denominator));
 
@@ -50,6 +54,11 @@ class Rational implements Comparable<Rational> {
     final eIndex = body.indexOf(RegExp('[eE]'));
     if (eIndex >= 0) {
       exponent = int.parse(body.substring(eIndex + 1));
+      // `1e999999999` would allocate a BigInt of ~400 MB during a keystroke
+      // preview. Reject anything past the evaluator's exact-exponent ceiling.
+      if (exponent.abs() > maxLiteralExponent) {
+        throw FormatException('exponent out of range', source);
+      }
       body = body.substring(0, eIndex);
     }
     final dot = body.indexOf('.');
@@ -66,6 +75,9 @@ class Rational implements Comparable<Rational> {
     }
     if (!RegExp(r'^\d+$').hasMatch(digits)) {
       throw FormatException('invalid rational', source);
+    }
+    if (scale > maxLiteralExponent) {
+      throw FormatException('too many decimal places', source);
     }
     var numerator = BigInt.parse(digits) * sign;
     var denominator = BigInt.one;

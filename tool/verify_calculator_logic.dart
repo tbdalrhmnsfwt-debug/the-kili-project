@@ -936,6 +936,25 @@ void verifyVariables() {
       'E keeps an exact value');
 }
 
+void verifyRationalLimits() {
+  check(
+    Rational.tryParse('1e100000') == null,
+    'a huge positive exponent is rejected',
+  );
+  check(
+    Rational.tryParse('1e-100000') == null,
+    'a huge negative exponent is rejected',
+  );
+  check(
+    Rational.tryParse('1e400') != null,
+    'a large but bounded exponent still parses',
+  );
+  check(
+    Rational.tryParse('0.${'0' * 10001}1') == null,
+    'an absurd number of decimal places is rejected',
+  );
+}
+
 void verifyNumericalStability() {
   final exposed = evaluate('exp(-30)').displayValue;
   final powered = evaluate('e^(-30)').displayValue;
@@ -994,6 +1013,7 @@ void main() {
   verifyVariables();
   verifyRandomness();
   verifyNumericalStability();
+  verifyRationalLimits();
   verifySession();
   verifyInputEditing();
 
