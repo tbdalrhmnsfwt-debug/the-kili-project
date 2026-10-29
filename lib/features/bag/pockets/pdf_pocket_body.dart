@@ -98,7 +98,7 @@ class _PdfPocketBodyState extends ConsumerState<PdfPocketBody> {
             actions: [
               IconButton(
                 key: const Key('bag-pocket-add'),
-                tooltip: _t(context, 'أضف PDF'),
+                tooltip: context.tr('أضف PDF'),
                 onPressed: _import,
                 icon: const Icon(Icons.add),
               ),
@@ -257,10 +257,4 @@ class _PdfPocketBodyState extends ConsumerState<PdfPocketBody> {
       ),
     );
   }
-
-  /// Translates for places that need a plain [String], falling back to the
-  /// Arabic source when no localisation delegate is installed (tests).
-  static String _t(BuildContext context, String key) =>
-      Localizations.of<AppLocalizations>(context, AppLocalizations)?.t(key) ??
-      key;
 }

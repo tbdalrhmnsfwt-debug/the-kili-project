@@ -250,48 +250,57 @@ class _MyBagScreenState extends ConsumerState<MyBagScreen> {
 
     return Row(
       children: [
-        PopupMenuButton<String>(
-          key: const Key('my-bag-grade-filter'),
-          tooltip: 'الصف الحالي',
-          onSelected: (value) =>
-              setState(() => _gradeFilter = value.isEmpty ? null : value),
-          itemBuilder: (context) => [
-            const PopupMenuItem<String>(
-              value: '',
-              child: TrText('الصف الحالي'),
-            ),
-            const PopupMenuItem<String>(
-              key: Key('my-bag-filter-all'),
-              value: '*',
-              child: TrText('كل الصفوف'),
-            ),
-            for (final entry in kGradeLabels.entries)
-              PopupMenuItem<String>(
-                key: Key('my-bag-filter-${entry.key}'),
-                value: entry.key,
-                child: TrText(entry.value),
+        Flexible(
+          child: PopupMenuButton<String>(
+            key: const Key('my-bag-grade-filter'),
+            tooltip: 'الصف الحالي',
+            onSelected: (value) =>
+                setState(() => _gradeFilter = value.isEmpty ? null : value),
+            itemBuilder: (context) => [
+              const PopupMenuItem<String>(
+                value: '',
+                child: TrText('الصف الحالي'),
               ),
-          ],
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: ZakerSpacing.md,
-              vertical: ZakerSpacing.sm,
-            ),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(ZakerRadius.pill),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.filter_list, size: 18),
-                const SizedBox(width: ZakerSpacing.xs),
-                TrText(label, style: theme.textTheme.labelLarge),
-              ],
+              const PopupMenuItem<String>(
+                key: Key('my-bag-filter-all'),
+                value: '*',
+                child: TrText('كل الصفوف'),
+              ),
+              for (final entry in kGradeLabels.entries)
+                PopupMenuItem<String>(
+                  key: Key('my-bag-filter-${entry.key}'),
+                  value: entry.key,
+                  child: TrText(entry.value),
+                ),
+            ],
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: ZakerSpacing.md,
+                vertical: ZakerSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(ZakerRadius.pill),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.filter_list, size: 18),
+                  const SizedBox(width: ZakerSpacing.xs),
+                  Flexible(
+                    child: TrText(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-        const Spacer(),
+        const SizedBox(width: ZakerSpacing.sm),
         IconButton(
           key: const Key('my-bag-search'),
           tooltip: 'بحث في شنطتي',
@@ -414,36 +423,18 @@ class _MyBagScreenState extends ConsumerState<MyBagScreen> {
     required Key fieldKey,
     required String confirm,
     String? initial,
-  }) {
-    final controller = TextEditingController(text: initial);
-    return showDialog<String>(
+  }) async {
+    final value = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: TrText(title),
-        content: TextFormField(
-          key: fieldKey,
-          controller: controller,
-          autofocus: true,
-          textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(labelText: 'اسم المادة'),
-          onFieldSubmitted: (value) => Navigator.of(context).pop(value.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const TrText('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: TrText(confirm),
-          ),
-        ],
+      builder: (context) => _NamePromptDialog(
+        title: title,
+        fieldKey: fieldKey,
+        confirm: confirm,
+        initial: initial,
       ),
-    ).then((value) {
-      controller.dispose();
-      if (value == null || value.trim().isEmpty) return null;
-      return value.trim();
-    });
+    );
+    if (value == null || value.trim().isEmpty) return null;
+    return value.trim();
   }
 
   Future<void> _run(Future<void> Function() action) async {
@@ -455,6 +446,62 @@ class _MyBagScreenState extends ConsumerState<MyBagScreen> {
         const SnackBar(content: TrText('الحد الأقصى اتملى في المجلد ده.')),
       );
     }
+  }
+}
+
+/// Asks for one name. Owns its controller so the field can finish its exit
+/// animation before the controller is disposed.
+class _NamePromptDialog extends StatefulWidget {
+  const _NamePromptDialog({
+    required this.title,
+    required this.fieldKey,
+    required this.confirm,
+    this.initial,
+  });
+
+  final String title;
+  final Key fieldKey;
+  final String confirm;
+  final String? initial;
+
+  @override
+  State<_NamePromptDialog> createState() => _NamePromptDialogState();
+}
+
+class _NamePromptDialogState extends State<_NamePromptDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: TrText(widget.title),
+      content: TextFormField(
+        key: widget.fieldKey,
+        controller: _controller,
+        autofocus: true,
+        textInputAction: TextInputAction.done,
+        decoration: const InputDecoration(labelText: 'اسم المادة'),
+        onFieldSubmitted: (value) => Navigator.of(context).pop(value.trim()),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const TrText('إلغاء'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: TrText(widget.confirm),
+        ),
+      ],
+    );
   }
 }
 

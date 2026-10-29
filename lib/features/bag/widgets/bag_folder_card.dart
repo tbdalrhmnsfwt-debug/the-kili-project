@@ -108,13 +108,15 @@ class BagFolderCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: ZakerSpacing.sm),
-              TrText(
-                folder.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
+              Flexible(
+                child: TrText(
+                  folder.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
               ),
               if (progress != null && progress! > 0) ...[
