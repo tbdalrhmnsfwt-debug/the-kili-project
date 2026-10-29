@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:zaker_ai/core/curriculum.dart';
 import 'package:zaker_ai/core/theme.dart';
+import 'package:zaker_ai/features/prayer/qibla_compass.dart';
 import 'package:zaker_ai/widgets/common.dart';
 
 /// Colour of [text] once its own alpha is composited over [backdrop].
@@ -83,6 +85,43 @@ void main() {
           const ['7', 'مهمة'],
           chip,
           '${accent.key} card ${style.id}',
+        );
+      }
+    });
+  }
+
+  for (final style in ZakerThemeStyle.values) {
+    testWidgets(
+        'the qibla disc keeps its icon visible on every stop '
+        '(${style.id})', (tester) async {
+      final theme = ZakerTheme.forStyle(style);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: const Scaffold(
+            body: Center(
+              child: SizedBox.square(
+                dimension: 320,
+                child: QiblaCompassDial(
+                  qiblaBearing: 120,
+                  heading: null,
+                  aligned: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final icon = tester.widget<HugeIcon>(find.byType(HugeIcon));
+      final primary = theme.colorScheme.primary;
+      // The disc gradients from the primary down 28% toward black.
+      final deep = Color.lerp(primary, Colors.black, 0.28)!;
+      for (final stop in <Color>[primary, deep]) {
+        expect(
+          contrastRatio(icon.color!, stop),
+          greaterThanOrEqualTo(3),
+          reason: 'kaaba icon on $stop (${style.id})',
         );
       }
     });
