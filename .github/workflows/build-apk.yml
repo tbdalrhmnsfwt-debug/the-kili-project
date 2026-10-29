@@ -264,6 +264,9 @@ jobs:
         run: flutter build apk --release
 
       - name: Upload APK
+        # Artifact storage is a finite GitHub quota; when it runs out the build
+        # and its tests are still good, so the upload must not fail the run.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: zaker-ai-release-apk
