@@ -6,6 +6,7 @@ import '../../providers/my_bag_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import 'pockets/pdf_pocket_body.dart';
+import 'pockets/voice_pocket_body.dart';
 import 'widgets/bag_pocket_tile.dart';
 
 /// One pocket of one folder. Tasks 6–9 replace each branch of [_body].
@@ -35,9 +36,12 @@ class BagPocketScreen extends ConsumerWidget {
       );
     }
 
-    // The PDFs pocket owns its own app bar and scrolling body.
+    // These pockets own their own app bar and scrolling body.
     if (kind == BagPocketKind.pdfs) {
       return PdfPocketBody(folderId: folderId);
+    }
+    if (kind == BagPocketKind.voice) {
+      return VoicePocketBody(folderId: folderId);
     }
 
     return Scaffold(
@@ -49,7 +53,7 @@ class BagPocketScreen extends ConsumerWidget {
 
   Widget _body(BuildContext context, WidgetRef ref) => switch (kind) {
         BagPocketKind.pdfs => PdfPocketBody(folderId: folderId),
-        BagPocketKind.voice => _PocketPlaceholder(kind: kind),
+        BagPocketKind.voice => VoicePocketBody(folderId: folderId),
         BagPocketKind.boards => _PocketPlaceholder(kind: kind),
         BagPocketKind.links => _PocketPlaceholder(kind: kind),
       };

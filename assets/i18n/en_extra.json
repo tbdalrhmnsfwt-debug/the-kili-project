@@ -1120,5 +1120,21 @@
   "فتح ملفاتي": "Open my files",
   "افتح": "Open",
   "أعد التسمية": "Rename",
-  "الملف مش موجود": "File not found"
+  "الملف مش موجود": "File not found",
+"سجّل ملاحظة صوتية": "Record a voice note",
+"سجّل": "Record",
+"سجّل شرح أو ملاحظة وسمعها في أي وقت.": "Record an explanation or a note and listen any time.",
+"إيقاف وحفظ": "Stop and save",
+"الميكروفون مرفوض. فعّله من الإعدادات علشان تسجل.": "Microphone access is denied. Enable it in Settings to record.",
+"المساحة مش كافية للتسجيل. فضّي مساحة وجرّب تاني.": "Not enough space to record. Free some space and try again.",
+"التسجيل فاضي، جرّب تاني.": "The recording is empty. Try again.",
+"حد أقصى 100 تسجيل في المجلد.": "A folder holds up to 100 recordings.",
+"تسجيل {0}": "Recording {0}",
+"تشغيل": "Play",
+"إيقاف مؤقت": "Pause",
+"شريط الصوت": "Audio waveform",
+"افتح الإعدادات": "Open Settings",
+"حذف «{0}»؟": "Delete «{0}»?",
+"احذف": "Delete",
+"بنجهز الميكروفون…": "Getting the microphone ready…"
 }
