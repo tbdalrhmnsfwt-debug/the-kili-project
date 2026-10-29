@@ -198,20 +198,24 @@ void main() {
   testWidgets('«كوّن PDF» refuses more than 25 images at once', (tester) async {
     final bytes = base64Decode(_pngBase64);
     final boards = <MyBagBoardImage>[];
-    for (var i = 0; i < 26; i++) {
-      final fileName = 'seed$i.png';
-      await store.writeBoardImage(folderId, fileName, bytes);
-      boards.add(
-        MyBagBoardImage(
-          id: 'seed$i',
-          fileName: fileName,
-          width: 1,
-          height: 1,
-          createdAtMs: 0,
-        ),
-      );
-    }
-    await store.saveMedia(folderId, MyBagFolderMedia(boards: boards));
+    // Real file I/O inside a testWidgets body never completes under the fake
+    // async zone; seed the 26 images on the real event loop instead.
+    await tester.runAsync(() async {
+      for (var i = 0; i < 26; i++) {
+        final fileName = 'seed$i.png';
+        await store.writeBoardImage(folderId, fileName, bytes);
+        boards.add(
+          MyBagBoardImage(
+            id: 'seed$i',
+            fileName: fileName,
+            width: 1,
+            height: 1,
+            createdAtMs: 0,
+          ),
+        );
+      }
+      await store.saveMedia(folderId, MyBagFolderMedia(boards: boards));
+    });
 
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();

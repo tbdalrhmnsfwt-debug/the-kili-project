@@ -200,9 +200,18 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.binding.handlePopRoute();
+    final handled = await tester.binding.handlePopRoute();
+    debugPrint('PROBE handled=$handled cancelled=${recorder.cancelled}');
     await tester.pump();
+    debugPrint(
+      'PROBE afterPump cancelled=${recorder.cancelled} '
+      'sheet=${find.byKey(const Key('bag-voice-recorder-sheet')).evaluate().length}',
+    );
     await tester.pump(const Duration(milliseconds: 400));
+    debugPrint(
+      'PROBE after400 cancelled=${recorder.cancelled} '
+      'sheet=${find.byKey(const Key('bag-voice-recorder-sheet')).evaluate().length}',
+    );
 
     expect(recorder.cancelled, isTrue);
     expect(find.byKey(const Key('bag-voice-recorder-sheet')), findsNothing);
@@ -247,11 +256,15 @@ void main() {
       createdAtMs: 1,
       waveform: [20, 80, 50],
     );
-    await store.saveMedia(
-      folderId,
-      const MyBagFolderMedia(voice: [clip]),
-    );
-    await store.writeVoiceClip(folderId, clip.fileName, const [1, 2, 3]);
+    // Real file I/O inside a testWidgets body never completes under the fake
+    // async zone; seed the clip on the real event loop instead.
+    await tester.runAsync(() async {
+      await store.saveMedia(
+        folderId,
+        const MyBagFolderMedia(voice: [clip]),
+      );
+      await store.writeVoiceClip(folderId, clip.fileName, const [1, 2, 3]);
+    });
 
     await tester.pumpWidget(app(_FakeRecorder(resultPath: clipPath), player));
     await tester.pumpAndSettle();
@@ -276,7 +289,9 @@ void main() {
       createdAtMs: 2,
       waveform: [10],
     );
-    await store.saveMedia(folderId, const MyBagFolderMedia(voice: [clip]));
+    await tester.runAsync(
+      () => store.saveMedia(folderId, const MyBagFolderMedia(voice: [clip])),
+    );
 
     await tester.pumpWidget(
       app(_FakeRecorder(resultPath: clipPath), _FakePlayer()),
