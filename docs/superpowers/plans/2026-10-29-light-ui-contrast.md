@@ -37,7 +37,7 @@
   the label keeps full accent instead of 85% alpha (unknown backdrop behind a banner chip).
   Cost if wrong: chips read slightly heavier than the old muted look.
 - [x] `labelColor` overrides the derived label colour.
-- [ ] Analyze clean; commit.
+- [x] Analyze clean; commit.
 
 ## Task 2: Gold and green used as text on light cards
 
@@ -94,5 +94,5 @@
 
 ## Task 8: Final verification
 
-- [ ] `dart analyze lib test` clean; run the numeric contrast table for every changed pair and record it in the commit message.
-- [ ] Note in the final message that widget tests cannot run locally (no ARM64 Flutter engine) and CI is billing-blocked.
+- [x] `dart analyze lib test` clean; run the numeric contrast table for every changed pair and record it in the commit message.
+- [x] Note in the final message that widget tests cannot run locally (no ARM64 Flutter engine) and CI is billing-blocked.
