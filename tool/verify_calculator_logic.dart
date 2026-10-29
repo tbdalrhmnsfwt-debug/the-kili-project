@@ -101,7 +101,8 @@ void verifyParserAndEvaluator() {
   equal(evaluate('-2^2').displayValue, '−4', 'unary minus below power');
   equal(evaluate('(-2)^2').displayValue, '4', 'parenthesised negative base');
   equal(evaluate('2^-3').displayValue, '1/8', 'negative exponent exact');
-  equal(evaluate('2π').displayValue, '6.28318530718', 'implicit multiplication');
+  equal(
+      evaluate('2π').displayValue, '6.28318530718', 'implicit multiplication');
   equal(evaluate('3(4+1)').displayValue, '15', 'implicit parentheses');
   equal(evaluate('2sin(30)').displayValue, '1', 'implicit function');
   equal(evaluate('(2+1)(2-1)').displayValue, '3', 'adjacent parentheses');
@@ -112,27 +113,39 @@ void verifyParserAndEvaluator() {
   equal(evaluate('200×10%').displayValue, '20', 'multiply-percent');
   equal(evaluate('5!').displayValue, '120', 'factorial');
   equal(evaluate('0!').displayValue, '1', 'zero factorial');
-  throwsCalc(() => evaluate('(−1)!'), 'negative factorial', kind: CalcErrorKind.math);
-  throwsCalc(() => evaluate('2.5!'), 'fractional factorial', kind: CalcErrorKind.math);
-  throwsCalc(() => evaluate('171!'), 'factorial limit', kind: CalcErrorKind.math);
+  throwsCalc(() => evaluate('(−1)!'), 'negative factorial',
+      kind: CalcErrorKind.math);
+  throwsCalc(() => evaluate('2.5!'), 'fractional factorial',
+      kind: CalcErrorKind.math);
+  throwsCalc(() => evaluate('171!'), 'factorial limit',
+      kind: CalcErrorKind.math);
   equal(evaluate('2!^3').displayValue, '8', 'postfix before power');
   equal(evaluate('√9').displayValue, '3', 'square root exact');
   equal(evaluate('√(9+7)').displayValue, '4', 'square root parentheses');
   equal(evaluate('∛(−8)').displayValue, '−2', 'cube root negative');
-  throwsCalc(() => evaluate('√(−1)'), 'sqrt negative in COMP', kind: CalcErrorKind.math);
+  throwsCalc(() => evaluate('√(−1)'), 'sqrt negative in COMP',
+      kind: CalcErrorKind.math);
   equal(evaluate('root(3,27)').displayValue, '3', 'nth root');
   equal(evaluate('2^0.5').displayValue, '1.41421356237', 'irrational power');
   equal(evaluate('1/3').displayValue, '1/3', 'third exact');
-  equal(evaluate('0.1+0.2').displayValue, '3/10', 'no binary float noise (exact)');
-  equal(formatCalcValue(evaluate('0.1+0.2'), preferExact: false).display, '0.3', 'decimal 0.3');
+  equal(evaluate('0.1+0.2').displayValue, '3/10',
+      'no binary float noise (exact)');
+  equal(formatCalcValue(evaluate('0.1+0.2'), preferExact: false).display, '0.3',
+      'decimal 0.3');
   equal(evaluate('7/2').displayValue, '7/2', 'improper fraction');
-  equal(formatCalcValue(evaluate('7/2'), mixed: true).display, '3 1/2', 'mixed number');
-  throwsCalc(() => evaluate('1/0'), 'division by zero', kind: CalcErrorKind.math);
-  throwsCalc(() => evaluate('(1+2'), 'unclosed parenthesis', kind: CalcErrorKind.syntax);
+  equal(formatCalcValue(evaluate('7/2'), mixed: true).display, '3 1/2',
+      'mixed number');
+  throwsCalc(() => evaluate('1/0'), 'division by zero',
+      kind: CalcErrorKind.math);
+  throwsCalc(() => evaluate('(1+2'), 'unclosed parenthesis',
+      kind: CalcErrorKind.syntax);
   throwsCalc(() => evaluate(''), 'empty expression', kind: CalcErrorKind.empty);
-  throwsCalc(() => evaluate('2+'), 'trailing operator', kind: CalcErrorKind.syntax);
-  throwsCalc(() => evaluate('sin'), 'missing argument', kind: CalcErrorKind.syntax);
-  throwsCalc(() => evaluate('foo(2)'), 'unknown function', kind: CalcErrorKind.syntax);
+  throwsCalc(() => evaluate('2+'), 'trailing operator',
+      kind: CalcErrorKind.syntax);
+  throwsCalc(() => evaluate('sin'), 'missing argument',
+      kind: CalcErrorKind.syntax);
+  throwsCalc(() => evaluate('foo(2)'), 'unknown function',
+      kind: CalcErrorKind.syntax);
   equal(evaluate('|−3|').displayValue, '3', 'absolute bars');
   equal(evaluate('3²').displayValue, '9', 'superscript square');
   equal(evaluate('2³').displayValue, '8', 'superscript cube');
@@ -146,12 +159,14 @@ void verifyParserAndEvaluator() {
   equal(evaluate('product(x, x, 1, 5)').displayValue, '120', 'product');
   close(evaluate('integral(x^2, x, 0, 3)').realPart, 9, 'definite integral');
   close(evaluate('diff(x^2, x, 3)').realPart, 6, 'numeric derivative');
-  equal(evaluate('Ans×2', answer: EvalValue.integer(5)).displayValue, '10', 'Ans');
+  equal(evaluate('Ans×2', answer: EvalValue.integer(5)).displayValue, '10',
+      'Ans');
   final variables = <String, EvalValue>{'A': EvalValue.integer(3)};
   equal(evaluate('A+1', variables: variables).displayValue, '4', 'variable A');
   equal(evaluate('B+1').displayValue, '1', 'unset variable is zero');
   equal(evaluate('theta').displayValue, '0', 'theta variable defaults to zero');
-  equal(parseExpression('cos(0)').runtimeType, FunctionExpr, 'AST function node');
+  equal(
+      parseExpression('cos(0)').runtimeType, FunctionExpr, 'AST function node');
 }
 
 extension on EvalValue {
@@ -166,15 +181,22 @@ void verifyAngles() {
   equal(evaluate('sin(180)').displayValue, '0', 'sin 180 DEG');
   equal(evaluate('cos(90)').displayValue, '0', 'cos 90 DEG');
   equal(evaluate('sin(390)').displayValue, '1/2', 'sin 390 DEG');
-  throwsCalc(() => evaluate('tan(90)'), 'tan 90 undefined', kind: CalcErrorKind.math);
-  close(evaluate('sin(pi/2)', angle: AngleUnit.radians).realPart, 1, 'sin π/2 RAD');
-  close(evaluate('cos(pi)', angle: AngleUnit.radians).realPart, -1, 'cos π RAD');
-  close(evaluate('sin(100)', angle: AngleUnit.gradians).realPart, 1, 'sin 100 GRA');
+  throwsCalc(() => evaluate('tan(90)'), 'tan 90 undefined',
+      kind: CalcErrorKind.math);
+  close(evaluate('sin(pi/2)', angle: AngleUnit.radians).realPart, 1,
+      'sin π/2 RAD');
+  close(
+      evaluate('cos(pi)', angle: AngleUnit.radians).realPart, -1, 'cos π RAD');
+  close(evaluate('sin(100)', angle: AngleUnit.gradians).realPart, 1,
+      'sin 100 GRA');
   close(evaluate('asin(0.5)').realPart, 30, 'asin 0.5 DEG');
-  close(evaluate('acos(0)', angle: AngleUnit.radians).realPart, math.pi / 2, 'acos 0 RAD');
+  close(evaluate('acos(0)', angle: AngleUnit.radians).realPart, math.pi / 2,
+      'acos 0 RAD');
   close(evaluate('atan(1)').realPart, 45, 'atan 1 DEG');
-  throwsCalc(() => evaluate('asin(2)'), 'asin domain', kind: CalcErrorKind.math);
-  equal(evaluate('sin(30°)', angle: AngleUnit.radians).displayValue,
+  throwsCalc(() => evaluate('asin(2)'), 'asin domain',
+      kind: CalcErrorKind.math);
+  equal(
+      evaluate('sin(30°)', angle: AngleUnit.radians).displayValue,
       formatCalcValue(EvalValue.real(math.sin(math.pi / 6))).display,
       'degree mark in RAD mode');
 }
@@ -195,14 +217,16 @@ void verifyComplex() {
   close(root.realPart, 0, 'sqrt(-1) real');
   close(root.imaginaryPart, 1, 'sqrt(-1) imaginary');
   close(evaluate('abs(3+4i)', complex: true).realPart, 5, 'complex modulus');
-  close(evaluate('arg(1+i)', complex: true).realPart, 45, 'complex argument DEG');
+  close(
+      evaluate('arg(1+i)', complex: true).realPart, 45, 'complex argument DEG');
   final polar = formatCalcValue(
     EvalValue.complex(0, 1),
     polar: true,
     angleUnit: AngleUnit.degrees,
   ).display;
   equal(polar, '1∠90', 'polar display');
-  close(evaluate('exp(i*pi)', complex: true).realPart, -1, 'Euler identity real');
+  close(
+      evaluate('exp(i*pi)', complex: true).realPart, -1, 'Euler identity real');
   final quotient = evaluate('(1+i)/(1−i)', complex: true);
   close(quotient.realPart, 0, 'complex division real');
   close(quotient.imaginaryPart, 1, 'complex division imaginary');
@@ -215,12 +239,33 @@ void verifyFormatting() {
   equal(formatReal(12345678901234), '1.23456789012e13', 'scientific large');
   equal(formatReal(0.0000000001), '1e-10', 'scientific small');
   equal(formatReal(1.2345, fix: 2), '1.23', 'FIX');
-  equal(formatRational(Rational.fromInt(7, 2), mixed: true), '3 1/2', 'mixed format');
-  equal(formatRational(Rational.fromInt(-7, 2), mixed: true), '−3 1/2', 'negative mixed');
+  equal(formatRational(Rational.fromInt(7, 2), mixed: true), '3 1/2',
+      'mixed format');
+  equal(formatRational(Rational.fromInt(-7, 2), mixed: true), '−3 1/2',
+      'negative mixed');
   equal(formatComplex(2, 0), '2', 'real complex format');
   equal(formatComplex(0, -1), '−i', 'negative imaginary unit');
   equal(formatComplex(0, 1), 'i', 'imaginary unit');
   equal(formatGraphLabel(0.000012345), '1.234e-5', 'graph label');
+  equal(formatRationalDecimal(Rational.parse('1e400')), '1e400',
+      'huge exact decimal');
+  equal(formatRationalDecimal(Rational.parse('-1e400')), '−1e400',
+      'negative huge exact decimal');
+  equal(formatRationalDecimal(Rational.parse('1e-400')), '1e-400',
+      'tiny exact decimal');
+  equal(formatRationalDecimal(Rational.fromInt(-3, 2)), '−1.5',
+      'in-range exact decimal');
+  equal(formatRationalDecimal(Rational.parse('1.2345678901234567e400')),
+      '1.23456789012e400', 'huge exact decimal keeps 12 significant digits');
+  final huge = EvalValue.exact(Rational.parse('1e400'));
+  equal(formatCalcValue(huge).decimal, '1e400', 'huge value decimal form');
+  equal(formatCalcValue(huge, preferExact: false).display, '1e400',
+      'huge value as a plain decimal');
+  equal(formatCalcValue(huge, fix: 2).display, '1e400',
+      'FIX does not turn a huge exact value into Math ERROR');
+  final tiny = EvalValue.exact(Rational.parse('1e-400'));
+  equal(formatCalcValue(tiny, preferExact: false).display, '1e-400',
+      'tiny value is not reported as zero');
 }
 
 void verifyPolynomials() {
@@ -246,10 +291,19 @@ void verifyPolynomials() {
   final coefficients = polynomialCoefficients(parseExpression('(x+1)^2'), 'x');
   equal(coefficients?.map((value) => value.toString()).join(','), '1,2,1',
       'polynomial extraction');
-  final roots = rationalRoots(<Rational>[Rational.one, Rational.fromInt(-5), Rational.fromInt(6)]);
-  equal(roots.map((root) => root.toString()).join(','), '2,3', 'rational roots');
-  equal(factorPolynomial(<Rational>[Rational.one, Rational.fromInt(-5), Rational.fromInt(6)], 'x').replaceAll(' ', ''),
-      '(x−2)·(x−3)', 'factor exact');
+  final roots = rationalRoots(
+      <Rational>[Rational.one, Rational.fromInt(-5), Rational.fromInt(6)]);
+  equal(
+      roots.map((root) => root.toString()).join(','), '2,3', 'rational roots');
+  equal(
+      factorPolynomial(<Rational>[
+        Rational.one,
+        Rational.fromInt(-5),
+        Rational.fromInt(6)
+      ], 'x')
+          .replaceAll(' ', ''),
+      '(x−2)·(x−3)',
+      'factor exact');
 }
 
 void verifyLinearSystems() {
@@ -288,7 +342,8 @@ void verifyLinearSystems() {
     ],
     <double>[1, 2, 3, 4],
   );
-  equal(four.values.map((value) => value.round()).join(','), '1,2,3,4', '4×4 system');
+  equal(four.values.map((value) => value.round()).join(','), '1,2,3,4',
+      '4×4 system');
 }
 
 void verifyMatrix() {
@@ -310,7 +365,8 @@ void verifyMatrix() {
     <double>[2, 4],
   ]);
   close(singular.determinant(), 0, 'singular determinant');
-  throwsCalc(() => singular.inverse(), 'singular inverse', kind: CalcErrorKind.math);
+  throwsCalc(() => singular.inverse(), 'singular inverse',
+      kind: CalcErrorKind.math);
   final three = Matrix(<List<double>>[
     <double>[6, 1, 1],
     <double>[4, -2, 5],
@@ -355,7 +411,8 @@ void verifyStatistics() {
   close(regression.correlation, 1, 'regression correlation');
   close(regression.rSquared, 1, 'regression r²');
   equal(regression.equation, 'y = 2x + 1', 'regression equation');
-  final quadratic = quadraticRegression(<double>[0, 1, 2, 3], <double>[1, 4, 9, 16]);
+  final quadratic =
+      quadraticRegression(<double>[0, 1, 2, 3], <double>[1, 4, 9, 16]);
   close(quadratic.coefficients[0], 1, 'quadratic regression a');
   close(quadratic.coefficients[1], 2, 'quadratic regression b');
   close(quadratic.coefficients[2], 1, 'quadratic regression c');
@@ -370,35 +427,56 @@ void verifyBases() {
   equal(parseBase('FF', NumberBase.hexadecimal).toString(), '255', 'hex FF');
   equal(parseBase('1011', NumberBase.binary).toString(), '11', 'binary 1011');
   equal(parseBase('777', NumberBase.octal).toString(), '511', 'octal 777');
-  equal(parseBase('-10', NumberBase.decimal).toString(), '-10', 'negative decimal');
+  equal(parseBase('-10', NumberBase.decimal).toString(), '-10',
+      'negative decimal');
   throwsCalc(
     () => parseBase('2', NumberBase.binary),
     'invalid binary digit',
     kind: CalcErrorKind.syntax,
   );
-  equal(formatBase(BigInt.from(255), NumberBase.hexadecimal), 'FF', 'format hex');
-  equal(formatBase(BigInt.from(15), NumberBase.binary), '1111', 'format binary');
-  equal(formatBase(BigInt.from(65535), NumberBase.binary), '1111 1111 1111 1111', 'grouped binary');
   equal(
-    applyBaseOperation(BigInt.from(12), BigInt.from(10), BaseOperation.and).toString(),
+      formatBase(BigInt.from(255), NumberBase.hexadecimal), 'FF', 'format hex');
+  equal(
+      formatBase(BigInt.from(15), NumberBase.binary), '1111', 'format binary');
+  equal(formatBase(BigInt.from(65535), NumberBase.binary),
+      '1111 1111 1111 1111', 'grouped binary');
+  equal(
+    applyBaseOperation(BigInt.from(12), BigInt.from(10), BaseOperation.and)
+        .toString(),
     '8',
     'bitwise and',
   );
   equal(
-    applyBaseOperation(BigInt.from(12), BigInt.from(10), BaseOperation.or).toString(),
+    applyBaseOperation(BigInt.from(12), BigInt.from(10), BaseOperation.or)
+        .toString(),
     '14',
     'bitwise or',
   );
   equal(
-    applyBaseOperation(BigInt.from(12), BigInt.from(10), BaseOperation.xor).toString(),
+    applyBaseOperation(BigInt.from(12), BigInt.from(10), BaseOperation.xor)
+        .toString(),
     '6',
     'bitwise xor',
   );
-  equal(applyBaseOperation(BigInt.from(5), null, BaseOperation.not).toString(), '-6', 'bitwise not');
+  equal(applyBaseOperation(BigInt.from(5), null, BaseOperation.not).toString(),
+      '-6', 'bitwise not');
   equal(
-    applyBaseOperation(BigInt.from(3), BigInt.from(2), BaseOperation.shiftLeft).toString(),
+    applyBaseOperation(BigInt.from(3), BigInt.from(2), BaseOperation.shiftLeft)
+        .toString(),
     '12',
     'shift left',
+  );
+  throwsCalc(
+    () => applyBaseOperation(
+        BigInt.from(5), BigInt.from(-3), BaseOperation.shiftLeft),
+    'negative shift left',
+    kind: CalcErrorKind.argument,
+  );
+  throwsCalc(
+    () => applyBaseOperation(
+        BigInt.from(5), BigInt.from(-3), BaseOperation.shiftRight),
+    'negative shift right',
+    kind: CalcErrorKind.argument,
   );
   throwsCalc(
     () => applyBaseOperation(BigInt.one, BigInt.zero, BaseOperation.divide),
@@ -505,7 +583,8 @@ void verifySession() {
   final restoredComplex =
       CalcSession.decodeValue(CalcSession.encodeValue(complex));
   close(restoredComplex.realPart, 2, 'complex value persistence real');
-  close(restoredComplex.imaginaryPart, -3, 'complex value persistence imaginary');
+  close(
+      restoredComplex.imaginaryPart, -3, 'complex value persistence imaginary');
   equal(
     CalcSession.decodeValue('r:1/0').displayValue,
     '0',
@@ -612,8 +691,10 @@ void verifyUnits() {
   final knot = findUnit('knot')!;
   final mps = findUnit('meter_per_second')!;
   close(convertUnit(1, knot, mps), 0.5144444444444445, 'knot to m/s');
-  equal(searchUnits('بار').any((unit) => unit.id == 'bar'), true, 'Arabic unit search');
-  equal(searchUnits('pascal').any((unit) => unit.id == 'pascal'), true, 'English unit search');
+  equal(searchUnits('بار').any((unit) => unit.id == 'bar'), true,
+      'Arabic unit search');
+  equal(searchUnits('pascal').any((unit) => unit.id == 'pascal'), true,
+      'English unit search');
   throwsCalc(
     () => convertUnit(1, atmosphere, meter),
     'cross-category conversion',
@@ -631,9 +712,12 @@ void verifyFormulas() {
   close(volume.realPart, 22.414, 'ideal gas volume', tolerance: 0.01);
   final trig = formulaById('trig_identity')!;
   close(trig.evaluate(<String, double>{'θ': 37}).realPart, 1, 'trig identity');
-  equal(searchFormulas('فيثاغورس').any((entry) => entry.id == 'pythagoras'), true, 'Arabic formula search');
-  equal(searchFormulas('ohm').any((entry) => entry.id == 'ohms_law'), true, 'English formula search');
-  equal(searchFormulas('').length, formulaLibrary.length, 'empty formula search');
+  equal(searchFormulas('فيثاغورس').any((entry) => entry.id == 'pythagoras'),
+      true, 'Arabic formula search');
+  equal(searchFormulas('ohm').any((entry) => entry.id == 'ohms_law'), true,
+      'English formula search');
+  equal(
+      searchFormulas('').length, formulaLibrary.length, 'empty formula search');
 }
 
 void verifyGraph() {
@@ -700,10 +784,12 @@ void verifyTable() {
   equal(table.rows.first.formatted, '1', 'table first value');
   equal(table.rows.last.formatted, '25', 'table last value');
   final descending = buildTable('x', start: 3, end: 1, step: -1);
-  equal(descending.rows.map((row) => row.x).join(','), '3.0,2.0,1.0', 'descending table');
+  equal(descending.rows.map((row) => row.x).join(','), '3.0,2.0,1.0',
+      'descending table');
   final errors = buildTable('1/x', start: -1, end: 1, step: 1);
   equal(errors.rows[1].formatted, 'Math ERROR', 'table error cell');
-  final truncated = buildTable('x', start: 0, end: 1000, step: 0.01, maximumRows: 20);
+  final truncated =
+      buildTable('x', start: 0, end: 1000, step: 0.01, maximumRows: 20);
   equal(truncated.rows.length, 20, 'table maximum rows');
   check(truncated.truncated, 'table truncation flag');
   throwsCalc(
@@ -726,15 +812,20 @@ void verifyCas() {
     '3x²',
     'derivative of keypad x³ glyph',
   );
-  equal(cas.differentiate('x^3+2x', 'x').expression, '3x² + 2', 'derivative cubic');
-  equal(cas.differentiate('sin(x)', 'x').expression, 'cos(x)', 'derivative sin');
-  equal(cas.differentiate('cos(x)', 'x').expression, '−sin(x)', 'derivative cos');
+  equal(cas.differentiate('x^3+2x', 'x').expression, '3x² + 2',
+      'derivative cubic');
+  equal(
+      cas.differentiate('sin(x)', 'x').expression, 'cos(x)', 'derivative sin');
+  equal(
+      cas.differentiate('cos(x)', 'x').expression, '−sin(x)', 'derivative cos');
   equal(cas.differentiate('ln(x)', 'x').expression, '1 / x', 'derivative ln');
   equal(cas.simplify('(x+1)^2'), 'x² + 2x + 1', 'simplify expanded square');
   equal(cas.simplify('2x+3x'), '5x', 'simplify like terms');
   equal(cas.simplify('x*0+3'), '3', 'simplify zero product');
-  equal(cas.factor('x^2-5x+6').expression.replaceAll(' ', ''), '(x−2)·(x−3)', 'CAS factor');
-  equal(cas.factor('x^2-1').expression.replaceAll(' ', ''), '(x−1)·(x+1)', 'CAS factor difference of squares');
+  equal(cas.factor('x^2-5x+6').expression.replaceAll(' ', ''), '(x−2)·(x−3)',
+      'CAS factor');
+  equal(cas.factor('x^2-1').expression.replaceAll(' ', ''), '(x−1)·(x+1)',
+      'CAS factor difference of squares');
   equal(cas.integrate('3x^2', 'x').expression, 'x³ + C', 'CAS integrate');
   throwsCalc(
     () => cas.integrate('sin(x)', 'x'),
@@ -760,8 +851,10 @@ void verifyVector() {
   final cross = a.cross(b);
   equal(cross.components.join(','), '-3.0,6.0,-3.0', 'cross product');
   close(a.norm, math.sqrt(14), 'vector norm');
-  close(a.angleBetween(VectorValue(<double>[1, 0, 0])), math.acos(1 / math.sqrt(14)) * 180 / math.pi, 'vector angle');
-  final projection = VectorValue(<double>[3, 4]).projectionOnto(VectorValue(<double>[1, 0]));
+  close(a.angleBetween(VectorValue(<double>[1, 0, 0])),
+      math.acos(1 / math.sqrt(14)) * 180 / math.pi, 'vector angle');
+  final projection =
+      VectorValue(<double>[3, 4]).projectionOnto(VectorValue(<double>[1, 0]));
   equal(projection.format(), '(3, 0)', 'vector projection');
   throwsCalc(
     () => a.cross(VectorValue(<double>[1, 2])),
@@ -793,7 +886,8 @@ void verifyHistoryAndSettings() {
   equal(decoded.last.expression, '199+1', 'history oldest kept');
   equal(CalcHistory.decode('not json').length, 0, 'corrupt history ignored');
   equal(
-    CalcHistory.decode('[{"expression":"1+1","result":"2","time":"bad"}]').length,
+    CalcHistory.decode('[{"expression":"1+1","result":"2","time":"bad"}]')
+        .length,
     1,
     'history row with bad time still readable',
   );
@@ -835,8 +929,11 @@ void verifyVariables() {
   equal(evaluate('E', variables: variables).displayValue, '7',
       'uppercase E alone is the session variable');
   equal(evaluate('e').displayValue, '2.71828182846', 'lowercase e is Euler');
-  equal(evaluate('E', variables: {'E': EvalValue.exact(Rational.fromInt(3, 2))})
-      .displayValue, '3/2', 'E keeps an exact value');
+  equal(
+      evaluate('E', variables: {'E': EvalValue.exact(Rational.fromInt(3, 2))})
+          .displayValue,
+      '3/2',
+      'E keeps an exact value');
 }
 
 void main() {
