@@ -272,6 +272,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Subject name'), findsOneWidget);
   });
+
+  testWidgets('the hero copy stays readable on the red banner', (tester) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final title = tester.widget<Text>(find.text('شنطتي'));
+    final subtitle = tester.widget<Text>(find.text('كل موادك في شنطة واحدة'));
+    final stops = <Color>[
+      ZakerColors.backpack,
+      Color.lerp(ZakerColors.backpack, Colors.black, 0.25)!,
+    ];
+    for (final text in <(String, Text)>[
+      ('title', title),
+      ('subtitle', subtitle),
+    ]) {
+      for (final stop in stops) {
+        final painted = Color.alphaBlend(text.$2.style!.color!, stop);
+        expect(
+          contrastRatio(painted, stop),
+          greaterThanOrEqualTo(4.5),
+          reason: '${text.$1} on $stop',
+        );
+      }
+    }
+  });
 }
 
 /// Installs the English table the bag's controls look up.
