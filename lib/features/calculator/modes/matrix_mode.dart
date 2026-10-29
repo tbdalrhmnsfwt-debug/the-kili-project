@@ -118,8 +118,7 @@ class _MatrixModeState extends State<MatrixMode> {
         _error = null;
         _detail = a.isSquare
             ? 'det = ${formatReal(a.determinant())}'
-            : 'المصفوفة A مش مربعة، فمفيش محدد.'
-        ;
+            : 'المصفوفة A مش مربعة، فمفيش محدد.';
       });
     } on CalcError catch (error) {
       setState(() {
@@ -161,7 +160,8 @@ class _MatrixModeState extends State<MatrixMode> {
         _result = formatReal(value);
         _operation = 'det(A)';
         _error = null;
-        _detail = 'المحدد عددي؛ القيم القريبة جدًا من الصفر بتتعامل كصفر عدديًا.';
+        _detail =
+            'المحدد عددي؛ القيم القريبة جدًا من الصفر بتتعامل كصفر عدديًا.';
       });
     } on CalcError catch (error) {
       setState(() {
@@ -597,7 +597,8 @@ class _MatrixCell extends StatelessWidget {
           fillColor: palette.isDark
               ? Colors.black.withValues(alpha: 0.23)
               : Colors.white.withValues(alpha: 0.6),
-          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 3),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 10, horizontal: 3),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(9),
             borderSide: BorderSide(color: palette.border),

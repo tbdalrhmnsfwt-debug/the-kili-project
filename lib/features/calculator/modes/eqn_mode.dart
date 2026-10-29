@@ -100,8 +100,7 @@ class _EqnModeState extends State<EqnMode> {
       if (approximate == null) {
         throw CalcError(
           CalcErrorKind.argument,
-          detail:
-              'المعامل $label مش نسبي. الحل بالمعاملات النسبية فقط — '
+          detail: 'المعامل $label مش نسبي. الحل بالمعاملات النسبية فقط — '
               'استخدم عدد صحيح أو كسر أو قيمة عشرية.',
         );
       }
@@ -127,7 +126,9 @@ class _EqnModeState extends State<EqnMode> {
         );
       }
       final result = polynomialRoots(
-        <double>[for (final coefficient in coefficients) coefficient.toDouble()],
+        <double>[
+          for (final coefficient in coefficients) coefficient.toDouble()
+        ],
       );
       final buffer = StringBuffer();
       buffer.writeln(formatPolynomial(coefficients, 'x'));
@@ -137,7 +138,8 @@ class _EqnModeState extends State<EqnMode> {
         buffer.write('مفيش جذور.');
       } else {
         for (var i = 0; i < result.roots.length; i++) {
-          buffer.writeln('x${_subscript(i + 1)} = ${_formatRoot(result.roots[i])}');
+          buffer.writeln(
+              'x${_subscript(i + 1)} = ${_formatRoot(result.roots[i])}');
         }
       }
       setState(() {
@@ -289,8 +291,10 @@ class _EqnModeState extends State<EqnMode> {
               onChanged: _changeKind,
             ),
           ),
-          if (_kind == _EquationKind.polynomial) ..._polynomialSection(palette)
-          else ..._systemSection(palette),
+          if (_kind == _EquationKind.polynomial)
+            ..._polynomialSection(palette)
+          else
+            ..._systemSection(palette),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -352,6 +356,7 @@ class _EqnModeState extends State<EqnMode> {
         _ => 'x⁴',
       };
     }
+
     return [
       CalcModeCard(
         child: Column(
@@ -422,8 +427,7 @@ class _EqnModeState extends State<EqnMode> {
             ),
             const SizedBox(height: 8),
             const CalcNote(
-              text:
-                  'المعادلة على الصورة ax² + bx + c = 0 وهكذا. '
+              text: 'المعادلة على الصورة ax² + bx + c = 0 وهكذا. '
                   'الحل بيستخدم صيغًا مغلقة وحساب Durand–Kerner للدرجات الأعلى.',
             ),
           ],
@@ -440,7 +444,8 @@ class _EqnModeState extends State<EqnMode> {
           children: [
             CalcSectionTitle(
               title: 'نظام معادلات خطية',
-              subtitle: 'عدد المعادلات = عدد المتغيرات. اكتب معاملات كل معادلة.',
+              subtitle:
+                  'عدد المعادلات = عدد المتغيرات. اكتب معاملات كل معادلة.',
               trailing: SizedBox(
                 width: 118,
                 child: CalcSegmented<int>(
@@ -539,8 +544,7 @@ class _EqnModeState extends State<EqnMode> {
             ),
             const SizedBox(height: 8),
             const CalcNote(
-              text:
-                  'النظام بيتم حله بحذف غاوس مع pivoting جزئي. '
+              text: 'النظام بيتم حله بحذف غاوس مع pivoting جزئي. '
                   'لو المحدد صفر، النتيجة بتوضح هل النظام متسق وله حلول لا نهائية أو غير متسق.',
             ),
           ],
@@ -586,7 +590,8 @@ class _CompactNumberField extends StatelessWidget {
           fillColor: palette.isDark
               ? Colors.black.withValues(alpha: 0.24)
               : Colors.white.withValues(alpha: 0.58),
-          contentPadding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(9),
             borderSide: BorderSide(color: palette.border),
