@@ -116,19 +116,19 @@ class Rational implements Comparable<Rational> {
   Rational operator -() => Rational._(-numerator, denominator);
 
   Rational operator +(Rational other) => Rational(
-    numerator * other.denominator + other.numerator * denominator,
-    denominator * other.denominator,
-  );
+        numerator * other.denominator + other.numerator * denominator,
+        denominator * other.denominator,
+      );
 
   Rational operator -(Rational other) => Rational(
-    numerator * other.denominator - other.numerator * denominator,
-    denominator * other.denominator,
-  );
+        numerator * other.denominator - other.numerator * denominator,
+        denominator * other.denominator,
+      );
 
   Rational operator *(Rational other) => Rational(
-    numerator * other.numerator,
-    denominator * other.denominator,
-  );
+        numerator * other.numerator,
+        denominator * other.denominator,
+      );
 
   Rational operator /(Rational other) {
     if (other.isZero) {
@@ -284,17 +284,20 @@ class EvalValue {
       throw const NonFiniteValue();
     }
     // Remove floating residue such as 1.2246467991473532e-16 i after
-    // evaluating sin(pi). The threshold is relative to the real magnitude.
-    if (imaginary.abs() < 1e-13 * math.max(1, real.abs())) {
-      imaginary = 0;
-    }
+    // evaluating sin(pi), and the mirror case: `(-1)^0.5` leaves a 6.1e-17
+    // real part next to `i`. Both parts are judged against the same scale so a
+    // complex result never shows one component of pure noise.
+    final scale = math.max(1.0, math.max(real.abs(), imaginary.abs()));
+    if (real.abs() < 1e-13 * scale) real = 0;
+    if (imaginary.abs() < 1e-13 * scale) imaginary = 0;
     if (imaginary == 0) {
       return EvalValue._(null, real, 0);
     }
     return EvalValue._(null, real, imaginary);
   }
 
-  factory EvalValue.integer(int value) => EvalValue.exact(Rational.fromInt(value));
+  factory EvalValue.integer(int value) =>
+      EvalValue.exact(Rational.fromInt(value));
 
   /// Exact real value, or `null` for an approximation/complex value.
   final Rational? exact;
@@ -305,11 +308,11 @@ class EvalValue {
   bool get isReal => imaginaryPart == 0;
   bool get isComplex => imaginaryPart != 0;
   bool get isZero =>
-      (exact?.isZero ?? false) ||
-      (isReal && realPart.abs() < 1e-15);
+      (exact?.isZero ?? false) || (isReal && realPart.abs() < 1e-15);
 
-  double get magnitude =>
-      isReal ? realPart.abs() : math.sqrt(realPart * realPart + imaginaryPart * imaginaryPart);
+  double get magnitude => isReal
+      ? realPart.abs()
+      : math.sqrt(realPart * realPart + imaginaryPart * imaginaryPart);
 
   double get argument {
     if (isReal) {
@@ -319,9 +322,8 @@ class EvalValue {
     return math.atan2(imaginaryPart, realPart);
   }
 
-  EvalValue get conjugate => isComplex
-      ? EvalValue.complex(realPart, -imaginaryPart)
-      : this;
+  EvalValue get conjugate =>
+      isComplex ? EvalValue.complex(realPart, -imaginaryPart) : this;
 
   /// A close rational approximation, used only for display (never for maths).
   Rational? get rationalApproximation {
@@ -368,8 +370,7 @@ class EvalValue {
     if (exact != null && other.exact != null) {
       return EvalValue.exact(exact! / other.exact!);
     }
-    final denominator =
-        other.realPart * other.realPart +
+    final denominator = other.realPart * other.realPart +
         other.imaginaryPart * other.imaginaryPart;
     if (denominator == 0) throw const DivisionByZero();
     return EvalValue.complex(
@@ -409,13 +410,14 @@ class EvalValue {
     return exponent < 0 ? EvalValue.integer(1) / result : result;
   }
 
-  static EvalValue fromNum(num value) =>
-      value is int ? EvalValue.integer(value) : EvalValue.real(value.toDouble());
+  static EvalValue fromNum(num value) => value is int
+      ? EvalValue.integer(value)
+      : EvalValue.real(value.toDouble());
 
   @override
   String toString() => isComplex
       ? '${realPart.toString()}${imaginaryPart < 0 ? ' - ' : ' + '}'
-            '${imaginaryPart.abs()}i'
+          '${imaginaryPart.abs()}i'
       : (exact?.toString() ?? realPart.toString());
 }
 

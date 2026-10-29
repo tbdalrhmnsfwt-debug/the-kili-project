@@ -6,6 +6,8 @@
 /// lossy UI string.
 library;
 
+import 'dart:math' as math;
+
 import 'calc_history.dart';
 import 'calc_settings.dart';
 import 'engine/evaluator.dart';
@@ -32,6 +34,10 @@ class CalcSession {
 
   /// Casio A–F, X, Y and θ.
   final Map<String, EvalValue> variables = <String, EvalValue>{};
+
+  /// One time-seeded source for `rand`, shared by every evaluation in the
+  /// session. A fresh source per context would repeat the same first value.
+  final math.Random random = math.Random();
 
   static const List<String> variableNames = <String>[
     'A',
@@ -70,9 +76,8 @@ class CalcSession {
   }) {
     return formatCalcValue(
       value,
-      preferExact: forceDecimal
-          ? false
-          : (forceExact ? true : settings.preferExact),
+      preferExact:
+          forceDecimal ? false : (forceExact ? true : settings.preferExact),
       mixed: settings.mixedFractions,
       polar: complex && settings.polarComplex,
       angleUnit: settings.angleUnit,
@@ -96,7 +101,9 @@ class CalcSession {
       if (parts.length == 2) {
         final numerator = BigInt.tryParse(parts[0]);
         final denominator = BigInt.tryParse(parts[1]);
-        if (numerator != null && denominator != null && denominator != BigInt.zero) {
+        if (numerator != null &&
+            denominator != null &&
+            denominator != BigInt.zero) {
           return EvalValue.exact(Rational(numerator, denominator));
         }
       }
@@ -113,7 +120,10 @@ class CalcSession {
       if (parts.length == 2) {
         final real = double.tryParse(parts[0]);
         final imaginary = double.tryParse(parts[1]);
-        if (real != null && imaginary != null && real.isFinite && imaginary.isFinite) {
+        if (real != null &&
+            imaginary != null &&
+            real.isFinite &&
+            imaginary.isFinite) {
           return EvalValue.complex(real, imaginary);
         }
       }
@@ -131,6 +141,7 @@ class CalcSession {
       answer: answer,
       allowComplex: complex,
       variables: variables,
+      random: random,
     );
     if (extraValue != null) {
       context.variables[extraVariable] = EvalValue.real(extraValue);
