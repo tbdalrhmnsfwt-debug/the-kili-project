@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'my_bag/my_bag_models.dart';
 import '../features/achievement/achievement_screen.dart';
 import '../features/account/account_screen.dart';
 import '../features/ai/chat_screen.dart';
@@ -19,6 +20,8 @@ import '../features/azkar/azkar_settings_screen.dart';
 import '../features/azkar/azkar_tasbih_screen.dart';
 import '../features/azkar/kahf_screen.dart';
 import '../features/azkar/salat_counter_screen.dart';
+import '../features/bag/bag_folder_screen.dart';
+import '../features/bag/bag_pocket_screen.dart';
 import '../features/bag/my_bag_screen.dart';
 import '../features/batches/admin/batch_admin_screen.dart';
 import '../features/batches/admin/batch_settings_screen.dart';
@@ -116,6 +119,10 @@ class ZakerRoutes {
   /// The folder screen under the bag tab.
   static String bagFolderPath(String folderId) =>
       '$bag/${Uri.encodeComponent(folderId)}';
+
+  /// One pocket of a bag folder.
+  static String bagPocketPath(String folderId, String kind) =>
+      '${bagFolderPath(folderId)}/$kind';
   static const String library = '/library';
   static const String subjects = '/subjects';
   static const String exams = '/exams';
@@ -364,6 +371,18 @@ final GoRouter appRouter = GoRouter(
       path: ZakerRoutes.bag,
       builder: (context, state) =>
           const ShellScreen(initialIndex: 1, child: MyBagScreen()),
+    ),
+    GoRoute(
+      path: '${ZakerRoutes.bag}/:folderId/:kind',
+      builder: (context, state) => BagPocketScreen(
+        folderId: state.pathParameters['folderId']!,
+        kind: bagPocketKindFromName(state.pathParameters['kind']),
+      ),
+    ),
+    GoRoute(
+      path: '${ZakerRoutes.bag}/:folderId',
+      builder: (context, state) =>
+          BagFolderScreen(folderId: state.pathParameters['folderId']!),
     ),
     GoRoute(
       path: ZakerRoutes.courses,

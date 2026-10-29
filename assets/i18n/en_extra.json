@@ -1096,5 +1096,19 @@
   "كل موادك في شنطة واحدة": "All your subjects, one bag",
   "لسه مفيش مواد في الشنطة": "No subjects in the bag yet",
   "مجلداتي": "My folders",
-  "نتائج البحث": "Search results"
+  "نتائج البحث": "Search results",
+  "آخر ما أضفت": "Recently added",
+  "ارجع للشنطة": "Back to the bag",
+  "المجلد مش موجود": "Folder not found",
+  "تسجيلات صوتية": "Voice notes",
+  "صور بورد": "Board images",
+  "لسه مفيش حاجة هنا": "Nothing here yet",
+  "مفيش تسجيلات": "No recordings",
+  "مفيش روابط": "No links",
+  "مفيش صور": "No images",
+  "مفيش ملفات": "No PDFs",
+  "ملفات PDF": "PDFs",
+  "روابط": "Links",
+  "يمكن اتحذف من الشنطة.": "It may have been deleted from the bag.",
+  "{0} صورة": "{0} images"
 }
