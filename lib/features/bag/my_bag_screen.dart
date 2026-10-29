@@ -580,7 +580,7 @@ class _BagHero extends StatelessWidget {
                     TrText(
                       'كل موادك في شنطة واحدة',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
+                        color: Colors.white,
                       ),
                     ),
                   ],
@@ -636,7 +636,7 @@ class _HeroTotal extends StatelessWidget {
         const SizedBox(width: ZakerSpacing.xs),
         TrText(
           label,
-          style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70),
+          style: theme.textTheme.bodySmall?.copyWith(color: Colors.white),
         ),
       ],
     );

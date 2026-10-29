@@ -66,8 +66,8 @@
 
 **Files:** `lib/features/bag/my_bag_screen.dart:583,639`
 
-- [ ] Use pure `Colors.white` for both labels (white on `ZakerColors.backpack` ≥ 4.5:1).
-- [ ] Analyze clean; commit.
+- [x] Use pure `Colors.white` for both labels (white on `ZakerColors.backpack` ≥ 4.5:1).
+- [x] Analyze clean; commit.
 
 ## Task 5: Translucent white subtitle on the subject hero
 
