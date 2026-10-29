@@ -203,8 +203,11 @@ class _BagVoiceRecorderSheetState extends ConsumerState<BagVoiceRecorderSheet> {
     _watch.stop();
     _timer?.cancel();
     _timer = null;
-    await _ticks?.cancel();
+    // Stop the microphone first, and do not wait on the tick subscription:
+    // cancelling it can take an event-loop turn, and the sheet must close now.
+    final ticks = _ticks;
     _ticks = null;
+    if (ticks != null) unawaited(ticks.cancel());
     try {
       await _bindings.cancel();
     } on AudioRecorderException {

@@ -163,9 +163,13 @@ void main() {
     await tester.tap(find.byKey(const Key('bag-recorder-stop')));
     await tester.pump();
 
-    // The controller copies real bytes on the real event loop.
+    // The pocket copies real bytes on the real event loop, then deletes the
+    // recorder's temporary file; both must finish before the assertions.
     for (var i = 0; i < 50; i++) {
-      if (store.loadMedia(folderId).voice.isNotEmpty) break;
+      if (store.loadMedia(folderId).voice.isNotEmpty &&
+          !File(clipPath).existsSync()) {
+        break;
+      }
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 20)),
       );
@@ -200,18 +204,9 @@ void main() {
       findsOneWidget,
     );
 
-    final handled = await tester.binding.handlePopRoute();
-    debugPrint('PROBE handled=$handled cancelled=${recorder.cancelled}');
+    await tester.binding.handlePopRoute();
     await tester.pump();
-    debugPrint(
-      'PROBE afterPump cancelled=${recorder.cancelled} '
-      'sheet=${find.byKey(const Key('bag-voice-recorder-sheet')).evaluate().length}',
-    );
     await tester.pump(const Duration(milliseconds: 400));
-    debugPrint(
-      'PROBE after400 cancelled=${recorder.cancelled} '
-      'sheet=${find.byKey(const Key('bag-voice-recorder-sheet')).evaluate().length}',
-    );
 
     expect(recorder.cancelled, isTrue);
     expect(find.byKey(const Key('bag-voice-recorder-sheet')), findsNothing);
