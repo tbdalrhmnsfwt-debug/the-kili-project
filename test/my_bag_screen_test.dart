@@ -265,6 +265,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Search my bag'), findsWidgets);
 
+    // The seeded folder card pushes the add tile below the fold at 800x600.
+    await tester.ensureVisible(find.byKey(const Key('my-bag-add-custom')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('my-bag-add-custom')));
     await tester.pumpAndSettle();
     expect(find.text('Subject name'), findsOneWidget);
