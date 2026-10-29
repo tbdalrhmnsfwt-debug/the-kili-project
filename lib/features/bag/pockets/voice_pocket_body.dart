@@ -5,6 +5,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -95,6 +96,16 @@ class VoicePocketBody extends ConsumerWidget {
       messenger.showSnackBar(
         const SnackBar(content: TrText('التسجيل فاضي، جرّب تاني.')),
       );
+    } finally {
+      // The recorder's output is only a copy source; once the pocket has its
+      // own bytes the temporary file would sit in the cache until the system
+      // reclaims it.
+      try {
+        final temp = File(recorded.path);
+        if (temp.existsSync()) await temp.delete();
+      } on FileSystemException {
+        // Leaving a stale temporary file behind is not worth failing the save.
+      }
     }
   }
 }
