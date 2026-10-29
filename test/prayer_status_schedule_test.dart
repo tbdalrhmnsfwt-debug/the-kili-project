@@ -4,13 +4,13 @@ import 'package:zaker_ai/core/prayer_methods.dart';
 import 'package:zaker_ai/features/prayer/prayer_status_schedule.dart';
 
 PrayerTimes _times(DateTime date) => PrayerTimes(
-  date: date,
-  coordinates: Coordinates(30.0444, 31.2357),
-  calculationParameters: prayerParameters(
-    methodId: 'egyptian',
-    madhabId: 'shafi',
-  ),
-);
+      date: date,
+      coordinates: Coordinates(30.0444, 31.2357),
+      calculationParameters: prayerParameters(
+        methodId: 'egyptian',
+        madhabId: 'shafi',
+      ),
+    );
 
 void main() {
   final day1 = _times(DateTime(2026, 10, 29));
@@ -71,12 +71,13 @@ void main() {
       bool bar = true,
       bool location = true,
       bool notifications = true,
-    }) => shouldShowPrayerStatusBar(
-      adhanEnabled: adhan,
-      statusBarEnabled: bar,
-      hasLocation: location,
-      notificationsAllowed: notifications,
-    );
+    }) =>
+        shouldShowPrayerStatusBar(
+          adhanEnabled: adhan,
+          statusBarEnabled: bar,
+          hasLocation: location,
+          notificationsAllowed: notifications,
+        );
     expect(show(), isTrue);
     expect(show(adhan: false), isFalse);
     expect(show(bar: false), isFalse);
