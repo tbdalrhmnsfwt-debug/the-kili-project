@@ -249,7 +249,8 @@ class Parser {
     if (_peek.kind != kind) {
       throw CalcError(
         CalcErrorKind.syntax,
-        detail: '$description متوقع${_peek.kind == TokenKind.eof ? '' : ' عند «${_peek.text}»'}',
+        detail:
+            '$description متوقع${_peek.kind == TokenKind.eof ? '' : ' عند «${_peek.text}»'}',
       );
     }
     _position++;
