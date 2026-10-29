@@ -1,9 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zaker_ai/core/local_store.dart';
 import 'package:zaker_ai/features/prayer/adhan_models.dart';
 import 'package:zaker_ai/features/prayer/adhan_providers.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('the status bar is on by default', () {
     expect(const AdhanSettings().statusBarEnabled, isTrue);
     expect(
@@ -24,11 +27,15 @@ void main() {
   });
 
   test('the controller persists the switch', () async {
-    final store = LocalStore.memory();
+    // `LocalStore.memory()` keeps nothing, so it cannot show persistence; a
+    // mocked SharedPreferences can.
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = await LocalStore.open();
+    expect(store.isAvailable, isTrue);
     final controller = AdhanSettingsController(store);
     controller.setStatusBarEnabled(false);
     expect(controller.state.statusBarEnabled, isFalse);
-    await Future<void>.delayed(Duration.zero);
+    await pumpEventQueue();
     expect(AdhanSettingsController(store).state.statusBarEnabled, isFalse);
   });
 }
