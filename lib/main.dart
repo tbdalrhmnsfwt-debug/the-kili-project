@@ -20,6 +20,7 @@ import 'core/local_store.dart';
 import 'core/localization.dart';
 import 'core/notification_service.dart';
 import 'core/pdf/pdf_library_store.dart';
+import 'core/prayer_status_bar.dart';
 import 'core/router.dart';
 import 'core/salat_audio.dart';
 import 'core/shad_theme.dart';
@@ -68,6 +69,13 @@ Future<void> main() async {
   // A locked phone launches the app from the adhan's full-screen intent; the
   // payload has to be read before the router is built.
   final launchPayload = await NotificationService.instance.launchPayload();
+  // The prayer bar reports a tap through the same channel; the route opens
+  // after the router exists, so the handler is registered now and consumed
+  // after the first frame.
+  PrayerStatusBar.instance.onOpenRoute = (route) {
+    if (route == ZakerRoutes.prayer) appRouter.go(ZakerRoutes.prayer);
+  };
+  PrayerStatusBar.instance.attach();
   runApp(
     ProviderScope(
       overrides: [
@@ -79,11 +87,11 @@ Future<void> main() async {
       child: const ZakerlyApp(),
     ),
   );
-  if (launchPayload != null) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      handleNotificationPayload(launchPayload);
-    });
-  }
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    if (launchPayload != null) handleNotificationPayload(launchPayload);
+    final route = await PrayerStatusBar.instance.takeLaunchRoute();
+    if (route == ZakerRoutes.prayer) appRouter.go(ZakerRoutes.prayer);
+  });
 }
 
 /// Root widget.
