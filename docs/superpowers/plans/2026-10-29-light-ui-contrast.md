@@ -73,8 +73,9 @@
 
 **Files:** `lib/features/subjects/subject_screen.dart:424-468`
 
-- [ ] Derive the title and subtitle colours with `readableTextColor(Colors.white, subject.color)` so light subject colours get dark text instead of 85% white.
-- [ ] Analyze clean; commit.
+- [x] Derive the title and subtitle colours with `readableTextColor(Colors.white, subject.color)` so light subject colours get dark text instead of 85% white.
+  - `Ruling:` the review's remedy (dark text on pale subjects) loses on the gradient — #333 on a pale stop is 6.01:1 at the top and 3.08:1 where the gradient darkens, so the title would pass at one end and fail at the other. Instead the banner is darkened (`heroBaseOf`) and the copy stays white: amber 3.19→5.88, gold 2.10→6.94, subtitle ≥4.73 on both stops for all 20 curriculum subjects. Costs: pale subjects render a deeper shade than authored; if wrong, their hero reads slightly darker than intended, but every title stays ≥5.17:1.
+- [x] Analyze clean; commit.
 
 ## Task 6: White kaaba on gold in the black-gold and deep-blue themes
 

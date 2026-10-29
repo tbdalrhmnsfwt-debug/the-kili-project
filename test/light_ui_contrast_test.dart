@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zaker_ai/core/curriculum.dart';
 import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/widgets/common.dart';
 
@@ -86,6 +87,47 @@ void main() {
       }
     });
   }
+
+  test('white copy is kept only where it is readable', () {
+    for (final background in <Color>[
+      ZakerColors.navy,
+      ZakerColors.gold,
+      const Color(0xFF7BC47F),
+      const Color(0xFF64B5F6),
+    ]) {
+      expect(
+        contrastRatio(readableTextColor(Colors.white, background), background),
+        greaterThanOrEqualTo(4.5),
+        reason: 'white copy on $background',
+      );
+    }
+  });
+
+  test('every subject hero carries its white copy on both stops', () {
+    for (final grade in curriculumGrades.values) {
+      for (final subject in grade.subjects) {
+        // The hero gradients from the base colour to 70% of it.
+        final base = heroBaseOf(subject.color);
+        final deep = Color.lerp(base, Colors.black, 0.30)!;
+        for (final stop in <Color>[base, deep]) {
+          expect(
+            contrastRatio(Colors.white, stop),
+            greaterThanOrEqualTo(4.5),
+            reason: '${subject.id} title on $stop',
+          );
+          final soft = Color.alphaBlend(
+            Colors.white.withValues(alpha: 0.85),
+            stop,
+          );
+          expect(
+            contrastRatio(soft, stop),
+            greaterThanOrEqualTo(4.5),
+            reason: '${subject.id} subtitle on $stop',
+          );
+        }
+      }
+    }
+  });
 
   test('every brand accent clears 4.5:1 on its own tint', () {
     const accents = <String, Color>{

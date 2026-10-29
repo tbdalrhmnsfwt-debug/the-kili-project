@@ -396,7 +396,8 @@ class _SubjectHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final deep = Color.lerp(subject.color, Colors.black, 0.30) ?? subject.color;
+    final base = heroBaseOf(subject.color);
+    final deep = Color.lerp(base, Colors.black, 0.30)!;
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -404,11 +405,11 @@ class _SubjectHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [subject.color, deep],
+          colors: [base, deep],
         ),
         boxShadow: [
           BoxShadow(
-            color: subject.color.withValues(alpha: 0.36),
+            color: base.withValues(alpha: 0.36),
             blurRadius: 22,
             offset: const Offset(0, 12),
           ),

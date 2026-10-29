@@ -101,12 +101,21 @@ Color readableTextColor(Color color, Color background) {
   if (contrastRatio(color, background) >= 4.5) return color;
   final darkBackground = background.computeLuminance() < 0.5;
   final toward = darkBackground ? Colors.white : Colors.black;
-  var adjusted = color;
+  final adjusted = _lerpUntilReadable(color, toward, background);
+  if (adjusted != null) return adjusted;
+  // A mid-tone backdrop leaves one direction unreachable: white cannot be
+  // lightened to 4.5:1 on gold (luminance 0.47 reads as "dark", but white on
+  // it is only 2.1:1). The opposite end always clears it.
+  final opposite = darkBackground ? Colors.black : Colors.white;
+  return _lerpUntilReadable(color, opposite, background) ?? opposite;
+}
+
+Color? _lerpUntilReadable(Color from, Color to, Color background) {
   for (var step = 1; step <= 10; step++) {
-    adjusted = Color.lerp(color, toward, step / 10)!;
+    final adjusted = Color.lerp(from, to, step / 10)!;
     if (contrastRatio(adjusted, background) >= 4.5) return adjusted;
   }
-  return toward;
+  return null;
 }
 
 /// The card surface the theme paints behind content.
@@ -135,6 +144,26 @@ Color cardAccentOnTintOf(Color accent, ThemeData theme,
         cardSurfaceOf(theme),
       ),
     );
+
+/// A hero colour darkened only as far as its white copy needs.
+///
+/// Subject colours are picked for their hue, not their luminance: amber and
+/// gold leave a white title at 3:1 and 2:1. Heroes keep white typography by
+/// darkening the banner instead, and the 85% subtitle is held to the same
+/// 4.5:1 on the gradient's darkest stop.
+Color heroBaseOf(Color color) {
+  Color faded(Color base) =>
+      Color.alphaBlend(Colors.white.withValues(alpha: 0.85), base);
+  bool fits(Color base) =>
+      contrastRatio(faded(base), base) >= 4.5 &&
+      contrastRatio(Colors.white, base) >= 4.5;
+  if (fits(color)) return color;
+  for (var step = 1; step <= 10; step++) {
+    final darkened = Color.lerp(color, Colors.black, step / 10)!;
+    if (fits(darkened)) return darkened;
+  }
+  return Colors.black;
+}
 
 final ZakerFeatureAccents _fallbackAccents =
     ZakerTheme.light().extension<ZakerFeatureAccents>()!;
