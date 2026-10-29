@@ -1110,5 +1110,15 @@
   "ملفات PDF": "PDFs",
   "روابط": "Links",
   "يمكن اتحذف من الشنطة.": "It may have been deleted from the bag.",
-  "{0} صورة": "{0} images"
+  "{0} صورة": "{0} images",
+  "أضف PDF": "Add PDF",
+  "ضيف ملزمة أو امتحان من ملفاتك.": "Add a booklet or exam from your files.",
+  "صفحة {0} من {1}": "Page {0} of {1}",
+  "صفحة {0}": "Page {0}",
+  "أزل المرجع": "Remove reference",
+  "أزل من الشنطة": "Remove from bag",
+  "فتح ملفاتي": "Open my files",
+  "افتح": "Open",
+  "أعد التسمية": "Rename",
+  "الملف مش موجود": "File not found"
 }
