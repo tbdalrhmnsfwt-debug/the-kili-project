@@ -30,6 +30,12 @@ class MainActivity : FlutterActivity() {
     private var previewPlayer: MediaPlayer? = null
     private val previewHandler = Handler(Looper.getMainLooper())
 
+    /**
+     * Answers adhan-start calls whose service never reported an outcome.
+     * Separate from [previewHandler], which `stopPreview` clears wholesale.
+     */
+    private val startHandler = Handler(Looper.getMainLooper())
+
     /** Batch audio playback and voice-note recording. */
     private var audioPlayerChannel: AudioPlayerChannel? = null
     private var audioRecorderChannel: AudioRecorderChannel? = null
@@ -125,6 +131,19 @@ class MainActivity : FlutterActivity() {
                         val notificationId = call.argument<Int>("notificationId") ?: 0
                         val fadeIn = call.argument<Boolean>("fadeIn") == true
                         val silence = call.argument<Boolean>("silenceOnHardware") != false
+                        // The service, not this handler, knows whether the
+                        // adhan is audible: report that instead of assuming
+                        // a start. The timeout covers a service that dies
+                        // before it can answer.
+                        var answered = false
+                        val answer: (Boolean) -> Unit = { started ->
+                            if (!answered) {
+                                answered = true
+                                result.success(started)
+                            }
+                        }
+                        val timeout = Runnable { answer(false) }
+                        startHandler.postDelayed(timeout, ADHAN_START_TIMEOUT_MS)
                         AdhanPlaybackService.start(
                             this,
                             name,
@@ -133,8 +152,11 @@ class MainActivity : FlutterActivity() {
                             notificationId,
                             fadeIn,
                             silence,
+                            onStarted = { started ->
+                                startHandler.removeCallbacks(timeout)
+                                answer(started)
+                            },
                         )
-                        result.success(true)
                     }
                     "stopAdhanPlayback" -> {
                         AdhanPlaybackService.stop(this)
@@ -399,6 +421,9 @@ class MainActivity : FlutterActivity() {
     }
 
     companion object {
+        /** How long a start call waits for the service to report an outcome. */
+        const val ADHAN_START_TIMEOUT_MS = 4000L
+
         /** Channel used by Dart to drive the AI-job notification. */
         const val AI_JOBS_CHANNEL = "zaker/ai_jobs"
 

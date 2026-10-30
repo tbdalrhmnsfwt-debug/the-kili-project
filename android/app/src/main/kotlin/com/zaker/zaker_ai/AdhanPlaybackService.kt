@@ -120,9 +120,13 @@ class AdhanPlaybackService : Service() {
                 isActive = true
                 if (silenceOnHardware) startHardwareWatchers()
                 showOverlayIfAllowed(title)
-                play(
-                    intent?.getStringExtra(EXTRA_RESOURCE),
-                    intent?.getStringExtra(EXTRA_ASSET),
+                // The caller is waiting on this: tell it whether the adhan
+                // is audible before anything else happens.
+                reportStart(
+                    play(
+                        intent?.getStringExtra(EXTRA_RESOURCE),
+                        intent?.getStringExtra(EXTRA_ASSET),
+                    ),
                 )
             }
         }
@@ -365,13 +369,21 @@ class AdhanPlaybackService : Service() {
             .build()
     }
 
-    private fun play(resource: String?, asset: String?) {
+    /**
+     * Starts the sound for the current intent.
+     *
+     * Returns whether the adhan is actually audible: false for the
+     * vibrate-only path (the ringer is silent) and for a player that could
+     * not be created or started. The caller reports that to Dart, which must
+     * not show a playing screen over silence.
+     */
+    private fun play(resource: String?, asset: String?): Boolean {
         releasePlayer()
         if (ringerIsSilent()) {
             // The device is silent or on vibrate: keep the full-screen player
             // and the stop action, but only vibrate.
             vibrateAdhan()
-            return
+            return false
         }
         val created = try {
             createPlayer(resource, asset)
@@ -380,7 +392,7 @@ class AdhanPlaybackService : Service() {
         }
         if (created == null) {
             stopSelf()
-            return
+            return false
         }
 
         player = created
@@ -402,12 +414,20 @@ class AdhanPlaybackService : Service() {
             created.start()
         } catch (e: Exception) {
             stopSelf()
-            return
+            return false
         }
         if (fadeIn) handler.postDelayed(fadeRunnable, FADE_STEP_MS)
         handler.postDelayed({
             if (player === created) stopSelf()
         }, MAX_PLAY_MS)
+        return true
+    }
+
+    /** Resolves the pending start call with whether the adhan is audible. */
+    private fun reportStart(playing: Boolean) {
+        val callback = startResult
+        startResult = null
+        callback?.invoke(playing)
     }
 
     private fun vibrateAdhan() {
@@ -565,7 +585,17 @@ class AdhanPlaybackService : Service() {
         var hardwareSilenceEnabled: Boolean = true
             private set
 
-        /** Starts (or restarts) the playback service. */
+        /** The activity's answer for the most recent start attempt. */
+        @Volatile
+        private var startResult: ((Boolean) -> Unit)? = null
+
+        /**
+         * Starts (or restarts) the playback service.
+         *
+         * [onStarted] is called once the service knows whether the adhan is
+         * actually audible: false on the vibrate-only path and when the
+         * player could not be created or started.
+         */
         fun start(
             context: Context,
             resource: String?,
@@ -574,8 +604,10 @@ class AdhanPlaybackService : Service() {
             notificationId: Int = 0,
             fadeIn: Boolean = false,
             silenceOnHardware: Boolean = true,
+            onStarted: ((Boolean) -> Unit)? = null,
         ) {
             hardwareSilenceEnabled = silenceOnHardware
+            startResult = onStarted
             val intent = Intent(context, AdhanPlaybackService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(EXTRA_RESOURCE, resource)
@@ -584,7 +616,13 @@ class AdhanPlaybackService : Service() {
                 .putExtra(EXTRA_NOTIFICATION_ID, notificationId)
                 .putExtra(EXTRA_FADE_IN, fadeIn)
                 .putExtra(EXTRA_SILENCE_ON_HARDWARE, silenceOnHardware)
-            ContextCompat.startForegroundService(context, intent)
+            try {
+                ContextCompat.startForegroundService(context, intent)
+            } catch (e: Exception) {
+                // The service never ran, so nothing will report an outcome.
+                startResult = null
+                onStarted?.invoke(false)
+            }
         }
 
         /** Stops playback and removes the ongoing notification. */

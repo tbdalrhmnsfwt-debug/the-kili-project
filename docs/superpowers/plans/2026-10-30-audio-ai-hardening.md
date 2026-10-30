@@ -92,9 +92,9 @@
 
 **Files:** `MainActivity.kt:127-136`, `AdhanPlaybackService.kt:368-383`, `lib/features/prayer/adhan_playback_screen.dart:112-131`
 
-- [ ] Have `AdhanPlaybackService.start` return whether it actually started (vibrate-only and failed-player paths return false), and pass that through the channel instead of `result.success(true)`.
-- [ ] Dart: only set `_playing = true` and cancel the source notification when the platform reports a start.
-- [ ] Commit; note the Kotlin is unbuilt.
+- [x] Have `AdhanPlaybackService.start` return whether it actually started (vibrate-only and failed-player paths return false), and pass that through the channel instead of `result.success(true)`.
+- [x] Dart: only set `_playing = true` and cancel the source notification when the platform reports a start.
+- [x] Commit; note the Kotlin is unbuilt.
 
 ## Task 10: One player per client
 
