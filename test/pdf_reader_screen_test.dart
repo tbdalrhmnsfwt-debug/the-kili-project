@@ -51,18 +51,16 @@ class MemoryStore implements KeyValueStore {
 }
 
 class FakeChannel extends PdfRenderChannel {
-  FakeChannel({
-    this.pageCount = 10,
-    List<PdfRenderFailure?>? failures,
-    this.expectedPassword,
-  }) : _failures = failures ?? [];
+  FakeChannel({this.pageCount = 10, List<PdfRenderFailure?>? failures})
+      : _failures = failures ?? [];
 
   final int pageCount;
   final List<PdfRenderFailure?> _failures;
 
-  /// When set, `open` demands this password on every call.
-  final String? expectedPassword;
   final List<String?> passwords = [];
+
+  /// Paths passed to `open`, in order.
+  final List<String> paths = [];
   final List<RenderCall> renders = [];
   int opens = 0;
   int closes = 0;
@@ -76,15 +74,8 @@ class FakeChannel extends PdfRenderChannel {
   @override
   Future<PdfRendererHandle> open(String path, {String? password}) async {
     opens += 1;
+    paths.add(path);
     passwords.add(password);
-    if (expectedPassword != null) {
-      if (password == null) {
-        throw const PdfRenderException(PdfRenderFailure.passwordRequired);
-      }
-      if (password != expectedPassword) {
-        throw const PdfRenderException(PdfRenderFailure.wrongPassword);
-      }
-    }
     if (_failures.isNotEmpty) {
       final failure = _failures.removeAt(0);
       if (failure != null) throw PdfRenderException(failure);
@@ -202,6 +193,18 @@ void main() {
     cache.deleteSync(recursive: true);
   });
 
+  /// A stand-in for Syncfusion: only «secret» unlocks, and the copy is a
+  /// byte-for-byte duplicate so the renderer path stays real.
+  Future<bool> unlock({
+    required File input,
+    required String password,
+    required File output,
+  }) async {
+    if (password != 'secret') return false;
+    await output.writeAsBytes(await input.readAsBytes());
+    return true;
+  }
+
   Future<void> pump(
     WidgetTester tester,
     FakeChannel channel,
@@ -213,6 +216,7 @@ void main() {
           pdfRenderChannelProvider.overrideWithValue(channel),
           pdfLibraryStoreProvider.overrideWithValue(store),
           pdfLibraryControllerProvider.overrideWith((ref) => controller),
+          pdfUnlockerProvider.overrideWithValue(unlock),
         ],
         child: MaterialApp(theme: ZakerTheme.light(), home: home),
       ),
@@ -229,17 +233,16 @@ void main() {
     expect(find.byIcon(Icons.search_rounded), findsOneWidget);
   });
 
-  testWidgets('a locked document asks for the password and reopens with it', (
+  testWidgets('a locked document opens the unlocked copy it wrote', (
     tester,
   ) async {
+    final source = File('${root.path}/locked.pdf')
+      ..writeAsBytesSync('%PDF-1.7'.codeUnits);
     final channel = FakeChannel(
       pageCount: 3,
-      failures: [
-        PdfRenderFailure.passwordRequired,
-        PdfRenderFailure.wrongPassword,
-      ],
+      failures: [PdfRenderFailure.passwordRequired],
     );
-    await pump(tester, channel, const PdfReaderScreen(path: '/tmp/locked.pdf'));
+    await pump(tester, channel, PdfReaderScreen(path: source.path));
 
     expect(find.text('الملف محمي بكلمة سر'), findsOneWidget);
 
@@ -247,9 +250,16 @@ void main() {
     await tester.tap(find.text('فتح'));
     await tester.pumpAndSettle();
 
-    expect(channel.passwords, [null, 'secret']);
-    expect(find.text('الملف محمي بكلمة سر'), findsOneWidget);
-    expect(find.text('كلمة السر مش صح — جرّب تاني.'), findsOneWidget);
+    // The channel is never handed a password: the copy is what opens.
+    expect(channel.passwords, [null, null]);
+    expect(channel.paths.first, source.path);
+    expect(channel.paths.last, isNot(source.path));
+    expect(find.text('صفحة 1 من 3'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(channel.closes, 1);
+    expect(store.sessionTempDir.listSync(), isEmpty);
   });
 
   testWidgets('a corrupt file offers a retry that opens again', (tester) async {
@@ -399,8 +409,13 @@ void main() {
   testWidgets('three wrong passwords still allow a fresh retry', (
     tester,
   ) async {
-    final channel = FakeChannel(pageCount: 3, expectedPassword: 'secret');
-    await pump(tester, channel, const PdfReaderScreen(path: '/tmp/locked.pdf'));
+    final source = File('${root.path}/locked.pdf')
+      ..writeAsBytesSync('%PDF-1.7'.codeUnits);
+    final channel = FakeChannel(
+      pageCount: 3,
+      failures: List.filled(4, PdfRenderFailure.passwordRequired),
+    );
+    await pump(tester, channel, PdfReaderScreen(path: source.path));
 
     for (var attempt = 0; attempt < 3; attempt++) {
       expect(find.text('الملف محمي بكلمة سر'), findsOneWidget);

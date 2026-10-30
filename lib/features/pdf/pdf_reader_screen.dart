@@ -6,8 +6,8 @@
 /// the promise that a transient document leaves nothing behind.
 ///
 /// Privacy notes:
-///   * A password is passed straight to the native open call and never stored,
-///     logged or put in a message.
+///   * A password decrypts the document into a session temp copy and is never
+///     stored, logged or put in a message; the copy is deleted on close.
 ///   * In-memory bytes are written to a session temp file and deleted when the
 ///     reader closes; library copies are never modified.
 library;
@@ -24,6 +24,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/pdf/pdf_page_geometry.dart';
 import '../../core/pdf/pdf_render_channel.dart';
 import '../../core/pdf/pdf_text_map.dart';
+import '../../core/pdf/pdf_unlock.dart';
 import '../../core/theme.dart';
 import '../../models/pdf_document.dart';
 import '../../models/pdf_settings.dart';
@@ -75,6 +76,10 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   PdfRendererHandle? _handle;
   String? _resolvedPath;
   File? _sessionFile;
+
+  /// The decrypted copy of a protected document, deleted on close.
+  File? _unlockedFile;
+  late final PdfUnlocker _unlocker;
   PdfRenderFailure? _failure;
   Timer? _markTimer;
   bool _loading = true;
@@ -91,6 +96,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   void initState() {
     super.initState();
     _channel = ref.read(pdfRenderChannelProvider);
+    _unlocker = ref.read(pdfUnlockerProvider);
     // The first frame shows the loading state; the open starts right after.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _open();
@@ -102,19 +108,24 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     _markTimer?.cancel();
     final handle = _handle;
     if (handle != null) unawaited(_channel.close(handle.id));
-    final session = _sessionFile;
-    if (session != null) {
-      try {
-        if (session.existsSync()) session.deleteSync();
-      } on FileSystemException {
-        // The startup sweep removes anything a failed delete leaves behind.
-      }
-    }
+    _deleteQuietly(_sessionFile);
+    _deleteQuietly(_unlockedFile);
     super.dispose();
   }
 
-  /// Opens (or re-opens with [password]) the resolved file.
-  Future<void> _open({String? password}) async {
+  /// Deletes [file], leaving anything a failed delete leaves to the startup
+  /// sweep in `PdfLibraryStore.sweepTemp`.
+  void _deleteQuietly(File? file) {
+    if (file == null) return;
+    try {
+      if (file.existsSync()) file.deleteSync();
+    } on FileSystemException {
+      // Best effort: a temp file must never stop the reader from closing.
+    }
+  }
+
+  /// Opens the resolved file.
+  Future<void> _open() async {
     if (!mounted) return;
     setState(() {
       _loading = true;
@@ -140,7 +151,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     }
     _resolvedPath = path;
     try {
-      final handle = await _channel.open(path, password: password);
+      final handle = await _channel.open(path);
       if (!mounted) {
         unawaited(_channel.close(handle.id));
         return;
@@ -219,7 +230,54 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
       setState(() => _failure = PdfRenderFailure.passwordRequired);
       return;
     }
-    await _open(password: password);
+    await _unlockWith(password);
+  }
+
+  /// Decrypts the document into a session copy and opens that copy.
+  ///
+  /// `PdfRenderer` cannot take a password below Android 15, so the password is
+  /// answered here rather than by the platform: the copy is what both the
+  /// renderer and the text extractor see. Nothing about it is kept longer than
+  /// the reader — [dispose] deletes it and the store sweeps the directory at
+  /// startup.
+  Future<void> _unlockWith(String password) async {
+    final source = _sourcePath();
+    if (source == null) {
+      setState(() {
+        _loading = false;
+        _failure = PdfRenderFailure.corrupt;
+      });
+      return;
+    }
+    final store = ref.read(pdfLibraryStoreProvider);
+    final noise = Random.secure().nextInt(1 << 24).toRadixString(16);
+    final target = store.sessionTempFile(
+      'unlocked-${DateTime.now().microsecondsSinceEpoch}-$noise',
+    );
+    final bool unlocked;
+    try {
+      unlocked = await _unlocker(
+        input: File(source),
+        password: password,
+        output: target,
+      );
+    } on FileSystemException {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _failure = PdfRenderFailure.storage;
+      });
+      return;
+    }
+    if (!mounted) return;
+    if (!unlocked) {
+      _deleteQuietly(target);
+      await _promptPassword(wrong: true);
+      return;
+    }
+    _deleteQuietly(_unlockedFile);
+    _unlockedFile = target;
+    await _open();
   }
 
   Future<String?> _askPassword({required bool wrong}) async {
@@ -266,8 +324,19 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     );
   }
 
-  /// Decides which file this reader should open.
+  /// The file to open: the decrypted copy once the password is known, the
+  /// source file before that.
   String? _resolvePath() {
+    final unlocked = _unlockedFile;
+    if (unlocked != null && unlocked.existsSync()) return unlocked.path;
+    return _sourcePath();
+  }
+
+  /// The file the user opened, before any decryption.
+  ///
+  /// Sharing and retrying a password use this one, so the protected original
+  /// never leaves the device decrypted.
+  String? _sourcePath() {
     final docId = widget.docId;
     if (docId != null) {
       final file = ref.read(pdfLibraryStoreProvider).baseFile(docId);
@@ -391,7 +460,8 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   }
 
   Future<void> _shareFile() async {
-    final path = _resolvedPath;
+    // The original, never the decrypted session copy.
+    final path = _sourcePath();
     if (path == null) return;
     final file = File(path);
     if (!file.existsSync()) return;
