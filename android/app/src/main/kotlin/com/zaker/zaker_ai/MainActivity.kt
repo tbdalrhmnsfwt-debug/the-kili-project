@@ -12,6 +12,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import android.view.KeyEvent
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -139,6 +140,13 @@ class MainActivity : FlutterActivity() {
                         AdhanPlaybackService.stop(this)
                         result.success(null)
                     }
+                    "setKeepScreenOn" -> {
+                        // Only the screens that need it (the qibla aim and a
+                        // full-screen adhan) ask; everywhere else the screen
+                        // follows the system timeout again.
+                        setKeepScreenOn(call.argument<Boolean>("on") == true)
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -195,9 +203,21 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Keep the screen on while a focus session or a recording is running.
-        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // The screen flag is set per screen through `setKeepScreenOn`, not
+        // here: keeping every screen awake drained the battery on the home
+        // screen and everywhere else the student never asked for it.
         showOverLockScreenIfAdhan(intent)
+    }
+
+    /** Adds or clears `FLAG_KEEP_SCREEN_ON` for the current screen. */
+    private fun setKeepScreenOn(on: Boolean) {
+        runOnUiThread {
+            if (on) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

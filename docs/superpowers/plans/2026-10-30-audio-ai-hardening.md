@@ -77,8 +77,9 @@
 
 **Files:** `android/app/src/main/kotlin/com/zaker/zaker_ai/MainActivity.kt:196-200`
 
-- [ ] Delete the unconditional `FLAG_KEEP_SCREEN_ON` from `onCreate`; re-add it only around the screens that need it (recording, adhan playback, qibla) through a small channel call, or drop it if those screens already set it themselves. Read both screens before deciding and ledger the choice.
-- [ ] Commit; note the Kotlin is unbuilt.
+- [x] Delete the unconditional `FLAG_KEEP_SCREEN_ON` from `onCreate`; re-add it only around the screens that need it (recording, adhan playback, qibla) through a small channel call, or drop it if those screens already set it themselves. Read both screens before deciding and ledger the choice.
+- [x] Ruling: re-added through `zaker/adhan`'s `setKeepScreenOn` for exactly two screens — the qibla aim and the full-screen adhan. Neither recorder needs it (voice notes are seconds long, and the lecture recorder service is not started from Dart), and audio playback keeps running with the display off. Cost if wrong: a recording screen would let the display time out.
+- [x] Commit; note the Kotlin is unbuilt.
 
 ## Task 8: Sticky services stop instead of resurrecting
 

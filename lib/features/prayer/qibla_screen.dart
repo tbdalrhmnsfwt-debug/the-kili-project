@@ -15,6 +15,7 @@ import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import '../../core/adhan_platform.dart';
 import '../../core/qibla_constants.dart';
 import '../../core/theme.dart';
 import '../../widgets/tr_text.dart';
@@ -52,11 +53,15 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
   @override
   void initState() {
     super.initState();
+    // Aiming the compass needs both hands and the bearing lines up in a
+    // second or two: the display must not time out while the student turns.
+    unawaited(AdhanPlatform.setKeepScreenOn(true));
     _listenToCompass();
   }
 
   @override
   void dispose() {
+    unawaited(AdhanPlatform.setKeepScreenOn(false));
     _compassSubscription?.cancel();
     _sensorTimeout?.cancel();
     super.dispose();
