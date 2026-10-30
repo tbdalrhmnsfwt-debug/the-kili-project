@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' show Rect;
 
@@ -71,5 +72,19 @@ void main() {
 
     expect(await map.hasAnyText(), isFalse);
     expect(await map.search('anything'), isEmpty);
+  });
+
+  test('fromFile searches the file without loading its bytes', () async {
+    final directory = Directory.systemTemp.createTempSync('zaker_pdf_text_');
+    addTearDown(() => directory.deleteSync(recursive: true));
+    final file = File('${directory.path}/two.pdf')
+      ..writeAsBytesSync(await _twoPageDocument());
+
+    final map = PdfTextMap.fromFile(file, pageCount: 2);
+
+    final matches = await map.search('physics');
+
+    expect(matches, hasLength(1));
+    expect(matches.single.pageIndex, 1);
   });
 }

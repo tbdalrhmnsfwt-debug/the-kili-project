@@ -66,8 +66,12 @@ class PdfTileKey {
 }
 
 /// Keeps the most recently used tiles under a byte budget.
+///
+/// Two tiles at the reader's 2048-pixel cap are roughly 12 MiB each once
+/// decoded, so the default budget holds the visible page and its prefetch
+/// neighbour without competing with Flutter's own 100 MiB image cache.
 class PdfTileCache {
-  PdfTileCache({this.maxBytes = 96 * 1024 * 1024});
+  PdfTileCache({this.maxBytes = 48 * 1024 * 1024});
 
   final int maxBytes;
 

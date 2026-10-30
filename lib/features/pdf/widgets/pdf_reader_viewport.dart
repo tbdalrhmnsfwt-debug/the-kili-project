@@ -32,6 +32,9 @@ const double _maxZoom = 5;
 /// Longest-edge cap passed to the native renderer.
 const int _maxTilePixels = 2048;
 
+/// How many times a tile render may be retried before it is marked failed.
+const int _maxTileAttempts = 2;
+
 /// Renders one document: continuous by default, one page at a time otherwise.
 class PdfReaderViewport extends ConsumerStatefulWidget {
   const PdfReaderViewport({
@@ -44,6 +47,7 @@ class PdfReaderViewport extends ConsumerStatefulWidget {
     this.nightMode = false,
     this.quarterTurns = 0,
     this.initialZoom = 1,
+    this.onZoomChanged,
     this.highlights = const [],
     this.highlightPage,
   });
@@ -71,6 +75,9 @@ class PdfReaderViewport extends ConsumerStatefulWidget {
   /// Starting zoom; 1 is fit-width, 5 is five times fit-width.
   final double initialZoom;
 
+  /// Called when pinch zoom changes the scale.
+  final ValueChanged<double>? onZoomChanged;
+
   /// Search hits to paint over the page in [highlightPage].
   final List<NormalizedRect> highlights;
 
@@ -81,13 +88,20 @@ class PdfReaderViewport extends ConsumerStatefulWidget {
   PdfReaderViewportState createState() => PdfReaderViewportState();
 }
 
-class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
+class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
+    with WidgetsBindingObserver {
   final PdfTileCache _cache = PdfTileCache();
   final Map<int, Uint8List> _tiles = {};
   final Map<int, NormalizedRect> _tileSources = {};
   final Map<int, PdfTileKey> _requestedKeys = {};
+  final Map<int, PdfTileKey> _inFlight = {};
+  final Map<int, PdfTileKey> _pending = {};
+  final Map<int, NormalizedRect> _pendingSources = {};
   final Map<int, int> _requestGenerations = {};
   final Map<int, Offset> _pointerPositions = {};
+  final Map<int, int> _tileAttempts = {};
+  final Set<int> _failedTiles = {};
+  final Set<Timer> _retryTimers = {};
 
   final ScrollController _verticalScroll = ScrollController();
   final ScrollController _horizontalScroll = ScrollController();
@@ -104,6 +118,11 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   double _pixelRatio = 1;
   double _contentWidth = 0;
   Size? _lastViewport;
+
+  /// How far the single-page view has scrolled into the current page.
+  double _pageScrollX = 0;
+  double _pageScrollY = 0;
+
   bool _pinching = false;
   double _pinchStartDistance = 0;
   double _pinchStartZoom = 1;
@@ -115,10 +134,46 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   @visibleForTesting
   Set<int> get retainedTilePages => _tiles.keys.toSet();
 
+  /// Pages whose tile could not be rendered at all. Test hook.
+  @visibleForTesting
+  Set<int> get failedTilePages => Set.unmodifiable(_failedTiles);
+
+  /// Bytes held by the tile cache. Test hook.
+  @visibleForTesting
+  int get cachedTileBytes => _cache.bytes;
+
+  @override
+  void didHaveMemoryPressure() {
+    handleMemoryPressure();
+  }
+
+  /// Drops everything this reader can rebuild from the native renderer.
+  ///
+  /// The tiles already in flight are not cancelled — the native executor has
+  /// accepted them — so a visible page is repainted as soon as its render
+  /// returns rather than staying blank.
+  @visibleForTesting
+  void handleMemoryPressure() {
+    _cache.clear();
+    _tiles.clear();
+    _tileSources.clear();
+    _requestedKeys.clear();
+    _pending.clear();
+    _pendingSources.clear();
+    _failedTiles.clear();
+    _tileAttempts.clear();
+    PaintingBinding.instance.imageCache
+      ..clear()
+      ..clearLiveImages();
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _verticalScroll.addListener(_onVerticalScroll);
+    _horizontalScroll.addListener(_onHorizontalScroll);
     // Opening at a saved page should show that page, not the first one.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _jumpToPage(widget.initialPage);
@@ -130,11 +185,16 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialZoom != widget.initialZoom) {
       _zoom = widget.initialZoom.clamp(_minZoom, _maxZoom);
+      widget.onZoomChanged?.call(_zoom);
     }
     if (oldWidget.quarterTurns != widget.quarterTurns ||
         oldWidget.vertical != widget.vertical ||
         oldWidget.initialZoom != widget.initialZoom) {
       _requestedKeys.clear();
+      // Zoom, rotation and mode are the user asking for a fresh look, so the
+      // pages that ran out of attempts get them again.
+      _failedTiles.clear();
+      _tileAttempts.clear();
       final viewport = _lastViewport;
       if (viewport != null) _scheduleRequests(viewport);
     }
@@ -148,8 +208,14 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   @override
   void dispose() {
     _generation += 1;
+    WidgetsBinding.instance.removeObserver(this);
+    for (final timer in _retryTimers) {
+      timer.cancel();
+    }
+    _retryTimers.clear();
     _cache.clear();
     _verticalScroll.removeListener(_onVerticalScroll);
+    _horizontalScroll.removeListener(_onHorizontalScroll);
     _verticalScroll.dispose();
     _horizontalScroll.dispose();
     _pageController.dispose();
@@ -228,12 +294,32 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
       onPageChanged: (index) {
         if (index == _page) return;
         setState(() => _page = index);
+        _pageScrollX = 0;
+        _pageScrollY = 0;
         widget.onPageChanged(index);
       },
       itemBuilder: (context, index) => Center(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SingleChildScrollView(child: _pageView(index)),
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            // Only the page on screen contributes offsets; the PageView keeps
+            // its neighbours built, and their scroll positions are stale.
+            if (index != _page) return false;
+            final metrics = notification.metrics;
+            if (metrics.axis == Axis.horizontal) {
+              _pageScrollX = metrics.pixels;
+            } else {
+              _pageScrollY = metrics.pixels;
+            }
+            // Panning a zoomed page exposes a region no tile covers; without
+            // this the reader scrolls into white until the finger lifts.
+            final viewport = _lastViewport;
+            if (viewport != null) _scheduleRequests(viewport);
+            return false;
+          },
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SingleChildScrollView(child: _pageView(index)),
+          ),
         ),
       ),
     );
@@ -301,6 +387,16 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
     widget.onPageChanged(index);
   }
 
+  /// Sideways panning in continuous mode exposes a column no tile covers.
+  ///
+  /// Single-page mode scrolls through its own nested views and reports
+  /// through the [NotificationListener] in [_singlePages] instead.
+  void _onHorizontalScroll() {
+    final viewport = _lastViewport;
+    if (viewport == null || !widget.vertical) return;
+    _scheduleRequests(viewport);
+  }
+
   int _pageAtOffset(double offset) {
     final count = widget.geometry.length;
     if (count == 0) return 0;
@@ -317,6 +413,8 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
     if (count == 0) return;
     final index = raw.clamp(0, count - 1);
     _page = index;
+    _pageScrollX = 0;
+    _pageScrollY = 0;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (widget.vertical) {
@@ -351,6 +449,14 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
     _tiles.removeWhere((index, _) => !keep.contains(index));
     _tileSources.removeWhere((index, _) => !keep.contains(index));
     _requestedKeys.removeWhere((index, _) => !keep.contains(index));
+    // The in-flight render is not cancelled — the native executor already
+    // accepted it — but a page that scrolled away no longer holds a pending
+    // slot.
+    _pending.removeWhere((index, _) => !keep.contains(index));
+    _pendingSources.removeWhere((index, _) => !keep.contains(index));
+    // A page that scrolled away gets a fresh chance when it comes back.
+    _tileAttempts.removeWhere((index, _) => !keep.contains(index));
+    _failedTiles.removeWhere((index) => !keep.contains(index));
   }
 
   /// The visible pages plus one neighbour on each side, for prefetching.
@@ -382,26 +488,33 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   }
 
   void _requestTile(int index, Size viewport) {
+    // A page that used up its attempts keeps its mark until the zoom, rotation
+    // or visibility changes; without this guard the scheduler would re-dispatch
+    // it on every frame, forever.
+    if (_failedTiles.contains(index)) return;
     final display = _displayGeometry(widget.geometry[index]);
-    final source = widget.vertical
-        ? PdfPageGeometry.unrotateSource(
-            display.visibleSource(
-              scrollX:
-                  (_horizontalScroll.hasClients
-                      ? _horizontalScroll.offset
-                      : 0.0) -
-                  _pageLeft(index),
-              scrollY:
-                  (_verticalScroll.hasClients ? _verticalScroll.offset : 0.0) -
-                  _pageTop(index),
-              viewportWidth: viewport.width,
-              viewportHeight: viewport.height,
-              fitScale: _fitScale,
-              zoom: _zoom,
-            ),
-            widget.quarterTurns,
-          )
-        : const NormalizedRect(0, 0, 1, 1);
+    // Continuous mode scrolls a page inside a shared list; single-page mode
+    // scrolls it inside its own two scroll views. Both end up as "how far into
+    // the page is the viewport", which is what visibleSource expects.
+    final scrollX = widget.vertical
+        ? (_horizontalScroll.hasClients ? _horizontalScroll.offset : 0.0) -
+              _pageLeft(index)
+        : _pageScrollX;
+    final scrollY = widget.vertical
+        ? (_verticalScroll.hasClients ? _verticalScroll.offset : 0.0) -
+              _pageTop(index)
+        : _pageScrollY;
+    final source = PdfPageGeometry.unrotateSource(
+      display.visibleSource(
+        scrollX: scrollX,
+        scrollY: scrollY,
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+        fitScale: _fitScale,
+        zoom: _zoom,
+      ),
+      widget.quarterTurns,
+    );
 
     final rawScale = _zoom * _fitScale * _pixelRatio;
     final scale = (rawScale.clamp(0.05, 8.0) * 100).roundToDouble() / 100;
@@ -411,35 +524,104 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
       source: source,
     );
     if (_requestedKeys[index] == key) return;
-    _requestedKeys[index] = key;
+
+    if (_inFlight.containsKey(index)) {
+      // One render per page at a time: the newest request waits here and is
+      // issued when the current one returns or fails, so a pinch cannot push
+      // a queue of renders onto the native executor.
+      _pending[index] = key;
+      _pendingSources[index] = source;
+      return;
+    }
 
     final cached = _cache.get(key);
     if (cached != null) {
+      _requestedKeys[index] = key;
       _paint(index, cached, source);
       return;
     }
 
+    _requestedKeys[index] = key;
+    _dispatch(index, key, source);
+  }
+
+  void _dispatch(int index, PdfTileKey key, NormalizedRect source) {
     final generation = ++_generation;
     _requestGenerations[index] = generation;
+    _inFlight[index] = key;
     unawaited(
       ref
           .read(pdfRenderChannelProvider)
           .render(
             handle: widget.handle.id,
             pageIndex: index,
-            scale: scale,
+            // From the key, so the native call and the cache entry agree.
+            scale: key.scaleBucket / 100,
             source: source,
             maxPixels: _maxTilePixels,
           )
           .then((bytes) {
-            if (!mounted || _requestGenerations[index] != generation) return;
-            _cache.put(key, bytes);
-            _paint(index, bytes, source);
-          })
-          .catchError((Object _) {
-            // Keep the placeholder: one failed tile is not a reader failure.
-          }),
+        _inFlight.remove(index);
+        if (!mounted || _requestGenerations[index] != generation) {
+          _drainPending(index);
+          return;
+        }
+        _tileAttempts.remove(index);
+        _cache.put(key, bytes);
+        _paint(index, bytes, source);
+        _drainPending(index);
+      }).catchError((Object _) {
+        _inFlight.remove(index);
+        if (!mounted || _requestGenerations[index] != generation) {
+          _drainPending(index);
+          return;
+        }
+        // One failed tile is not a reader failure, but leaving its key
+        // reserved would keep the page blank for the session.
+        _retryTile(index);
+        _drainPending(index);
+      }),
     );
+  }
+
+  /// Issues the newest request that arrived while a page was rendering.
+  void _drainPending(int index) {
+    final key = _pending.remove(index);
+    if (key == null) return;
+    final source =
+        _pendingSources.remove(index) ?? const NormalizedRect(0, 0, 1, 1);
+    if (!mounted || _failedTiles.contains(index)) return;
+    final cached = _cache.get(key);
+    if (cached != null) {
+      _requestedKeys[index] = key;
+      _paint(index, cached, source);
+      return;
+    }
+    _requestedKeys[index] = key;
+    _dispatch(index, key, source);
+  }
+
+  /// Retries a tile that failed to render, a bounded number of times.
+  ///
+  /// Clearing the reserved key is what lets the next attempt through; after
+  /// [_maxTileAttempts] the page is marked failed and keeps its placeholder.
+  void _retryTile(int index) {
+    _requestedKeys.remove(index);
+    final attempts = (_tileAttempts[index] ?? 0) + 1;
+    _tileAttempts[index] = attempts;
+    if (attempts > _maxTileAttempts) {
+      setState(() => _failedTiles.add(index));
+      return;
+    }
+    late final Timer timer;
+    timer = Timer(const Duration(milliseconds: 400), () {
+      _retryTimers.remove(timer);
+      if (!mounted) return;
+      final viewport = _lastViewport;
+      if (viewport == null) return;
+      _requestTile(index, viewport);
+    });
+    _retryTimers.add(timer);
   }
 
   void _paint(int index, Uint8List bytes, NormalizedRect source) {
@@ -469,6 +651,7 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
     );
     if ((next - _zoom).abs() < 0.005) return;
     setState(() => _zoom = next);
+    widget.onZoomChanged?.call(next);
   }
 
   void _onPointerEnd(PointerEvent event) {

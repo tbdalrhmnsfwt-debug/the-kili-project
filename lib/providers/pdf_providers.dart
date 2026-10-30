@@ -14,6 +14,7 @@ import '../core/pdf/pdf_library_repository.dart';
 import '../core/pdf/pdf_library_store.dart';
 import '../core/pdf/pdf_render_channel.dart';
 import '../core/pdf/pdf_thumbnailer.dart';
+import '../core/pdf/pdf_unlock.dart';
 import '../models/pdf_settings.dart';
 import 'app_providers.dart';
 
@@ -21,6 +22,11 @@ import 'app_providers.dart';
 final pdfRenderChannelProvider = Provider<PdfRenderChannel>(
   (ref) => const PdfRenderChannel(),
 );
+
+/// Decrypts a protected document into a session temp copy.
+///
+/// Overridden in tests so reader flows never depend on real crypto.
+final pdfUnlockerProvider = Provider<PdfUnlocker>((ref) => unlockPdfTo);
 
 /// The app-private directory layout. Overridden in `main()`.
 final pdfLibraryStoreProvider = Provider<PdfLibraryStore>(

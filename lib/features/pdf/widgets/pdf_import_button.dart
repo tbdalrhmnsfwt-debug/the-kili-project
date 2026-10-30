@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/pdf/pdf_library_controller.dart';
+import '../../../core/pdf/pdf_library_store.dart';
 import '../../../models/pdf_document.dart';
 import '../../../providers/pdf_providers.dart';
 import '../../../widgets/tr_text.dart';
@@ -74,13 +75,31 @@ Future<List<PdfDocumentEntry>> importPdfFiles(
   if (sources.isEmpty) return const [];
 
   final result = await controller.import(sources);
-  final added = result.imported.length;
-  final rejected = result.failures.length;
-  final message = switch ((added, rejected)) {
+  final message = pdfImportMessage(
+    added: result.imported.length,
+    failures: result.failures,
+  );
+  messenger.showSnackBar(SnackBar(content: TrText(message)));
+  return result.imported;
+}
+
+/// The snack-bar line for one import pass.
+///
+/// A pass that wrote nothing because the device had no room says so; blaming
+/// the format would send the user hunting for another file that also fits.
+String pdfImportMessage({
+  required int added,
+  required List<PdfImportFailure> failures,
+}) {
+  final rejected = failures.length;
+  if (added == 0 &&
+      rejected > 0 &&
+      failures.every((failure) => failure == PdfImportFailure.storage)) {
+    return 'مفيش مساحة كافية على الجهاز — الملفات ما اتضافتش.';
+  }
+  return switch ((added, rejected)) {
     (0, _) => 'مفيش ملفات اتضافت — اتأكد إنهم PDF.',
     (_, 0) => 'تمت إضافة $added ملف.',
     _ => 'تمت إضافة $added ملف، و$rejected ملف اتترفض.',
   };
-  messenger.showSnackBar(SnackBar(content: TrText(message)));
-  return result.imported;
 }

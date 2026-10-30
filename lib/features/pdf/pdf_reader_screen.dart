@@ -6,8 +6,8 @@
 /// the promise that a transient document leaves nothing behind.
 ///
 /// Privacy notes:
-///   * A password is passed straight to the native open call and never stored,
-///     logged or put in a message.
+///   * A password decrypts the document into a session temp copy and is never
+///     stored, logged or put in a message; the copy is deleted on close.
 ///   * In-memory bytes are written to a session temp file and deleted when the
 ///     reader closes; library copies are never modified.
 library;
@@ -21,9 +21,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/pdf/pdf_library_controller.dart';
 import '../../core/pdf/pdf_page_geometry.dart';
 import '../../core/pdf/pdf_render_channel.dart';
 import '../../core/pdf/pdf_text_map.dart';
+import '../../core/pdf/pdf_unlock.dart';
 import '../../core/theme.dart';
 import '../../models/pdf_document.dart';
 import '../../models/pdf_settings.dart';
@@ -72,14 +74,25 @@ class PdfReaderScreen extends ConsumerStatefulWidget {
 
 class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   late final PdfRenderChannel _channel;
+
+  /// Captured in [initState] so [dispose] can flush the reading position
+  /// without touching `ref` after the widget is gone.
+  late final PdfLibraryController _library;
   PdfRendererHandle? _handle;
   String? _resolvedPath;
   File? _sessionFile;
+
+  /// The decrypted copy of a protected document, deleted on close.
+  File? _unlockedFile;
+  late final PdfUnlocker _unlocker;
   PdfRenderFailure? _failure;
   Timer? _markTimer;
   bool _loading = true;
   bool _chromeVisible = true;
   int _quarterTurns = 0;
+
+  /// Fit-width is 1; the viewport reports every pinch that changes it.
+  double _zoom = 1;
   int _page = 0;
   int _attempts = 0;
   int _materialised = 0;
@@ -91,6 +104,8 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   void initState() {
     super.initState();
     _channel = ref.read(pdfRenderChannelProvider);
+    _unlocker = ref.read(pdfUnlockerProvider);
+    _library = ref.read(pdfLibraryControllerProvider.notifier);
     // The first frame shows the loading state; the open starts right after.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _open();
@@ -100,27 +115,55 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   @override
   void dispose() {
     _markTimer?.cancel();
+    // The debounce loses the position when the reader closes within 500 ms;
+    // flush whatever the reader is showing right now.
+    final id = widget.docId;
+    if (id != null && _handle != null) {
+      unawaited(
+        _library.markOpened(
+          id,
+          page: _page + 1,
+          zoom: _zoom,
+          quarterTurns: _quarterTurns,
+        ),
+      );
+    }
     final handle = _handle;
     if (handle != null) unawaited(_channel.close(handle.id));
-    final session = _sessionFile;
-    if (session != null) {
-      try {
-        if (session.existsSync()) session.deleteSync();
-      } on FileSystemException {
-        // The startup sweep removes anything a failed delete leaves behind.
-      }
-    }
+    _deleteQuietly(_sessionFile);
+    _deleteQuietly(_unlockedFile);
     super.dispose();
   }
 
-  /// Opens (or re-opens with [password]) the resolved file.
-  Future<void> _open({String? password}) async {
+  /// Deletes [file], leaving anything a failed delete leaves to the startup
+  /// sweep in `PdfLibraryStore.sweepTemp`.
+  void _deleteQuietly(File? file) {
+    if (file == null) return;
+    try {
+      if (file.existsSync()) file.deleteSync();
+    } on FileSystemException {
+      // Best effort: a temp file must never stop the reader from closing.
+    }
+  }
+
+  /// Opens the resolved file.
+  Future<void> _open() async {
     if (!mounted) return;
     setState(() {
       _loading = true;
       _failure = null;
     });
-    final path = _resolvePath();
+    final String? path;
+    try {
+      path = _resolvePath();
+    } on FileSystemException {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _failure = PdfRenderFailure.storage;
+      });
+      return;
+    }
     if (path == null) {
       setState(() {
         _loading = false;
@@ -130,9 +173,20 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     }
     _resolvedPath = path;
     try {
-      final handle = await _channel.open(path, password: password);
+      final handle = await _channel.open(path);
       if (!mounted) {
         unawaited(_channel.close(handle.id));
+        return;
+      }
+      if (handle.pageCount <= 0) {
+        // A zero-page file cannot be shown, and clamping against it throws
+        // inside setState; the handle must not outlive the attempt either.
+        unawaited(_channel.close(handle.id));
+        setState(() {
+          _handle = null;
+          _loading = false;
+          _failure = PdfRenderFailure.corrupt;
+        });
         return;
       }
       final entry = _entry;
@@ -142,6 +196,8 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
         _loading = false;
         _failure = null;
         _page = lastPage.clamp(1, handle.pageCount) - 1;
+        _quarterTurns = entry?.lastQuarterTurns ?? 0;
+        _zoom = entry?.lastZoom ?? 1;
         _geometry = [
           for (final page in handle.pages)
             PdfPageGeometry(
@@ -198,7 +254,68 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
       setState(() => _failure = PdfRenderFailure.passwordRequired);
       return;
     }
-    await _open(password: password);
+    await _unlockWith(password);
+  }
+
+  /// Decrypts the document into a session copy and opens that copy.
+  ///
+  /// `PdfRenderer` cannot take a password below Android 15, so the password is
+  /// answered here rather than by the platform: the copy is what both the
+  /// renderer and the text extractor see. Nothing about it is kept longer than
+  /// the reader — [dispose] deletes it and the store sweeps the directory at
+  /// startup.
+  Future<void> _unlockWith(String password) async {
+    final source = _sourcePath();
+    if (source == null) {
+      setState(() {
+        _loading = false;
+        _failure = PdfRenderFailure.corrupt;
+      });
+      return;
+    }
+    final store = ref.read(pdfLibraryStoreProvider);
+    final noise = Random.secure().nextInt(1 << 24).toRadixString(16);
+    final target = store.sessionTempFile(
+      'unlocked-${DateTime.now().microsecondsSinceEpoch}-$noise',
+    );
+    final bool unlocked;
+    try {
+      unlocked = await _unlocker(
+        input: File(source),
+        password: password,
+        output: target,
+      );
+    } on FileSystemException {
+      // A decrypt that failed midway may have left a partial copy behind; it
+      // must not outlive the attempt that produced it.
+      _deleteQuietly(target);
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _failure = PdfRenderFailure.storage;
+      });
+      return;
+    } on Object {
+      // The decryptor throws on documents it cannot parse at all. That is not
+      // a wrong password — re-prompting would loop forever on a broken file —
+      // so the reader reports the document instead.
+      _deleteQuietly(target);
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _failure = PdfRenderFailure.corrupt;
+      });
+      return;
+    }
+    if (!mounted) return;
+    if (!unlocked) {
+      _deleteQuietly(target);
+      await _promptPassword(wrong: true);
+      return;
+    }
+    _deleteQuietly(_unlockedFile);
+    _unlockedFile = target;
+    await _open();
   }
 
   Future<String?> _askPassword({required bool wrong}) async {
@@ -245,8 +362,19 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     );
   }
 
-  /// Decides which file this reader should open.
+  /// The file to open: the decrypted copy once the password is known, the
+  /// source file before that.
   String? _resolvePath() {
+    final unlocked = _unlockedFile;
+    if (unlocked != null && unlocked.existsSync()) return unlocked.path;
+    return _sourcePath();
+  }
+
+  /// The file the user opened, before any decryption.
+  ///
+  /// Sharing and retrying a password use this one, so the protected original
+  /// never leaves the device decrypted.
+  String? _sourcePath() {
     final docId = widget.docId;
     if (docId != null) {
       final file = ref.read(pdfLibraryStoreProvider).baseFile(docId);
@@ -289,9 +417,14 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     _markTimer?.cancel();
     _markTimer = Timer(const Duration(milliseconds: 500), () {
       if (!mounted) return;
-      ref
-          .read(pdfLibraryControllerProvider.notifier)
-          .markOpened(id, page: _page + 1);
+      unawaited(
+        _library.markOpened(
+          id,
+          page: _page + 1,
+          zoom: _zoom,
+          quarterTurns: _quarterTurns,
+        ),
+      );
     });
   }
 
@@ -347,9 +480,8 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     if (handle == null || path == null) return;
     final file = File(path);
     if (!file.existsSync()) return;
-    final bytes = await file.readAsBytes();
+    final textMap = PdfTextMap.fromFile(file, pageCount: handle.pageCount);
     if (!mounted) return;
-    final textMap = PdfTextMap.fromBytes(bytes, pageCount: handle.pageCount);
     await showPdfSearchSheet(
       context,
       textMap: textMap,
@@ -371,7 +503,8 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   }
 
   Future<void> _shareFile() async {
-    final path = _resolvedPath;
+    // The original, never the decrypted session copy.
+    final path = _sourcePath();
     if (path == null) return;
     final file = File(path);
     if (!file.existsSync()) return;
@@ -443,8 +576,10 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
                           ? PdfScrollMode.horizontal
                           : PdfScrollMode.vertical,
                     ),
-                onRotate: () =>
-                    setState(() => _quarterTurns = (_quarterTurns + 1) % 4),
+                onRotate: () {
+                  setState(() => _quarterTurns = (_quarterTurns + 1) % 4);
+                  _scheduleMarkOpened();
+                },
                 onNight: () => ref
                     .read(pdfSettingsProvider.notifier)
                     .setNightMode(!settings.nightMode),
@@ -525,6 +660,11 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
           vertical: settings.scrollMode == PdfScrollMode.vertical,
           nightMode: settings.nightMode,
           quarterTurns: _quarterTurns,
+          initialZoom: _zoom,
+          onZoomChanged: (value) {
+            _zoom = value;
+            _scheduleMarkOpened();
+          },
           highlights: _highlights,
           highlightPage: _highlightPage,
         ),
@@ -539,6 +679,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
       PdfRenderFailure.passwordUnsupported =>
         'الملف محمي بكلمة سر، وفتحه محتاج أندرويد 15 أو أحدث.',
       PdfRenderFailure.unavailable => 'قارئ PDF مش متاح على الجهاز ده.',
+      PdfRenderFailure.storage => 'مفيش مساحة كافية على الجهاز.',
       _ => 'الملف تالف أو مش مقروء.',
     };
   }

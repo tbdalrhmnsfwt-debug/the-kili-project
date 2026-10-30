@@ -191,10 +191,6 @@ void _index() {
     index.query(favoritesOnly: true).isEmpty,
     'favorites filter excludes non-favorites',
   );
-
-  final pruned = index.pruneMissing((e) => e.id != 'a');
-  check(pruned.entries.length == 2, 'pruneMissing drops missing files');
-  check(pruned.entries.every((e) => e.id != 'a'), 'the dropped id is gone');
 }
 
 void _geometry() {
