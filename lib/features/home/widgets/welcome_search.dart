@@ -1,93 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/router.dart';
 import '../../../core/theme.dart';
-import '../../../widgets/tr_text.dart';
-import 'home_style.dart';
+import 'home_light_style.dart';
 
 /// The greeting for a 24-hour clock [hour].
 String greetingFor(int hour) => hour < 12 ? 'صباح الخير' : 'مساء الخير';
 
-/// The greeting and AI question line that sit under the prayer badge.
+/// The home's free-text entry point.
 ///
-/// The navy gradient belongs to the header that owns this widget, so the
-/// welcome content stays transparent and can be reused inside the compact
-/// header without a nested card. The search is the app's free-text entry point;
-/// submitting it opens the chat with the typed question.
+/// The welcome card owns the greeting, so this widget is only the search
+/// field: a white pill on the page background. Submitting it opens the chat
+/// with the typed question.
 class WelcomeSearch extends StatelessWidget {
-  const WelcomeSearch({super.key, required this.name});
-
-  /// The name shown after the greeting.
-  final String name;
+  const WelcomeSearch({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      key: const Key('home-welcome-search'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 3,
-              height: 34,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [HomePalette.champagneLight, HomePalette.champagne],
-                ),
-                borderRadius: BorderRadius.circular(ZakerRadius.pill),
-              ),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TrText(
-                    '${greetingFor(DateTime.now().hour)}، $name',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: HomePalette.textPrimary,
-                      fontSize: 21,
-                      fontWeight: FontWeight.w800,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  const TrText(
-                    'عايز تعمل إيه النهاردة؟',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: HomePalette.champagneLight,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      height: 1.25,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        const _SearchPill(),
-      ],
-    );
+    return const _SearchPill();
   }
 }
 
-/// The translucent search pill. Submitting opens the AI chat with the typed
-/// question; the gold arrow does the same for people who prefer a button.
+/// The white search pill. Submitting opens the AI chat with the typed
+/// question; the blue arrow does the same for people who prefer a button.
 class _SearchPill extends StatefulWidget {
   const _SearchPill();
 
@@ -115,52 +52,43 @@ class _SearchPillState extends State<_SearchPill> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      key: const Key('home-welcome-search'),
       padding: const EdgeInsetsDirectional.only(start: 14, end: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: HomeLight.surface,
         borderRadius: BorderRadius.circular(ZakerRadius.pill),
-        border: Border.all(
-          color: HomePalette.champagne.withValues(alpha: 0.28),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.22),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: HomePalette.emerald.withValues(alpha: 0.08),
-            blurRadius: 24,
-          ),
-        ],
+        boxShadow: HomeLight.shadow,
       ),
       child: Row(
         children: [
           const HugeIcon(
             icon: HugeIcons.strokeRoundedAiSparkles,
             size: 19,
-            color: HomePalette.champagneLight,
+            color: HomeLight.blue,
           ),
           const SizedBox(width: 9),
           Expanded(
-            child: ShadInput(
+            child: TextField(
               controller: _controller,
-              decoration: ShadDecoration.none,
-              padding: const EdgeInsets.symmetric(vertical: 11),
-              cursorColor: Colors.white,
+              cursorColor: HomeLight.blue,
               style: const TextStyle(
-                color: HomePalette.textPrimary,
+                color: HomeLight.ink,
                 fontFamily: ZakerTheme.fontUi,
                 fontSize: 13.5,
+                fontWeight: FontWeight.w600,
               ),
-              placeholder: const TrText(
-                'اسأل معلم AI عن أي حاجة…',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: HomePalette.textSecondary,
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 13),
+                hintText: 'اسأل معلم AI عن أي حاجة…',
+                hintStyle: TextStyle(
+                  color: HomeLight.muted,
                   fontFamily: ZakerTheme.fontUi,
                   fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               textInputAction: TextInputAction.search,
@@ -172,7 +100,7 @@ class _SearchPillState extends State<_SearchPill> {
             button: true,
             label: 'اسأل معلم AI',
             child: SizedBox(
-              // A 40 dp target around the 32 dp gold circle.
+              // A 40 dp target around the 32 dp blue circle.
               width: 40,
               height: 40,
               child: Material(
@@ -186,29 +114,19 @@ class _SearchPillState extends State<_SearchPill> {
                     child: Container(
                       width: 32,
                       height: 32,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [
-                            HomePalette.champagneLight,
-                            HomePalette.champagne,
-                          ],
+                          colors: [HomeLight.blue, HomeLight.blueDeep],
                         ),
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: HomePalette.champagne.withValues(alpha: 0.4),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
                       ),
                       child: const Center(
                         child: HugeIcon(
                           icon: HugeIcons.strokeRoundedArrowLeft01,
                           size: 16,
-                          color: HomePalette.midnight,
+                          color: Colors.white,
                         ),
                       ),
                     ),

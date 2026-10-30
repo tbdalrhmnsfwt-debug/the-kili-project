@@ -12,9 +12,12 @@ void main() {
     expect(ZakerColors.gold, const Color(0xFFD4AF37));
     expect(ZakerColors.goldLight, const Color(0xFFE5C158));
     expect(ZakerColors.goldDeep, const Color(0xFF8A6A12));
-    expect(ZakerColors.page, const Color(0xFFF8F9FB));
-    expect(ZakerColors.ink, const Color(0xFF121E36));
-    expect(ZakerColors.muted, const Color(0xFF5B6678));
+    expect(ZakerColors.page, const Color(0xFFF4F7FC));
+    expect(ZakerColors.pageSoft, const Color(0xFFEEF2F9));
+    expect(ZakerColors.ink, const Color(0xFF1E293B));
+    expect(ZakerColors.muted, const Color(0xFF64748B));
+    expect(ZakerColors.blue, const Color(0xFF2563EB));
+    expect(ZakerColors.blueDeep, const Color(0xFF1D4ED8));
     expect(ZakerColors.border, const Color(0xFFE6E9F0));
     expect(ZakerColors.backpack, const Color(0xFFD32F2F));
     expect(ZakerColors.primary, ZakerColors.navy);
@@ -22,14 +25,14 @@ void main() {
     expect(ZakerColors.primaryDark, ZakerColors.navyDeep);
   });
 
-  test('cards are 16 dp with the soft brand shadow', () {
-    expect(ZakerRadius.cardValue, 16);
-    expect(ZakerRadius.card, const BorderRadius.all(Radius.circular(16)));
+  test('cards are 24 dp with the soft dashboard shadow', () {
+    expect(ZakerRadius.cardValue, 24);
+    expect(ZakerRadius.card, const BorderRadius.all(Radius.circular(24)));
     expect(ZakerRadius.md, 14);
     final shadow = ZakerShadows.card.single;
-    expect(shadow.color, const Color(0x14203A5C));
-    expect(shadow.blurRadius, 10);
-    expect(shadow.offset, const Offset(0, 4));
+    expect(shadow.color, const Color(0x0A000000));
+    expect(shadow.blurRadius, 16);
+    expect(shadow.offset, const Offset(0, 8));
   });
 
   test('the text pairs the design uses meet 4.5:1', () {
@@ -167,8 +170,7 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason:
-          'colorScheme.primary is gold in the dark appearances; a gradient '
+      reason: 'colorScheme.primary is gold in the dark appearances; a gradient '
           'starting there cannot carry white text',
     );
   });

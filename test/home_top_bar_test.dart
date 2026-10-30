@@ -24,15 +24,15 @@ Widget _host(
     );
 
 void main() {
-  test('height stays under 6% on tall phones inside a 40–54 dp clamp', () {
-    expect(homeTopBarHeightFor(600), 40);
-    expect(homeTopBarHeightFor(667), 40);
-    expect(homeTopBarHeightFor(700), 40);
-    expect(homeTopBarHeightFor(800), 44);
-    expect(homeTopBarHeightFor(900), closeTo(49.5, 1e-9));
-    expect(homeTopBarHeightFor(1200), 54);
-    for (final height in [667.0, 800.0, 900.0, 1200.0]) {
-      expect(homeTopBarHeightFor(height), lessThan(height * 0.06));
+  test('height follows the screen and stays inside a 56–64 dp clamp', () {
+    expect(homeTopBarHeightFor(600), 56);
+    expect(homeTopBarHeightFor(667), 56);
+    expect(homeTopBarHeightFor(700), 56);
+    expect(homeTopBarHeightFor(800), 60);
+    expect(homeTopBarHeightFor(900), 64);
+    expect(homeTopBarHeightFor(1200), 64);
+    for (final height in [320.0, 667.0, 800.0, 900.0, 1200.0]) {
+      expect(homeTopBarHeightFor(height), inInclusiveRange(56, 64));
     }
   });
 
@@ -108,9 +108,7 @@ void main() {
     );
   });
 
-  testWidgets('the strip asks for light status icons under the status bar', (
-    tester,
-  ) async {
+  testWidgets('the light strip asks for dark status icons', (tester) async {
     Widget bar() => HomeTopBar(
           showBadge: false,
           onMenu: () {},
@@ -124,11 +122,11 @@ void main() {
       matching: find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
     );
     var region = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(overlay);
-    expect(region.value.statusBarIconBrightness, Brightness.light);
-    expect(region.value.statusBarBrightness, Brightness.dark);
+    expect(region.value.statusBarIconBrightness, Brightness.dark);
+    expect(region.value.statusBarBrightness, Brightness.light);
 
-    // In the wide shell SafeArea consumes the inset: the off-white surface is
-    // behind the status bar again, so the theme's dark glyphs must come back.
+    // The page is light at every inset, including the wide shell where
+    // SafeArea consumes the status-bar padding.
     await tester.pumpWidget(_host(bar(), topPadding: 0));
     overlay = find.descendant(
       of: find.byType(HomeTopBar),

@@ -3,13 +3,13 @@ import 'package:hugeicons/hugeicons.dart';
 
 import '../../../core/theme.dart';
 import '../../../widgets/tr_text.dart';
-import 'home_style.dart';
+import 'home_light_style.dart';
 
-/// The three live stat chips inside the navy hero.
+/// The three live stat chips under the search field.
 ///
 /// A [Wrap], not a [Row]: at 320 dp with 2.0x text the chips reflow onto a
-/// second line instead of overflowing. Each chip carries one functional
-/// accent — champagne for momentum, emerald teal for study minutes, coral for
+/// second line instead of overflowing. Each chip is a white card with one
+/// functional accent — orange for momentum, cyan for study minutes, purple for
 /// the work still waiting.
 class HomeStatsStrip extends StatelessWidget {
   const HomeStatsStrip({
@@ -34,19 +34,19 @@ class HomeStatsStrip extends StatelessWidget {
           icon: HugeIcons.strokeRoundedFire,
           value: '$streakDays',
           label: 'يوم متواصل',
-          accent: HomePalette.champagne,
+          accent: HomeLight.orange,
         ),
         _StatChip(
           icon: HugeIcons.strokeRoundedTimer01,
           value: '$minutesToday',
           label: 'دقيقة النهاردة',
-          accent: HomePalette.emeraldLight,
+          accent: HomeLight.cyan,
         ),
         _StatChip(
           icon: HugeIcons.strokeRoundedTaskDaily01,
           value: '$pendingCount',
           label: 'مهمة مستنية',
-          accent: HomePalette.coral,
+          accent: HomeLight.purple,
         ),
       ],
     );
@@ -79,23 +79,10 @@ class _StatChip extends StatelessWidget {
             bottom: 6,
           ),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.white.withValues(alpha: 0.11),
-                Colors.white.withValues(alpha: 0.04),
-              ],
-            ),
+            color: HomeLight.surface,
             borderRadius: BorderRadius.circular(ZakerRadius.md + 2),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.14),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            border: Border.all(color: HomeLight.border),
+            boxShadow: HomeLight.shadow,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -104,9 +91,8 @@ class _StatChip extends StatelessWidget {
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.16),
+                  color: accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: accent.withValues(alpha: 0.24)),
                 ),
                 child: Center(
                   child: HugeIcon(icon: icon, size: 14, color: accent),
@@ -116,7 +102,7 @@ class _StatChip extends StatelessWidget {
               Text(
                 value,
                 style: const TextStyle(
-                  color: HomePalette.textPrimary,
+                  color: HomeLight.ink,
                   fontSize: 14,
                   height: 1.1,
                   fontWeight: FontWeight.w800,
@@ -130,7 +116,7 @@ class _StatChip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: HomePalette.textSecondary,
+                    color: HomeLight.muted,
                     fontSize: 11.5,
                     height: 1.2,
                     fontWeight: FontWeight.w600,
