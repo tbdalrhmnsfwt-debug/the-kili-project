@@ -16,6 +16,7 @@ import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 /**
  * The app's single activity.
@@ -228,7 +229,27 @@ class MainActivity : FlutterActivity() {
         // The screen flag is set per screen through `setKeepScreenOn`, not
         // here: keeping every screen awake drained the battery on the home
         // screen and everywhere else the student never asked for it.
+        sweepOrphanRecordings()
         showOverLockScreenIfAdhan(intent)
+    }
+
+    /**
+     * Removes recordings a day old or more.
+     *
+     * Voice notes are recorded into `cacheDir/recordings` and copied into the
+     * batch before Dart deletes the temporary file. A clip whose send failed,
+     * or whose app was killed mid-send, is never consumed and would sit in the
+     * cache until the system evicted it.
+     */
+    private fun sweepOrphanRecordings() {
+        val cutoff = System.currentTimeMillis() - RECORDING_MAX_AGE_MS
+        try {
+            for (file in File(cacheDir, "recordings").listFiles().orEmpty()) {
+                if (file.isFile && file.lastModified() < cutoff) file.delete()
+            }
+        } catch (_: Exception) {
+            // A cache that cannot be listed is not worth a crash on startup.
+        }
     }
 
     /** Adds or clears `FLAG_KEEP_SCREEN_ON` for the current screen. */
@@ -423,6 +444,9 @@ class MainActivity : FlutterActivity() {
     companion object {
         /** How long a start call waits for the service to report an outcome. */
         const val ADHAN_START_TIMEOUT_MS = 4000L
+
+        /** Orphaned voice recordings are swept once they are this old. */
+        const val RECORDING_MAX_AGE_MS = 24 * 60 * 60 * 1000L
 
         /** Channel used by Dart to drive the AI-job notification. */
         const val AI_JOBS_CHANNEL = "zaker/ai_jobs"

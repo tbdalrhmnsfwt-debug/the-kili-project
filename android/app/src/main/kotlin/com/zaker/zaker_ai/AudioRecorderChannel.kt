@@ -40,6 +40,9 @@ class AudioRecorderChannel(
     private var pendingClip: Map<String, Any>? = null
     private var lastNotifiedSecond = -1L
 
+    /** The file behind the last returned clip, in case Dart never used it. */
+    private var lastClip: File? = null
+
     private val ticker = object : Runnable {
         override fun run() {
             val active = recorder ?: return
@@ -163,6 +166,12 @@ class AudioRecorderChannel(
         }
         val raw = call.argument<String>("path")
         val target = resolveTemp(raw, result) ?: return
+        // The previous clip was either copied into the batch and deleted by
+        // Dart, or abandoned without being used. Either way it is stale now.
+        lastClip?.let { stale ->
+            if (stale.absolutePath != target.absolutePath) stale.delete()
+        }
+        lastClip = null
         target.parentFile?.mkdirs()
         val created = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(activity)
@@ -264,6 +273,7 @@ class AudioRecorderChannel(
         }
         val elapsed = (SystemClock.elapsedRealtime() - startedAt).coerceAtLeast(0)
         val duration = durationOf(target) ?: elapsed
+        lastClip = target
         return mapOf(
             "path" to target.absolutePath,
             "durationMs" to duration,

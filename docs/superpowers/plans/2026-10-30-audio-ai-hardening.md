@@ -108,8 +108,9 @@
 
 **Files:** `AudioRecorderChannel.kt:236-271,311-313,324-328`, `MainActivity.kt`
 
-- [ ] Delete `cacheDir/recordings` files older than a day in `onCreate`, and delete the target when a recording is stopped but never consumed.
-- [ ] Commit; note the Kotlin is unbuilt.
+- [x] Delete `cacheDir/recordings` files older than a day in `onCreate`, and delete the target when a recording is stopped but never consumed.
+- [x] Ruling: "never consumed" is detected natively without a new Dart call — the channel drops the previous clip when the next recording starts, and `onCreate` sweeps the folder once a day. Dart already deletes the temporary file after a successful send, so this only catches abandoned sends and killed processes. Cost if wrong: a clip kept for a retry that is then superseded loses its file.
+- [x] Commit; note the Kotlin is unbuilt.
 
 ## Task 12: AI jobs run in the foreground service
 
