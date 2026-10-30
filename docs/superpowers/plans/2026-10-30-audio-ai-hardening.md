@@ -116,5 +116,5 @@
 
 **Files:** `AiJobService.kt:29-114`, `MainActivity.kt:44-65,383`, `lib/core/ai_service.dart:247-273`
 
-- [ ] `runJob` starts the service, updates progress through `zaker/ai_jobs`, and stops it in a `finally`.
-- [ ] Commit; note the Kotlin is unbuilt.
+- [x] `runJob` starts the service, updates progress through `zaker/ai_jobs`, and stops it in a `finally`.
+- [x] Commit; note the Kotlin is unbuilt.

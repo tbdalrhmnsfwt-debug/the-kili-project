@@ -15,6 +15,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../models/ai.dart';
 import 'api_client.dart';
@@ -264,6 +265,10 @@ class AiService {
   }
 
   /// Enqueues a background job and reports progress through [onProgress].
+  ///
+  /// The job also runs inside `AiJobService`, Android's foreground service,
+  /// so a long generation survives the app going to the background and the
+  /// student can see it in the notification shade.
   Future<AiJob> runJob({
     required String kind,
     required String title,
@@ -278,18 +283,43 @@ class AiService {
       createdAt: DateTime.now(),
     );
     jobs.add(job);
+    unawaited(_reportJob('startAiJob', title, 0));
 
+    var lastPercent = 0;
     try {
       await work((p) {
         job.progress = p.clamp(0.0, 1.0);
+        final percent = (job.progress * 100).round();
+        // One IPC per five percent keeps the notification moving without
+        // flooding the channel on a progress-heavy worker.
+        if (percent - lastPercent >= 5) {
+          lastPercent = percent;
+          unawaited(_reportJob('updateAiJob', title, percent));
+        }
       });
       job.status = AiJobStatus.succeeded;
       job.progress = 1;
     } catch (e) {
       job.status = AiJobStatus.failed;
       job.error = e.toString();
+    } finally {
+      unawaited(_reportJob('stopAiJob', title, 100));
     }
     return job;
+  }
+
+  /// Method channel to `AiJobService`; absent on tests and desktop.
+  static const MethodChannel _jobChannel = MethodChannel('zaker/ai_jobs');
+
+  Future<void> _reportJob(String method, String title, int progress) async {
+    try {
+      await _jobChannel.invokeMethod<void>(method, {
+        'title': title,
+        'progress': progress,
+      });
+    } catch (_) {
+      // Without the service the job still runs; only its notification is gone.
+    }
   }
 
   /// Runs [action], returning [fallback] if it throws.

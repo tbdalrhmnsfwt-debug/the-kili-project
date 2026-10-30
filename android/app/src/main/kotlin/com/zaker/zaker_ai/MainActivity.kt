@@ -57,14 +57,14 @@ class MainActivity : FlutterActivity() {
                         val title = call.argument<String>("title")
                             ?: getString(R.string.ai_job_default_title)
                         val progress = call.argument<Int>("progress") ?: 0
-                        AiJobService.start(this, title, progress)
+                        startAiJobService(title, progress)
                         result.success(null)
                     }
                     "updateAiJob" -> {
                         val title = call.argument<String>("title")
                             ?: getString(R.string.ai_job_default_title)
                         val progress = call.argument<Int>("progress") ?: 0
-                        AiJobService.start(this, title, progress)
+                        startAiJobService(title, progress)
                         result.success(null)
                     }
                     "stopAiJob" -> {
@@ -249,6 +249,23 @@ class MainActivity : FlutterActivity() {
             }
         } catch (_: Exception) {
             // A cache that cannot be listed is not worth a crash on startup.
+        }
+    }
+
+    /**
+     * Starts or refreshes the AI-job notification.
+     *
+     * Android 12+ refuses a foreground-service start from the background, and
+     * a progress update can arrive after the student left the app. The job
+     * itself keeps running in Dart either way, so a refused start is not an
+     * error worth surfacing — and it cannot be allowed to throw, because an
+     * exception in a channel handler takes the process down.
+     */
+    private fun startAiJobService(title: String, progress: Int) {
+        try {
+            AiJobService.start(this, title, progress)
+        } catch (_: Exception) {
+            // No notification; the job still completes in Dart.
         }
     }
 

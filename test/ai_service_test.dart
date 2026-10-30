@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zaker_ai/core/ai_service.dart';
 import 'package:zaker_ai/core/api_client.dart';
@@ -115,6 +115,70 @@ void main() {
       );
 
       expect(answer, 'شرح مختصر');
+    });
+  });
+
+  group('AiService.runJob', () {
+    const jobs = MethodChannel('zaker/ai_jobs');
+
+    test('drives the foreground service from start to stop', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(jobs, (call) async {
+        calls.add(call);
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(jobs, null));
+
+      final service = AiService(api: _api({'answer': '42'}));
+      final job = await service.runJob(
+        kind: 'summary',
+        title: 'ملخص الدرس',
+        work: (onProgress) async {
+          onProgress(0);
+          onProgress(0.5);
+        },
+      );
+      // The reports are fire-and-forget so a silent platform cannot stall a
+      // job; give the mocked messenger room to deliver them.
+      for (var i = 0; i < 5; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(job.status, AiJobStatus.succeeded);
+      expect(calls.map((c) => c.method), [
+        'startAiJob',
+        'updateAiJob',
+        'stopAiJob',
+      ]);
+      expect((calls[1].arguments as Map)['progress'], 50);
+    });
+
+    test('stops the service even when the work throws', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(jobs, (call) async {
+        calls.add(call);
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(jobs, null));
+
+      final service = AiService(api: _api({'answer': '42'}));
+      final job = await service.runJob(
+        kind: 'summary',
+        title: 'ملخص الدرس',
+        work: (_) async => throw StateError('boom'),
+      );
+      for (var i = 0; i < 5; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(job.status, AiJobStatus.failed);
+      expect(calls.last.method, 'stopAiJob');
     });
   });
 }
