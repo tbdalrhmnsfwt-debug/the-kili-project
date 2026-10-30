@@ -10,6 +10,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/adhan_platform.dart';
 import '../../../core/batches/audio_recorder_channel.dart';
 import '../../../core/theme.dart';
 import '../../../providers/batch_providers.dart';
@@ -259,6 +260,15 @@ class _VoiceNoteRecorderState extends ConsumerState<VoiceNoteRecorder> {
               ),
             ],
           ),
+          const SizedBox(height: ZakerSpacing.sm),
+          // After «don't ask again» the in-app request can never succeed, so
+          // the only way back is the system settings page.
+          TextButton.icon(
+            key: const Key('chat-recorder-settings'),
+            onPressed: AdhanPlatform.openAppSettings,
+            icon: const Icon(Icons.settings_outlined, size: 18),
+            label: const TrText('افتح الإعدادات'),
+          ),
         ];
       case _Stage.lowStorage:
         return [
@@ -437,7 +447,8 @@ class _LevelMeter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final level = (amplitude / 32767).clamp(0.0, 1.0);
     final scale = 0.15 + 0.85 * math.sqrt(level);
     return SizedBox(
