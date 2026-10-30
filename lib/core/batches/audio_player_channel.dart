@@ -65,6 +65,7 @@ abstract interface class AudioPlayerBindings {
 
 class AudioPlayerChannel implements AudioPlayerBindings {
   AudioPlayerChannel({
+    required this.clientId,
     MethodChannel? methods,
     EventChannel? events,
   })  : _methods = methods ?? const MethodChannel(methodName),
@@ -73,32 +74,39 @@ class AudioPlayerChannel implements AudioPlayerBindings {
   static const String methodName = 'zaker/audio_player';
   static const String eventName = 'zaker/audio_events';
 
+  /// This player's identity on the native side, so two screens can hold two
+  /// files at once and closing one releases only its own player.
+  final String clientId;
+
   final MethodChannel _methods;
   final EventChannel _events;
 
   @override
   Stream<AudioPlaybackEvent> get events => _events
       .receiveBroadcastStream()
+      // One native event sink serves every client; keep this client's own.
+      .where((raw) => raw is Map && raw['clientId'] == clientId)
       .map(AudioPlaybackEvent.fromMap);
 
   @override
-  Future<int?> open(String path) => _call<int?>('open', {'path': path});
+  Future<int?> open(String path) =>
+      _call<int?>('open', {'clientId': clientId, 'path': path});
 
   @override
-  Future<void> play() => _call<void>('play');
+  Future<void> play() => _call<void>('play', {'clientId': clientId});
 
   @override
-  Future<void> pause() => _call<void>('pause');
+  Future<void> pause() => _call<void>('pause', {'clientId': clientId});
 
   @override
   Future<void> seek(int positionMs) =>
-      _call<void>('seek', {'positionMs': positionMs});
+      _call<void>('seek', {'clientId': clientId, 'positionMs': positionMs});
 
   @override
-  Future<void> stop() => _call<void>('stop');
+  Future<void> stop() => _call<void>('stop', {'clientId': clientId});
 
   @override
-  Future<void> close() => _call<void>('dispose');
+  Future<void> close() => _call<void>('dispose', {'clientId': clientId});
 
   Future<T?> _call<T>(String method, [Map<String, Object?>? arguments]) async {
     try {

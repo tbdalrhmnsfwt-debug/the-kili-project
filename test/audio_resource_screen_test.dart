@@ -133,7 +133,7 @@ void main() {
           BatchFileStore(root: Directory.systemTemp),
         ),
         resourceMissingProvider.overrideWith((ref, args) async => false),
-        audioPlayerBindingsProvider.overrideWithValue(bindings),
+        audioPlayerBindingsProvider.overrideWith((ref, clientId) => bindings),
         playbackPositionStoreProvider.overrideWithValue(
           PlaybackPositionStore(_MemoryStore()),
         ),

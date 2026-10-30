@@ -1290,6 +1290,9 @@ class _VoiceSheet extends ConsumerStatefulWidget {
 class _VoiceSheetState extends ConsumerState<_VoiceSheet> {
   late final AudioPlaybackController _controller;
 
+  /// This sheet's own native player, keyed by the message it plays.
+  String get _clientId => 'chat-${widget.message.id}';
+
   @override
   void initState() {
     super.initState();
@@ -1303,7 +1306,7 @@ class _VoiceSheetState extends ConsumerState<_VoiceSheet> {
         )
         .path;
     _controller = AudioPlaybackController(
-      bindings: ref.read(audioPlayerBindingsProvider),
+      bindings: ref.read(audioPlayerBindingsProvider(_clientId)),
       positions: ref.read(playbackPositionStoreProvider),
       uid: uid,
       batchId: widget.batchId,
@@ -1322,6 +1325,9 @@ class _VoiceSheetState extends ConsumerState<_VoiceSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // Watching keeps this sheet's player alive until it closes; the provider
+    // then releases exactly this client's native player.
+    ref.watch(audioPlayerBindingsProvider(_clientId));
     final theme = Theme.of(context);
     return SafeArea(
       child: Padding(

@@ -100,9 +100,9 @@
 
 **Files:** `AudioPlayerChannel.kt:39,92-95,140,268-287`, `lib/core/batches/audio_player_channel.dart`, `lib/providers/batch_providers.dart:177-179`, the three controllers (`batch_chat_screen.dart:1305`, `audio_resource_screen.dart:151`, `bag_audio_player.dart:108,101`)
 
-- [ ] Give `open`/`play`/`pause`/`seek`/`close` a `clientId`; the Kotlin channel keeps a map of `MediaPlayer` per client and releases only that one.
-- [ ] Dart: `AudioPlayerBindings` methods take the id; the provider becomes `Provider.autoDispose.family<AudioPlayerBindings, String>`, and `BagAudioPlayer.dispose` stops closing a binding it does not own.
-- [ ] Commit; note the Kotlin is unbuilt.
+- [x] Give `open`/`play`/`pause`/`seek`/`close` a `clientId`; the Kotlin channel keeps a map of `MediaPlayer` per client and releases only that one.
+- [x] Dart: `AudioPlayerBindings` methods take the id; the provider becomes `Provider.autoDispose.family<AudioPlayerBindings, String>`, and `BagAudioPlayer.dispose` stops closing a binding it does not own.
+- [x] Commit; note the Kotlin is unbuilt.
 
 ## Task 11: Orphaned recordings are swept at startup
 

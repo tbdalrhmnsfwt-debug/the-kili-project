@@ -98,14 +98,16 @@ class BagAudioPlayer extends ChangeNotifier {
   @override
   void dispose() {
     unawaited(_subscription.cancel());
-    unawaited(_bindings.close().catchError((Object _) {}));
+    // The provider owns the binding and releases the native player when this
+    // player is disposed; closing it here would release whatever player the
+    // next client had opened.
     super.dispose();
   }
 }
 
 /// One player per pocket screen; disposed with it.
 final bagAudioPlayerProvider = Provider.autoDispose<BagAudioPlayer>((ref) {
-  final player = BagAudioPlayer(ref.watch(audioPlayerBindingsProvider));
+  final player = BagAudioPlayer(ref.watch(audioPlayerBindingsProvider('bag')));
   ref.onDispose(player.dispose);
   return player;
 });

@@ -129,7 +129,7 @@ void main() {
           bagSeedSubjectsProvider.overrideWithValue(const []),
           bagSubjectProgressProvider.overrideWithValue(const {}),
           audioRecorderBindingsProvider.overrideWithValue(recorder),
-          audioPlayerBindingsProvider.overrideWithValue(player),
+          audioPlayerBindingsProvider.overrideWith((ref, clientId) => player),
         ],
         child: MaterialApp(
           theme: ZakerTheme.light(),

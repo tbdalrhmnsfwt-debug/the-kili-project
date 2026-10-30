@@ -1,6 +1,7 @@
 /// Batch state for the app.
 library;
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -174,8 +175,15 @@ final chatSeenStoreProvider = Provider<ChatSeenStore>((ref) {
 });
 
 /// Native audio bindings, replaceable so widget tests never open a channel.
-final audioPlayerBindingsProvider = Provider<AudioPlayerBindings>((ref) {
-  return AudioPlayerChannel();
+///
+/// The family key is the client id: two screens play two files at once, and a
+/// screen that closes releases only its own native player when the provider
+/// is disposed.
+final audioPlayerBindingsProvider =
+    Provider.autoDispose.family<AudioPlayerBindings, String>((ref, clientId) {
+  final channel = AudioPlayerChannel(clientId: clientId);
+  ref.onDispose(() => unawaited(channel.close().catchError((Object _) {})));
+  return channel;
 });
 
 final audioRecorderBindingsProvider = Provider<AudioRecorderBindings>((ref) {
