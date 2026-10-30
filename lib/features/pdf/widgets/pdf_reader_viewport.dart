@@ -110,6 +110,11 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   double _pixelRatio = 1;
   double _contentWidth = 0;
   Size? _lastViewport;
+
+  /// How far the single-page view has scrolled into the current page.
+  double _pageScrollX = 0;
+  double _pageScrollY = 0;
+
   bool _pinching = false;
   double _pinchStartDistance = 0;
   double _pinchStartZoom = 1;
@@ -242,12 +247,28 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
       onPageChanged: (index) {
         if (index == _page) return;
         setState(() => _page = index);
+        _pageScrollX = 0;
+        _pageScrollY = 0;
         widget.onPageChanged(index);
       },
       itemBuilder: (context, index) => Center(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SingleChildScrollView(child: _pageView(index)),
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            // Only the page on screen contributes offsets; the PageView keeps
+            // its neighbours built, and their scroll positions are stale.
+            if (index != _page) return false;
+            final metrics = notification.metrics;
+            if (metrics.axis == Axis.horizontal) {
+              _pageScrollX = metrics.pixels;
+            } else {
+              _pageScrollY = metrics.pixels;
+            }
+            return false;
+          },
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SingleChildScrollView(child: _pageView(index)),
+          ),
         ),
       ),
     );
@@ -331,6 +352,8 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
     if (count == 0) return;
     final index = raw.clamp(0, count - 1);
     _page = index;
+    _pageScrollX = 0;
+    _pageScrollY = 0;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (widget.vertical) {
@@ -400,25 +423,28 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
 
   void _requestTile(int index, Size viewport) {
     final display = _displayGeometry(widget.geometry[index]);
-    final source = widget.vertical
-        ? PdfPageGeometry.unrotateSource(
-            display.visibleSource(
-              scrollX:
-                  (_horizontalScroll.hasClients
-                      ? _horizontalScroll.offset
-                      : 0.0) -
-                  _pageLeft(index),
-              scrollY:
-                  (_verticalScroll.hasClients ? _verticalScroll.offset : 0.0) -
-                  _pageTop(index),
-              viewportWidth: viewport.width,
-              viewportHeight: viewport.height,
-              fitScale: _fitScale,
-              zoom: _zoom,
-            ),
-            widget.quarterTurns,
-          )
-        : const NormalizedRect(0, 0, 1, 1);
+    // Continuous mode scrolls a page inside a shared list; single-page mode
+    // scrolls it inside its own two scroll views. Both end up as "how far into
+    // the page is the viewport", which is what visibleSource expects.
+    final scrollX = widget.vertical
+        ? (_horizontalScroll.hasClients ? _horizontalScroll.offset : 0.0) -
+              _pageLeft(index)
+        : _pageScrollX;
+    final scrollY = widget.vertical
+        ? (_verticalScroll.hasClients ? _verticalScroll.offset : 0.0) -
+              _pageTop(index)
+        : _pageScrollY;
+    final source = PdfPageGeometry.unrotateSource(
+      display.visibleSource(
+        scrollX: scrollX,
+        scrollY: scrollY,
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+        fitScale: _fitScale,
+        zoom: _zoom,
+      ),
+      widget.quarterTurns,
+    );
 
     final rawScale = _zoom * _fitScale * _pixelRatio;
     final scale = (rawScale.clamp(0.05, 8.0) * 100).roundToDouble() / 100;

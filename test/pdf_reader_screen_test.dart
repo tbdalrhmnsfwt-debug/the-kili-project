@@ -534,4 +534,29 @@ void main() {
     expect(channel.renders, hasLength(2));
     expect(find.byType(Image), findsWidgets);
   });
+
+  testWidgets('page mode requests the visible region when zoomed in', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 3);
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: PdfReaderViewport(
+        handle: _handle(3),
+        geometry: List.filled(
+          3,
+          const PdfPageGeometry(widthPoints: 595, heightPoints: 842),
+        ),
+        initialPage: 0,
+        onPageChanged: (_) {},
+        vertical: false,
+        initialZoom: 5,
+      ),
+    );
+
+    final call = channel.renders.first;
+    expect(call.source.width, lessThan(0.5));
+    expect(call.source.height, lessThan(0.6));
+  });
 }
