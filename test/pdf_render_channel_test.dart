@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -132,6 +134,69 @@ void main() {
     });
 
     const PdfRenderChannel().close(9);
+  });
+
+  // A native call runs on one executor shared by every document, so a call
+  // that never answers would leave the reader waiting on a future that can
+  // never complete and queue every later open behind it.
+  testWidgets('an open that never answers fails as corrupt', (tester) async {
+    messenger.setMockMethodCallHandler(
+      channel,
+      (call) => Completer<Object?>().future,
+    );
+
+    Object? failure;
+    const PdfRenderChannel().open('/docs/a.pdf').catchError((Object error) {
+      failure = error;
+      return const PdfRendererHandle(id: 0, pageCount: 0, pages: []);
+    });
+
+    await tester.pump(PdfRenderChannel.openTimeout);
+    await tester.pump();
+
+    expect(
+      failure,
+      isA<PdfRenderException>().having(
+        (error) => error.failure,
+        'failure',
+        PdfRenderFailure.corrupt,
+      ),
+    );
+  });
+
+  testWidgets('a tile that never answers fails as a render failure', (
+    tester,
+  ) async {
+    messenger.setMockMethodCallHandler(
+      channel,
+      (call) => Completer<Object?>().future,
+    );
+
+    Object? failure;
+    const renderer = PdfRenderChannel();
+    renderer
+        .render(
+          handle: 1,
+          pageIndex: 0,
+          scale: 1,
+          source: NormalizedRect(0, 0, 1, 1),
+        )
+        .catchError((Object error) {
+      failure = error;
+      return Uint8List(0);
+    });
+
+    await tester.pump(PdfRenderChannel.renderTimeout);
+    await tester.pump();
+
+    expect(
+      failure,
+      isA<PdfRenderException>().having(
+        (error) => error.failure,
+        'failure',
+        PdfRenderFailure.renderFailed,
+      ),
+    );
   });
 
   test('a storage platform error becomes a typed failure', () async {

@@ -13,6 +13,7 @@ import '../lib/core/pdf/pdf_library_repository.dart';
 import '../lib/core/pdf/pdf_library_store.dart';
 import '../lib/core/pdf/pdf_page_geometry.dart';
 import '../lib/core/pdf/pdf_render_channel.dart';
+import '../lib/core/pdf/pdf_unlock.dart';
 import '../lib/core/theme.dart';
 import '../lib/features/pdf/pdf_reader_screen.dart';
 import '../lib/features/pdf/widgets/pdf_page_view.dart';
@@ -212,6 +213,7 @@ void main() {
     FakeChannel channel,
     Widget home, {
     bool settle = true,
+    PdfUnlocker? unlocker,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -219,7 +221,7 @@ void main() {
           pdfRenderChannelProvider.overrideWithValue(channel),
           pdfLibraryStoreProvider.overrideWithValue(store),
           pdfLibraryControllerProvider.overrideWith((ref) => controller),
-          pdfUnlockerProvider.overrideWithValue(unlock),
+          pdfUnlockerProvider.overrideWithValue(unlocker ?? unlock),
         ],
         child: MaterialApp(theme: ZakerTheme.light(), home: home),
       ),
@@ -711,5 +713,135 @@ void main() {
       hasLength(1),
       reason: 'the in-flight tile is the only request until it returns',
     );
+  });
+
+  testWidgets('a page that never renders stops after the allowed attempts', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 1)..failRenders = 50;
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: _portraitViewport(),
+    );
+
+    // The first attempt plus the two bounded retries, 400 ms apart.
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+
+    expect(channel.renders, hasLength(3));
+    final state = tester.state<PdfReaderViewportState>(
+      find.byType(PdfReaderViewport),
+    );
+    expect(state.failedTilePages, contains(0));
+
+    // Nothing left to retry: later frames must not dispatch this page again.
+    await tester.pump(const Duration(seconds: 2));
+    expect(channel.renders, hasLength(3));
+  });
+
+  testWidgets('panning a zoomed page requests the column it reveals', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 3);
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: PdfReaderViewport(
+        handle: _handle(3),
+        geometry: List.filled(
+          3,
+          const PdfPageGeometry(widthPoints: 595, heightPoints: 842),
+        ),
+        initialPage: 0,
+        onPageChanged: (_) {},
+        vertical: false,
+        initialZoom: 5,
+      ),
+    );
+    final before = channel.renders.length;
+
+    final center = tester.getCenter(find.byType(PdfReaderViewport));
+    final gesture = await tester.startGesture(center);
+    await gesture.moveBy(const Offset(-40, 0));
+    await tester.pump();
+    await gesture.moveBy(const Offset(-60, 0));
+    await tester.pump();
+    await tester.pump();
+    await gesture.up();
+    await tester.pump();
+
+    final added = channel.renders.sublist(before);
+    expect(
+      added,
+      isNotEmpty,
+      reason: 'the revealed column needs a tile without waiting for a rebuild',
+    );
+    expect(added.every((call) => call.pageIndex == 0), isTrue);
+    expect(added.last.source.left, greaterThan(0));
+  });
+
+  testWidgets('a decryptor that throws reports the file, not a password', (
+    tester,
+  ) async {
+    final source = File('${root.path}/locked.pdf')
+      ..writeAsBytesSync('%PDF-1.7'.codeUnits);
+    final channel = FakeChannel(
+      pageCount: 3,
+      failures: [PdfRenderFailure.passwordRequired],
+    );
+    await pump(
+      tester,
+      channel,
+      PdfReaderScreen(path: source.path),
+      unlocker: (
+          {required File input,
+          required String password,
+          required File output}) async {
+        // A partial copy, which the failure must clean up.
+        await output.writeAsBytes(const [1, 2, 3]);
+        throw const FormatException('not a readable document');
+      },
+    );
+
+    expect(find.text('الملف محمي بكلمة سر'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'secret');
+    await tester.tap(find.text('فتح'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('تعذّر فتح الملف'), findsOneWidget);
+    expect(find.text('الملف محمي بكلمة سر'), findsNothing);
+    expect(store.sessionTempDir.listSync(), isEmpty);
+  });
+
+  testWidgets('a failed decrypt leaves no session copy behind', (tester) async {
+    final source = File('${root.path}/locked.pdf')
+      ..writeAsBytesSync('%PDF-1.7'.codeUnits);
+    final channel = FakeChannel(
+      pageCount: 3,
+      failures: [PdfRenderFailure.passwordRequired],
+    );
+    await pump(
+      tester,
+      channel,
+      PdfReaderScreen(path: source.path),
+      unlocker: (
+          {required File input,
+          required String password,
+          required File output}) async {
+        await output.writeAsBytes(const [1, 2, 3]);
+        throw const FileSystemException('no space left on device');
+      },
+    );
+
+    await tester.enterText(find.byType(TextField), 'secret');
+    await tester.tap(find.text('فتح'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('مفيش مساحة كافية على الجهاز.'), findsOneWidget);
+    expect(store.sessionTempDir.listSync(), isEmpty);
   });
 }

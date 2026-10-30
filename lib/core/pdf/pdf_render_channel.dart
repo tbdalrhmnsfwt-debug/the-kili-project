@@ -72,12 +72,27 @@ class PdfRenderChannel {
 
   static const MethodChannel channel = MethodChannel('zaker/pdf_render');
 
+  /// How long `open` may take before the document counts as unreadable.
+  ///
+  /// Android's renderer runs every call on one executor, so a native call that
+  /// never returns would otherwise leave the Dart future pending forever and
+  /// queue every later document behind it.
+  static const Duration openTimeout = Duration(seconds: 30);
+
+  /// How long one tile may take before it counts as a failed render.
+  static const Duration renderTimeout = Duration(seconds: 20);
+
   /// Opens [path] and returns its handle and page sizes.
   Future<PdfRendererHandle> open(String path, {String? password}) async {
-    final result = await _invoke('open', {
-      'path': path,
-      if (password != null) 'password': password,
-    });
+    final result = await _invoke(
+      'open',
+      {
+        'path': path,
+        if (password != null) 'password': password,
+      },
+      timeout: openTimeout,
+      onTimeout: PdfRenderFailure.corrupt,
+    );
     final map = Map<String, dynamic>.from(result as Map);
     final rawPages = map['pages'] as List? ?? const [];
     return PdfRendererHandle(
@@ -101,16 +116,21 @@ class PdfRenderChannel {
     required NormalizedRect source,
     int maxPixels = 4096,
   }) async {
-    final result = await _invoke('render', {
-      'handle': handle,
-      'page': pageIndex,
-      'scale': scale,
-      'left': source.left,
-      'top': source.top,
-      'width': source.width,
-      'height': source.height,
-      'maxPixels': maxPixels,
-    });
+    final result = await _invoke(
+      'render',
+      {
+        'handle': handle,
+        'page': pageIndex,
+        'scale': scale,
+        'left': source.left,
+        'top': source.top,
+        'width': source.width,
+        'height': source.height,
+        'maxPixels': maxPixels,
+      },
+      timeout: renderTimeout,
+      onTimeout: PdfRenderFailure.renderFailed,
+    );
     return result as Uint8List;
   }
 
@@ -123,9 +143,16 @@ class PdfRenderChannel {
     }
   }
 
-  Future<Object?> _invoke(String method, Map<String, Object?> arguments) async {
+  Future<Object?> _invoke(
+    String method,
+    Map<String, Object?> arguments, {
+    required Duration timeout,
+    required PdfRenderFailure onTimeout,
+  }) async {
     try {
-      return await channel.invokeMethod<Object?>(method, arguments);
+      return await channel.invokeMethod<Object?>(method, arguments).timeout(
+          timeout,
+          onTimeout: () => throw PdfRenderException(onTimeout));
     } on MissingPluginException {
       throw const PdfRenderException(PdfRenderFailure.unavailable);
     } on PlatformException catch (error) {

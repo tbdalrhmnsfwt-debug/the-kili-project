@@ -109,9 +109,11 @@ class PdfRenderChannel(messenger: BinaryMessenger) {
                 renderer = opened
 
                 val pageCount = opened.pageCount
-                if (pageCount <= 0) {
+                if (pageCount <= 0 || pageCount > MAX_PAGES) {
                     // A document with no pages cannot be read; answering with an
-                    // empty handle would make the reader clamp against zero.
+                    // empty handle would make the reader clamp against zero. A
+                    // corrupt file can also claim an absurd page count, which
+                    // would then drive the preallocation and the loop below.
                     try {
                         opened.close()
                     } catch (_: Exception) {
@@ -149,7 +151,10 @@ class PdfRenderChannel(messenger: BinaryMessenger) {
                     payload["handle"] = handle
                 }
                 main.post { result.success(payload) }
-            } catch (error: Exception) {
+            } catch (error: Throwable) {
+                // Throwable, not Exception: an OutOfMemoryError while reading a
+                // corrupt document would otherwise never answer the awaiting
+                // Dart future, and every later open would queue behind it.
                 try {
                     renderer?.close()
                 } catch (_: Exception) {
@@ -267,5 +272,14 @@ class PdfRenderChannel(messenger: BinaryMessenger) {
     private companion object {
         /** The first Android release whose [PdfRenderer] accepts a password. */
         const val PASSWORD_API = 35
+
+        /**
+         * The largest page count the channel accepts.
+         *
+         * The page list is built eagerly at open time, so a corrupt file that
+         * claims millions of pages would otherwise allocate for all of them
+         * before failing. No readable PDF is anywhere near this size.
+         */
+        const val MAX_PAGES = 20000
     }
 }

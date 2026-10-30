@@ -30,19 +30,20 @@ Future<bool> unlockPdfTo({
   required String password,
   required File output,
 }) async {
+  // Read outside the catch: a missing or unreadable file is a storage
+  // problem, and reporting it as a wrong password would send the reader into
+  // an endless re-prompt for a file no password can fix.
+  final bytes = await input.readAsBytes();
   final sf.PdfDocument document;
   try {
-    document = sf.PdfDocument(
-      inputBytes: await input.readAsBytes(),
-      password: password,
-    );
+    document = sf.PdfDocument(inputBytes: bytes, password: password);
   } on Object {
     return false;
   }
   try {
-    final bytes = await document.save();
+    final unlocked = await document.save();
     await output.parent.create(recursive: true);
-    await output.writeAsBytes(bytes, flush: true);
+    await output.writeAsBytes(unlocked, flush: true);
   } finally {
     document.dispose();
   }

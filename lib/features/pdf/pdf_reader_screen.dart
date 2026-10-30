@@ -286,10 +286,24 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
         output: target,
       );
     } on FileSystemException {
+      // A decrypt that failed midway may have left a partial copy behind; it
+      // must not outlive the attempt that produced it.
+      _deleteQuietly(target);
       if (!mounted) return;
       setState(() {
         _loading = false;
         _failure = PdfRenderFailure.storage;
+      });
+      return;
+    } on Object {
+      // The decryptor throws on documents it cannot parse at all. That is not
+      // a wrong password — re-prompting would loop forever on a broken file —
+      // so the reader reports the document instead.
+      _deleteQuietly(target);
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _failure = PdfRenderFailure.corrupt;
       });
       return;
     }

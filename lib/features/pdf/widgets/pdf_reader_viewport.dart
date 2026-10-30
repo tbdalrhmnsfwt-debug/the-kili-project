@@ -173,6 +173,7 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _verticalScroll.addListener(_onVerticalScroll);
+    _horizontalScroll.addListener(_onHorizontalScroll);
     // Opening at a saved page should show that page, not the first one.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _jumpToPage(widget.initialPage);
@@ -190,6 +191,10 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
         oldWidget.vertical != widget.vertical ||
         oldWidget.initialZoom != widget.initialZoom) {
       _requestedKeys.clear();
+      // Zoom, rotation and mode are the user asking for a fresh look, so the
+      // pages that ran out of attempts get them again.
+      _failedTiles.clear();
+      _tileAttempts.clear();
       final viewport = _lastViewport;
       if (viewport != null) _scheduleRequests(viewport);
     }
@@ -210,6 +215,7 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
     _retryTimers.clear();
     _cache.clear();
     _verticalScroll.removeListener(_onVerticalScroll);
+    _horizontalScroll.removeListener(_onHorizontalScroll);
     _verticalScroll.dispose();
     _horizontalScroll.dispose();
     _pageController.dispose();
@@ -304,6 +310,10 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
             } else {
               _pageScrollY = metrics.pixels;
             }
+            // Panning a zoomed page exposes a region no tile covers; without
+            // this the reader scrolls into white until the finger lifts.
+            final viewport = _lastViewport;
+            if (viewport != null) _scheduleRequests(viewport);
             return false;
           },
           child: SingleChildScrollView(
@@ -375,6 +385,16 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
     if (index == _page) return;
     setState(() => _page = index);
     widget.onPageChanged(index);
+  }
+
+  /// Sideways panning in continuous mode exposes a column no tile covers.
+  ///
+  /// Single-page mode scrolls through its own nested views and reports
+  /// through the [NotificationListener] in [_singlePages] instead.
+  void _onHorizontalScroll() {
+    final viewport = _lastViewport;
+    if (viewport == null || !widget.vertical) return;
+    _scheduleRequests(viewport);
   }
 
   int _pageAtOffset(double offset) {
@@ -468,6 +488,10 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
   }
 
   void _requestTile(int index, Size viewport) {
+    // A page that used up its attempts keeps its mark until the zoom, rotation
+    // or visibility changes; without this guard the scheduler would re-dispatch
+    // it on every frame, forever.
+    if (_failedTiles.contains(index)) return;
     final display = _displayGeometry(widget.geometry[index]);
     // Continuous mode scrolls a page inside a shared list; single-page mode
     // scrolls it inside its own two scroll views. Both end up as "how far into
@@ -566,7 +590,7 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
     if (key == null) return;
     final source =
         _pendingSources.remove(index) ?? const NormalizedRect(0, 0, 1, 1);
-    if (!mounted) return;
+    if (!mounted || _failedTiles.contains(index)) return;
     final cached = _cache.get(key);
     if (cached != null) {
       _requestedKeys[index] = key;

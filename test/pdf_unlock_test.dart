@@ -55,4 +55,21 @@ void main() {
     expect(unlocked, isFalse);
     expect(output.existsSync(), isFalse);
   });
+
+  test('an unreadable input throws instead of reading as a wrong password',
+      () async {
+    final directory = Directory.systemTemp.createTempSync('zaker_pdf_unlock_');
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    // A missing file is a storage problem: answering false would send the
+    // reader into re-prompting for a file no password can open.
+    await expectLater(
+      unlockPdfTo(
+        input: File('${directory.path}/missing.pdf'),
+        password: 'secret',
+        output: File('${directory.path}/open.pdf'),
+      ),
+      throwsA(isA<FileSystemException>()),
+    );
+  });
 }
