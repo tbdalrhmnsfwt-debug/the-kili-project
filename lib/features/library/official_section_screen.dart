@@ -44,7 +44,16 @@ class OfficialSectionScreen extends ConsumerStatefulWidget {
 }
 
 class _OfficialSectionScreenState extends ConsumerState<OfficialSectionScreen> {
-  final _study = GroundedStudyService();
+  late final GroundedStudyService _study;
+
+  @override
+  void initState() {
+    super.initState();
+    // The explanation is the assistant's job. Built without a service it can
+    // only ever return the local extractive note, which left the AI half of
+    // this screen dead while the app had a working backend.
+    _study = GroundedStudyService(ai: ref.read(aiServiceProvider));
+  }
 
   @override
   Widget build(BuildContext context) {

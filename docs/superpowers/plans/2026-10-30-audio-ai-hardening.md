@@ -60,9 +60,10 @@
 
 **Files:** `lib/features/library/official_section_screen.dart:47`, `official_mind_map_screen.dart:98`, `official_flashcards_screen.dart:78`, `test/grounded_study_test.dart` (create)
 
-- [ ] Write the test first: `GroundedStudyService(ai: <an AiService whose askGrounded returns null>)` must still return the local explanation (already true); `GroundedStudyService(ai: null)` must too. The new behaviour to pin is that the screens pass the provider's service — assert it through a small widget test only if the screens can be pumped cheaply; otherwise ledger that the wiring is analyze-checked.
-- [ ] Replace the field initialisers with `late final GroundedStudyService _study;` assigned in `initState` from `ref.read(aiServiceProvider)`.
-- [ ] Analyze clean; commit.
+- [x] Write the test first: `GroundedStudyService(ai: <an AiService whose askGrounded returns null>)` must still return the local explanation (already true); `GroundedStudyService(ai: null)` must too. The new behaviour to pin is that the screens pass the provider's service — assert it through a small widget test only if the screens can be pumped cheaply; otherwise ledger that the wiring is analyze-checked.
+- [x] Replace the field initialisers with `late final GroundedStudyService _study;` assigned in `initState` from `ref.read(aiServiceProvider)`.
+- [x] Ruling: only `official_section_screen.dart` is wired. The mind-map and flashcard screens build their notes with the synchronous `mindMap()` / `flashcards()` calls, which never touch the AI — passing the service there would be dead wiring. Cost if wrong: those two screens stay local-only, which is what they already document.
+- [x] Analyze clean; commit.
 
 ## Task 6: Offline coverage for the two Dart seams
 
