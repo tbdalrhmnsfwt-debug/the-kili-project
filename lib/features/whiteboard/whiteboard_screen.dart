@@ -12,8 +12,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/ai_service.dart' show AiAnswer;
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
+import '../../models/ai.dart' show AiBackend;
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
@@ -160,24 +162,31 @@ class _WhiteboardScreenState extends ConsumerState<WhiteboardScreen> {
     });
 
     try {
-      late String explanation;
+      AiAnswer? answer;
       final job = await ai.runJob(
         kind: 'whiteboard',
         title: title,
         work: (onProgress) async {
           onProgress(0.25);
-          explanation = await ai.ask(prompt, subject: title);
+          answer = await ai.askDetailed(prompt, subject: title);
           onProgress(0.75);
         },
       );
       if (!mounted) return;
+      final result = answer;
       setState(() {
         _progress = 1;
-        if (job.error == null) _script = explanation;
+        if (job.error != null) {
+          _error = job.error;
+        } else if (result == null || result.backend == AiBackend.canned) {
+          // The canned reply is app guidance («افتح كذا»), not a script for
+          // the board; presenting it as one would hand the student a copy
+          // button over text that never explained anything.
+          _error = 'الخدمة مش متاحة دلوقتي';
+        } else {
+          _script = result.text;
+        }
       });
-      if (job.error != null) {
-        setState(() => _error = job.error);
-      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
