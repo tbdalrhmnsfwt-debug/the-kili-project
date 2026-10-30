@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
+import '../../models/ai.dart' show AiBackend;
 import '../../models/dictionary.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
@@ -33,6 +34,9 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
   _Direction _dir = _Direction.engToArabic;
   bool _busy = false;
 
+  /// Why there is no translation, when the service could not produce one.
+  String? _notice;
+
   @override
   void dispose() {
     _source.dispose();
@@ -46,6 +50,7 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
     if (_source.text.trim().isEmpty) return;
     setState(() {
       _busy = true;
+      _notice = null;
       _target.clear();
     });
 
@@ -54,13 +59,15 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
       final prompt = _dir == _Direction.engToArabic
           ? 'ترجم النص ده من الإنجليزي للعربي: ${_source.text.trim()}'
           : 'ترجم النص ده من العربي للإنجليزي: ${_source.text.trim()}';
-      await ai.ask(prompt);
+      final answer = await ai.askDetailed(prompt);
       if (!mounted) return;
-      String reply = '';
-      for (final m in ai.history) {
-        if (m.role == 'assistant' && m.text.isNotEmpty) reply = m.text;
+      // The canned reply is the app talking about its own tools, not a
+      // translation of the student's text — showing it as one was the bug.
+      if (answer.backend == AiBackend.canned) {
+        setState(() => _notice = 'الخدمة مش متاحة دلوقتي');
+        return;
       }
-      setState(() => _target.text = reply);
+      setState(() => _target.text = answer.text);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -134,9 +141,12 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
             ),
             child: _target.text.isEmpty && !_busy
                 ? TrText(
-                    ZakerStrings.s_ab238, // اكتب أو الصق النص اللي عايز تترجمه الأول.
+                    _notice ??
+                        ZakerStrings.s_ab238, // اكتب أو الصق النص اللي عايز تترجمه الأول.
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color: _notice == null
+                          ? theme.colorScheme.onSurfaceVariant
+                          : theme.colorScheme.error,
                     ),
                   )
                 : SingleChildScrollView(

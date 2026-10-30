@@ -20,6 +20,17 @@ import '../models/ai.dart';
 import 'api_client.dart';
 import 'curriculum_search.dart';
 
+/// An answer, with the backend that actually produced it.
+///
+/// A caller that shows the text to the user needs this: the canned reply is
+/// app guidance, not a model answer, and must not be presented as one.
+class AiAnswer {
+  const AiAnswer({required this.text, required this.backend});
+
+  final String text;
+  final AiBackend backend;
+}
+
 /// The AI service.
 class AiService {
   AiService({ApiClient? api, CurriculumSearch? knowledge})
@@ -52,20 +63,27 @@ class AiService {
   }
 
   /// Asks a question and returns the answer text.
-  Future<String> ask(String question, {String? subject}) async {
+  Future<String> ask(String question, {String? subject}) async =>
+      (await askDetailed(question, subject: subject)).text;
+
+  /// Asks a question and reports which backend answered it.
+  Future<AiAnswer> askDetailed(String question, {String? subject}) async {
     history.add(
       ChatMessage(role: 'user', text: question, createdAt: DateTime.now()),
     );
 
-    final answer = await _askRemote(question, subject: subject);
+    final (text, backend) = await _askRemote(question, subject: subject);
 
     history.add(
-      ChatMessage(role: 'assistant', text: answer, createdAt: DateTime.now()),
+      ChatMessage(role: 'assistant', text: text, createdAt: DateTime.now()),
     );
-    return answer;
+    return AiAnswer(text: text, backend: backend);
   }
 
-  Future<String> _askRemote(String question, {String? subject}) async {
+  Future<(String, AiBackend)> _askRemote(
+    String question, {
+    String? subject,
+  }) async {
     try {
       final res = await _api.raw.post<Map<String, dynamic>>(
         '/ai/ask',
@@ -81,7 +99,7 @@ class AiService {
       final answer = res.data?['answer'] as String?;
       if (answer != null && answer.trim().isNotEmpty) {
         _remoteAnswered = true;
-        return answer;
+        return (answer, AiBackend.cloud);
       }
     } catch (_) {
       // fall through to the offline sources
@@ -90,8 +108,10 @@ class AiService {
     // The cloud model is unreachable: answer from the textbooks on the device
     // when they contain something relevant, before giving up.
     final local = await _knowledge?.answer(question, subject: subject);
-    if (local != null && local.trim().isNotEmpty) return local;
-    return _cannedAnswer(question);
+    if (local != null && local.trim().isNotEmpty) {
+      return (local, AiBackend.canned);
+    }
+    return (_cannedAnswer(question), AiBackend.canned);
   }
 
   /// Asks the cloud model to work only from [context].

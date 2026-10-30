@@ -40,12 +40,12 @@
 **Interfaces:**
 - Produces: `class AiAnswer { final String text; final AiBackend backend; }`; `Future<AiAnswer> askDetailed(String question, {String? subject})`; `ask` unchanged in signature, now `(await askDetailed(...)).text`.
 
-- [ ] Write `test/ai_service_test.dart`: a `Dio` with a stub adapter that throws → `askDetailed` returns `AiAnswer(backend: AiBackend.canned)` and its text is the canned reply; a stub that returns `{'answer': '42'}` → `backend == AiBackend.cloud`, `text == '42'`; with a `CurriculumSearch`-shaped offline hit → `backend == AiBackend.canned` but the text is the textbook answer, not the canned one.
-- [ ] Run `dart analyze test/ai_service_test.dart`; expect `AiAnswer` / `askDetailed` undefined (RED).
-- [ ] Add `AiAnswer` and `askDetailed` to `AiService`; `ask` delegates to it. `_askRemote` returns `(String text, AiBackend backend)`.
-- [ ] In `TranslateScreen._run`, use the returned value and show «الخدمة مش متاحة دلوقتي» when `backend == AiBackend.canned` instead of printing the assistant's canned study text; stop scanning `ai.history`.
-- [ ] Ruling: the shared `history` still interleaves for the chat screen's own transcript. Fixing that needs per-screen transcripts (a bigger design); the finding's user-visible half — Translate printing someone else's answer — is what this task closes. Cost if wrong: two simultaneous chat turns can still mix in the transcript view.
-- [ ] Analyze clean; commit.
+- [x] Write `test/ai_service_test.dart`: a `Dio` with a stub adapter that throws → `askDetailed` returns `AiAnswer(backend: AiBackend.canned)` and its text is the canned reply; a stub that returns `{'answer': '42'}` → `backend == AiBackend.cloud`, `text == '42'`; with a `CurriculumSearch`-shaped offline hit → `backend == AiBackend.canned` but the text is the textbook answer, not the canned one.
+- [x] Run `dart analyze test/ai_service_test.dart`; expect `AiAnswer` / `askDetailed` undefined (RED).
+- [x] Add `AiAnswer` and `askDetailed` to `AiService`; `ask` delegates to it. `_askRemote` returns `(String text, AiBackend backend)`.
+- [x] In `TranslateScreen._run`, use the returned value and show «الخدمة مش متاحة دلوقتي» when `backend == AiBackend.canned` instead of printing the assistant's canned study text; stop scanning `ai.history`.
+- [x] Ruling: the shared `history` still interleaves for the chat screen's own transcript. Fixing that needs per-screen transcripts (a bigger design); the finding's user-visible half — Translate printing someone else's answer — is what this task closes. Cost if wrong: two simultaneous chat turns can still mix in the transcript view.
+- [x] Analyze clean; commit.
 
 ## Task 4: A file with no duration fails instead of preparing forever
 
