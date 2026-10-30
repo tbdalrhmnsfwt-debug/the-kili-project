@@ -82,6 +82,10 @@ class _AdhanPlaybackScreenState extends ConsumerState<AdhanPlaybackScreen> {
   @override
   void initState() {
     super.initState();
+    // The adhan arrives with the phone in the student's hand or on the
+    // bedside table; a full-screen adhan that blacks out mid-call reads as a
+    // crash.
+    unawaited(AdhanPlatform.setKeepScreenOn(true));
     _now = DateTime.now();
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _now = DateTime.now());
@@ -94,6 +98,7 @@ class _AdhanPlaybackScreenState extends ConsumerState<AdhanPlaybackScreen> {
   @override
   void dispose() {
     _clock?.cancel();
+    unawaited(AdhanPlatform.setKeepScreenOn(false));
     // Leaving the screen — by the stop button, the back gesture or the close
     // button — always ends the foreground playback.
     unawaited(AdhanPlatform.stopPlayback());

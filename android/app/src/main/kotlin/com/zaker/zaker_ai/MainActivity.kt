@@ -12,9 +12,11 @@ import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import android.view.KeyEvent
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 /**
  * The app's single activity.
@@ -28,6 +30,12 @@ class MainActivity : FlutterActivity() {
     /** Plays one of the bundled `res/raw` adhan files for the voice picker. */
     private var previewPlayer: MediaPlayer? = null
     private val previewHandler = Handler(Looper.getMainLooper())
+
+    /**
+     * Answers adhan-start calls whose service never reported an outcome.
+     * Separate from [previewHandler], which `stopPreview` clears wholesale.
+     */
+    private val startHandler = Handler(Looper.getMainLooper())
 
     /** Batch audio playback and voice-note recording. */
     private var audioPlayerChannel: AudioPlayerChannel? = null
@@ -49,14 +57,14 @@ class MainActivity : FlutterActivity() {
                         val title = call.argument<String>("title")
                             ?: getString(R.string.ai_job_default_title)
                         val progress = call.argument<Int>("progress") ?: 0
-                        AiJobService.start(this, title, progress)
+                        startAiJobService(title, progress)
                         result.success(null)
                     }
                     "updateAiJob" -> {
                         val title = call.argument<String>("title")
                             ?: getString(R.string.ai_job_default_title)
                         val progress = call.argument<Int>("progress") ?: 0
-                        AiJobService.start(this, title, progress)
+                        startAiJobService(title, progress)
                         result.success(null)
                     }
                     "stopAiJob" -> {
@@ -124,6 +132,19 @@ class MainActivity : FlutterActivity() {
                         val notificationId = call.argument<Int>("notificationId") ?: 0
                         val fadeIn = call.argument<Boolean>("fadeIn") == true
                         val silence = call.argument<Boolean>("silenceOnHardware") != false
+                        // The service, not this handler, knows whether the
+                        // adhan is audible: report that instead of assuming
+                        // a start. The timeout covers a service that dies
+                        // before it can answer.
+                        var answered = false
+                        val answer: (Boolean) -> Unit = { started ->
+                            if (!answered) {
+                                answered = true
+                                result.success(started)
+                            }
+                        }
+                        val timeout = Runnable { answer(false) }
+                        startHandler.postDelayed(timeout, ADHAN_START_TIMEOUT_MS)
                         AdhanPlaybackService.start(
                             this,
                             name,
@@ -132,11 +153,21 @@ class MainActivity : FlutterActivity() {
                             notificationId,
                             fadeIn,
                             silence,
+                            onStarted = { started ->
+                                startHandler.removeCallbacks(timeout)
+                                answer(started)
+                            },
                         )
-                        result.success(true)
                     }
                     "stopAdhanPlayback" -> {
                         AdhanPlaybackService.stop(this)
+                        result.success(null)
+                    }
+                    "setKeepScreenOn" -> {
+                        // Only the screens that need it (the qibla aim and a
+                        // full-screen adhan) ask; everywhere else the screen
+                        // follows the system timeout again.
+                        setKeepScreenOn(call.argument<Boolean>("on") == true)
                         result.success(null)
                     }
                     else -> result.notImplemented()
@@ -195,9 +226,73 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Keep the screen on while a focus session or a recording is running.
-        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // The screen flag is set per screen through `setKeepScreenOn`, not
+        // here: keeping every screen awake drained the battery on the home
+        // screen and everywhere else the student never asked for it.
+        sweepOrphanRecordings()
         showOverLockScreenIfAdhan(intent)
+    }
+
+    /**
+     * Removes recordings a day old or more.
+     *
+     * Voice notes are recorded into `cacheDir/recordings` and copied into the
+     * batch before Dart deletes the temporary file. A clip whose send failed,
+     * or whose app was killed mid-send, is never consumed and would sit in the
+     * cache until the system evicted it.
+     */
+    private fun sweepOrphanRecordings() {
+        val cutoff = System.currentTimeMillis() - RECORDING_MAX_AGE_MS
+        try {
+            for (file in File(cacheDir, "recordings").listFiles().orEmpty()) {
+                if (file.isFile && file.lastModified() < cutoff) file.delete()
+            }
+        } catch (_: Exception) {
+            // A cache that cannot be listed is not worth a crash on startup.
+        }
+    }
+
+    /**
+     * Starts or refreshes the AI-job notification.
+     *
+     * Android 12+ refuses a foreground-service start from the background, and
+     * a progress update can arrive after the student left the app. The job
+     * itself keeps running in Dart either way, so a refused start is not an
+     * error worth surfacing — and it cannot be allowed to throw, because an
+     * exception in a channel handler takes the process down.
+     */
+    private fun startAiJobService(title: String, progress: Int) {
+        try {
+            AiJobService.start(this, title, progress)
+        } catch (_: Exception) {
+            // No notification; the job still completes in Dart.
+        }
+    }
+
+    /**
+     * How many screens are asking for the display to stay awake.
+     *
+     * The flag belongs to the activity, not to a screen: the qibla aim is
+     * pushed from a full-screen adhan, so clearing the flag when the qibla
+     * closes would let the adhan dim under it. Counting keeps it on until the
+     * last screen that asked has left.
+     */
+    private var keepScreenOnCount = 0
+
+    /** Adds or clears `FLAG_KEEP_SCREEN_ON` for the screens that asked. */
+    private fun setKeepScreenOn(on: Boolean) {
+        runOnUiThread {
+            keepScreenOnCount = if (on) {
+                keepScreenOnCount + 1
+            } else {
+                (keepScreenOnCount - 1).coerceAtLeast(0)
+            }
+            if (keepScreenOnCount > 0) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -379,6 +474,12 @@ class MainActivity : FlutterActivity() {
     }
 
     companion object {
+        /** How long a start call waits for the service to report an outcome. */
+        const val ADHAN_START_TIMEOUT_MS = 4000L
+
+        /** Orphaned voice recordings are swept once they are this old. */
+        const val RECORDING_MAX_AGE_MS = 24 * 60 * 60 * 1000L
+
         /** Channel used by Dart to drive the AI-job notification. */
         const val AI_JOBS_CHANNEL = "zaker/ai_jobs"
 

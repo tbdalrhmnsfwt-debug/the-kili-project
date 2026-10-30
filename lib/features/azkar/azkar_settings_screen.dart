@@ -6,6 +6,8 @@
 /// Licenses entry at the very bottom.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -45,6 +47,9 @@ class _AzkarSettingsScreenState extends ConsumerState<AzkarSettingsScreen>
 
   @override
   void dispose() {
+    // The test chime is a native preview, not a notification: leaving the
+    // screen must not leave it sounding for its full 20-second cap.
+    unawaited(AdhanPlatform.stopPreview());
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

@@ -150,7 +150,7 @@ class _PlayerScreenState extends ConsumerState<_PlayerScreen>
 
   AudioPlaybackController _create() {
     return AudioPlaybackController(
-      bindings: ref.read(audioPlayerBindingsProvider),
+      bindings: ref.read(audioPlayerBindingsProvider(_clientId)),
       positions: ref.read(playbackPositionStoreProvider),
       uid: ref.read(authUserProvider)?.uid ?? '',
       batchId: widget.batchId,
@@ -159,6 +159,9 @@ class _PlayerScreenState extends ConsumerState<_PlayerScreen>
       knownDurationMs: widget.resource.durationMs,
     );
   }
+
+  /// This screen's own native player, so another screen's audio cannot take it.
+  String get _clientId => 'resource-${widget.batchId}-${widget.resource.id}';
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -196,6 +199,9 @@ class _PlayerScreenState extends ConsumerState<_PlayerScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Watching keeps this screen's player alive until the screen closes; the
+    // provider then releases exactly this client's native player.
+    ref.watch(audioPlayerBindingsProvider(_clientId));
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: TrText(widget.resource.title)),

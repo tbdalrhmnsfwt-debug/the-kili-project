@@ -18,7 +18,14 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 /**
- * Plays one private batch audio file through `MediaPlayer`.
+ * Plays private batch audio files through `MediaPlayer`, one player per client.
+ *
+ * A client is one Dart surface — the chat voice sheet, the resource player,
+ * the bag's player — and every call names it. Previously the channel kept a
+ * single `MediaPlayer`: opening a second file released the first screen's
+ * player, that screen's UI still showed it playing, and its later close
+ * released the new player instead. Now two screens can hold two files, and
+ * closing one releases only its own.
  *
  * The channel reports real positions and durations only. When the file cannot
  * be opened or the platform has no duration for it, Dart sees an error or a
@@ -28,6 +35,18 @@ import java.io.File
  */
 class AudioPlayerChannel(messenger: BinaryMessenger) {
 
+    /** One client's player and its last reported state. */
+    private class Client(val id: String) {
+        var player: MediaPlayer? = null
+        var state = "idle"
+        var durationMs = 0
+        var pendingOpen: MethodChannel.Result? = null
+        var focusRequest: AudioFocusRequest? = null
+
+        @Suppress("DEPRECATION")
+        var legacyFocusListener: AudioManager.OnAudioFocusChangeListener? = null
+    }
+
     private val methodChannel = MethodChannel(messenger, METHOD_CHANNEL)
     private val eventChannel = EventChannel(messenger, EVENT_CHANNEL)
     private val main = Handler(Looper.getMainLooper())
@@ -36,43 +55,34 @@ class AudioPlayerChannel(messenger: BinaryMessenger) {
         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
         .build()
 
-    private var player: MediaPlayer? = null
+    private val clients = HashMap<String, Client>()
     private var eventSink: EventChannel.EventSink? = null
-    private var pendingOpen: MethodChannel.Result? = null
-    private var state = "idle"
-    private var durationMs = 0
-    private var focusRequest: AudioFocusRequest? = null
     private var noisyRegistered = false
+
+    private var appContext: Context? = null
 
     private val audioManager: AudioManager?
         get() = appContext?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
 
-    private var appContext: Context? = null
-
-    /** The last reported state, so ticks repeat it verbatim. */
-    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
-        if (change == AudioManager.AUDIOFOCUS_LOSS ||
-            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
-            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
-        ) {
-            pauseFromSystem()
-        }
-    }
-
     private val noisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
-                pauseFromSystem()
+                for (clientId in clients.keys.toList()) pauseFromSystem(clientId)
             }
         }
     }
 
+    /** Ticks every client that is playing, so each screen gets its own position. */
     private val ticker = object : Runnable {
         override fun run() {
-            val current = player ?: return
-            if (state != "playing") return
-            emit("playing", current.currentPosition)
-            main.postDelayed(this, TICK_MS)
+            var anyPlaying = false
+            for ((clientId, client) in clients) {
+                val current = client.player ?: continue
+                if (client.state != "playing") continue
+                anyPlaying = true
+                emit(clientId, "playing", current.currentPosition)
+            }
+            if (anyPlaying) main.postDelayed(this, TICK_MS)
         }
     }
 
@@ -81,16 +91,19 @@ class AudioPlayerChannel(messenger: BinaryMessenger) {
         methodChannel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "open" -> open(call, result)
-                "play" -> play(result)
-                "pause" -> pause(result)
+                "play" -> play(call, result)
+                "pause" -> pause(call, result)
                 "seek" -> seek(call, result)
                 "stop" -> {
-                    releasePlayer()
-                    emit("idle", 0)
+                    val clientId = clientIdOf(call)
+                    if (clientId != null) {
+                        release(clientId)
+                        emit(clientId, "idle", 0)
+                    }
                     result.success(null)
                 }
                 "dispose" -> {
-                    releasePlayer()
+                    clientIdOf(call)?.let { release(it) }
                     result.success(null)
                 }
                 else -> result.notImplemented()
@@ -110,7 +123,7 @@ class AudioPlayerChannel(messenger: BinaryMessenger) {
 
     /** Releases everything; called when the activity is destroyed. */
     fun dispose() {
-        releasePlayer()
+        for (clientId in clients.keys.toList()) release(clientId)
         appContext?.let { context ->
             if (noisyRegistered) {
                 try {
@@ -127,91 +140,101 @@ class AudioPlayerChannel(messenger: BinaryMessenger) {
         appContext = null
     }
 
+    private fun clientIdOf(call: MethodCall): String? =
+        call.argument<String>("clientId")?.takeIf { it.isNotBlank() }
+
     private fun open(call: MethodCall, result: MethodChannel.Result) {
+        val clientId = clientIdOf(call)
+        if (clientId == null) {
+            result.error("openFailed", null, null)
+            return
+        }
         val path = call.argument<String>("path")
         if (path.isNullOrBlank() || !File(path).isFile) {
             result.error("openFailed", null, null)
             return
         }
-        if (pendingOpen != null) {
-            pendingOpen?.error("openFailed", null, null)
-            pendingOpen = null
-        }
-        releasePlayer()
+        // Re-opening replaces only this client's file.
+        release(clientId)
+        val client = Client(clientId)
+        clients[clientId] = client
         val created = MediaPlayer()
-        player = created
+        client.player = created
         created.setAudioAttributes(attributes)
         created.setOnPreparedListener { prepared ->
-            durationMs = try {
+            client.durationMs = try {
                 prepared.duration.coerceAtLeast(0)
             } catch (_: IllegalStateException) {
                 0
             }
-            state = "preparing"
-            emit("preparing", 0)
-            val pending = pendingOpen
-            pendingOpen = null
-            pending?.success(if (durationMs > 0) durationMs else null)
+            client.state = "preparing"
+            emit(clientId, "preparing", 0)
+            val pending = client.pendingOpen
+            client.pendingOpen = null
+            pending?.success(if (client.durationMs > 0) client.durationMs else null)
         }
         created.setOnCompletionListener {
-            cancelTicker()
-            state = "completed"
-            emit("completed", durationMs)
-            abandonFocus()
+            client.state = "completed"
+            cancelTickerIfIdle()
+            emit(clientId, "completed", client.durationMs)
+            abandonFocus(client)
         }
         created.setOnErrorListener { _, _, _ ->
-            cancelTicker()
-            state = "failed"
-            emit("failed", 0, errorCode = "playbackFailed")
-            abandonFocus()
-            val pending = pendingOpen
-            pendingOpen = null
+            client.state = "failed"
+            emit(clientId, "failed", 0, errorCode = "playbackFailed")
+            abandonFocus(client)
+            val pending = client.pendingOpen
+            client.pendingOpen = null
             pending?.error("openFailed", null, null)
             true
         }
         try {
             created.setDataSource(path)
         } catch (error: Exception) {
-            releasePlayer()
+            release(clientId)
             result.error("openFailed", null, null)
             return
         }
-        pendingOpen = result
+        client.pendingOpen = result
         try {
             created.prepareAsync()
         } catch (error: IllegalStateException) {
-            pendingOpen = null
-            releasePlayer()
+            client.pendingOpen = null
+            release(clientId)
             result.error("openFailed", null, null)
         }
     }
 
-    private fun play(result: MethodChannel.Result) {
-        val current = player
-        if (current == null) {
+    private fun play(call: MethodCall, result: MethodChannel.Result) {
+        val clientId = clientIdOf(call)
+        val client = clientId?.let { clients[it] }
+        val current = client?.player
+        if (clientId == null || client == null || current == null) {
             result.error("notReady", null, null)
             return
         }
-        if (!requestFocus()) {
+        if (!requestFocus(client)) {
             result.error("focusDenied", null, null)
             return
         }
         try {
             current.start()
         } catch (error: IllegalStateException) {
-            abandonFocus()
+            abandonFocus(client)
             result.error("notReady", null, null)
             return
         }
-        state = "playing"
-        emit("playing", current.currentPosition)
+        client.state = "playing"
+        emit(clientId, "playing", current.currentPosition)
         startTicker()
         result.success(null)
     }
 
-    private fun pause(result: MethodChannel.Result) {
-        val current = player
-        if (current == null) {
+    private fun pause(call: MethodCall, result: MethodChannel.Result) {
+        val clientId = clientIdOf(call)
+        val client = clientId?.let { clients[it] }
+        val current = client?.player
+        if (clientId == null || client == null || current == null) {
             result.success(null)
             return
         }
@@ -220,36 +243,43 @@ class AudioPlayerChannel(messenger: BinaryMessenger) {
         } catch (_: IllegalStateException) {
             // Already paused or released; the reported state still applies.
         }
-        pauseState()
+        pauseState(clientId, client)
         result.success(null)
     }
 
-    private fun pauseFromSystem() {
-        val current = player ?: return
+    private fun pauseFromSystem(clientId: String) {
+        val client = clients[clientId] ?: return
+        val current = client.player ?: return
         try {
             if (current.isPlaying) current.pause()
         } catch (_: IllegalStateException) {
             return
         }
-        pauseState()
+        pauseState(clientId, client)
     }
 
-    private fun pauseState() {
-        cancelTicker()
-        state = "paused"
-        emit("paused", player?.currentPosition ?: 0)
-        abandonFocus()
+    private fun pauseState(clientId: String, client: Client) {
+        client.state = "paused"
+        emit(clientId, "paused", client.player?.currentPosition ?: 0)
+        abandonFocus(client)
+        cancelTickerIfIdle()
     }
 
     private fun seek(call: MethodCall, result: MethodChannel.Result) {
-        val current = player
-        if (current == null) {
+        val clientId = clientIdOf(call)
+        val client = clientId?.let { clients[it] }
+        val current = client?.player
+        if (clientId == null || client == null || current == null) {
             result.error("notReady", null, null)
             return
         }
         val requested = (call.argument<Number>("positionMs")?.toInt() ?: 0)
             .coerceAtLeast(0)
-        val target = if (durationMs > 0) requested.coerceAtMost(durationMs) else requested
+        val target = if (client.durationMs > 0) {
+            requested.coerceAtMost(client.durationMs)
+        } else {
+            requested
+        }
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 current.seekTo(target.toLong(), MediaPlayer.SEEK_CLOSEST)
@@ -261,19 +291,20 @@ class AudioPlayerChannel(messenger: BinaryMessenger) {
             result.error("seekFailed", null, null)
             return
         }
-        emit(state, target)
+        emit(clientId, client.state, target)
         result.success(null)
     }
 
-    private fun releasePlayer() {
-        cancelTicker()
-        abandonFocus()
-        pendingOpen?.error("cancelled", null, null)
-        pendingOpen = null
-        val current = player
-        player = null
-        durationMs = 0
-        state = "idle"
+    /** Releases one client's player and drops it from the map. */
+    private fun release(clientId: String) {
+        val client = clients.remove(clientId) ?: return
+        client.pendingOpen?.error("cancelled", null, null)
+        client.pendingOpen = null
+        abandonFocus(client)
+        val current = client.player
+        client.player = null
+        client.durationMs = 0
+        client.state = "idle"
         if (current != null) {
             try {
                 current.reset()
@@ -284,6 +315,7 @@ class AudioPlayerChannel(messenger: BinaryMessenger) {
             } catch (_: Exception) {
             }
         }
+        cancelTickerIfIdle()
     }
 
     private fun startTicker() {
@@ -291,8 +323,8 @@ class AudioPlayerChannel(messenger: BinaryMessenger) {
         main.postDelayed(ticker, TICK_MS)
     }
 
-    private fun cancelTicker() {
-        main.removeCallbacks(ticker)
+    private fun cancelTickerIfIdle() {
+        if (clients.values.none { it.state == "playing" }) main.removeCallbacks(ticker)
     }
 
     private fun registerNoisyReceiver() {
@@ -311,40 +343,60 @@ class AudioPlayerChannel(messenger: BinaryMessenger) {
         }
     }
 
-    private fun requestFocus(): Boolean {
+    private fun focusListenerFor(client: Client) =
+        AudioManager.OnAudioFocusChangeListener { change ->
+            if (change == AudioManager.AUDIOFOCUS_LOSS ||
+                change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+                change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
+            ) {
+                pauseFromSystem(client.id)
+            }
+        }
+
+    @Suppress("DEPRECATION")
+    private fun requestFocus(client: Client): Boolean {
         val manager = audioManager ?: return false
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val request = focusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+            val request = client.focusRequest ?: AudioFocusRequest
+                .Builder(AudioManager.AUDIOFOCUS_GAIN)
                 .setAudioAttributes(attributes)
-                .setOnAudioFocusChangeListener(focusListener)
+                .setOnAudioFocusChangeListener(focusListenerFor(client))
                 .build()
-                .also { focusRequest = it }
+                .also { client.focusRequest = it }
             manager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         } else {
-            @Suppress("DEPRECATION")
+            val listener = focusListenerFor(client)
+            client.legacyFocusListener = listener
             manager.requestAudioFocus(
-                focusListener,
+                listener,
                 AudioManager.STREAM_MUSIC,
                 AudioManager.AUDIOFOCUS_GAIN,
             ) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         }
     }
 
-    private fun abandonFocus() {
+    @Suppress("DEPRECATION")
+    private fun abandonFocus(client: Client) {
         val manager = audioManager ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            focusRequest?.let { manager.abandonAudioFocusRequest(it) }
+            client.focusRequest?.let { manager.abandonAudioFocusRequest(it) }
         } else {
-            @Suppress("DEPRECATION")
-            manager.abandonAudioFocus(focusListener)
+            client.legacyFocusListener?.let { manager.abandonAudioFocus(it) }
         }
     }
 
-    private fun emit(state: String, positionMs: Int, errorCode: String? = null) {
+    private fun emit(
+        clientId: String,
+        state: String,
+        positionMs: Int,
+        errorCode: String? = null,
+    ) {
         val payload = HashMap<String, Any?>()
+        payload["clientId"] = clientId
         payload["state"] = state
         payload["positionMs"] = positionMs
-        if (durationMs > 0) payload["durationMs"] = durationMs
+        val duration = clients[clientId]?.durationMs ?: 0
+        if (duration > 0) payload["durationMs"] = duration
         if (errorCode != null) payload["error"] = errorCode
         eventSink?.success(payload)
     }

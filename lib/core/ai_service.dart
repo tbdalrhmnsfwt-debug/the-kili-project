@@ -15,10 +15,22 @@ library;
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../models/ai.dart';
 import 'api_client.dart';
 import 'curriculum_search.dart';
+
+/// An answer, with the backend that actually produced it.
+///
+/// A caller that shows the text to the user needs this: the canned reply is
+/// app guidance, not a model answer, and must not be presented as one.
+class AiAnswer {
+  const AiAnswer({required this.text, required this.backend});
+
+  final String text;
+  final AiBackend backend;
+}
 
 /// The AI service.
 class AiService {
@@ -52,20 +64,27 @@ class AiService {
   }
 
   /// Asks a question and returns the answer text.
-  Future<String> ask(String question, {String? subject}) async {
+  Future<String> ask(String question, {String? subject}) async =>
+      (await askDetailed(question, subject: subject)).text;
+
+  /// Asks a question and reports which backend answered it.
+  Future<AiAnswer> askDetailed(String question, {String? subject}) async {
     history.add(
       ChatMessage(role: 'user', text: question, createdAt: DateTime.now()),
     );
 
-    final answer = await _askRemote(question, subject: subject);
+    final (text, backend) = await _askRemote(question, subject: subject);
 
     history.add(
-      ChatMessage(role: 'assistant', text: answer, createdAt: DateTime.now()),
+      ChatMessage(role: 'assistant', text: text, createdAt: DateTime.now()),
     );
-    return answer;
+    return AiAnswer(text: text, backend: backend);
   }
 
-  Future<String> _askRemote(String question, {String? subject}) async {
+  Future<(String, AiBackend)> _askRemote(
+    String question, {
+    String? subject,
+  }) async {
     try {
       final res = await _api.raw.post<Map<String, dynamic>>(
         '/ai/ask',
@@ -81,7 +100,7 @@ class AiService {
       final answer = res.data?['answer'] as String?;
       if (answer != null && answer.trim().isNotEmpty) {
         _remoteAnswered = true;
-        return answer;
+        return (answer, AiBackend.cloud);
       }
     } catch (_) {
       // fall through to the offline sources
@@ -90,8 +109,10 @@ class AiService {
     // The cloud model is unreachable: answer from the textbooks on the device
     // when they contain something relevant, before giving up.
     final local = await _knowledge?.answer(question, subject: subject);
-    if (local != null && local.trim().isNotEmpty) return local;
-    return _cannedAnswer(question);
+    if (local != null && local.trim().isNotEmpty) {
+      return (local, AiBackend.canned);
+    }
+    return (_cannedAnswer(question), AiBackend.canned);
   }
 
   /// Asks the cloud model to work only from [context].
@@ -244,6 +265,10 @@ class AiService {
   }
 
   /// Enqueues a background job and reports progress through [onProgress].
+  ///
+  /// The job also runs inside `AiJobService`, Android's foreground service,
+  /// so a long generation survives the app going to the background and the
+  /// student can see it in the notification shade.
   Future<AiJob> runJob({
     required String kind,
     required String title,
@@ -258,18 +283,43 @@ class AiService {
       createdAt: DateTime.now(),
     );
     jobs.add(job);
+    unawaited(_reportJob('startAiJob', title, 0));
 
+    var lastPercent = 0;
     try {
       await work((p) {
         job.progress = p.clamp(0.0, 1.0);
+        final percent = (job.progress * 100).round();
+        // One IPC per five percent keeps the notification moving without
+        // flooding the channel on a progress-heavy worker.
+        if (percent - lastPercent >= 5) {
+          lastPercent = percent;
+          unawaited(_reportJob('updateAiJob', title, percent));
+        }
       });
       job.status = AiJobStatus.succeeded;
       job.progress = 1;
     } catch (e) {
       job.status = AiJobStatus.failed;
       job.error = e.toString();
+    } finally {
+      unawaited(_reportJob('stopAiJob', title, 100));
     }
     return job;
+  }
+
+  /// Method channel to `AiJobService`; absent on tests and desktop.
+  static const MethodChannel _jobChannel = MethodChannel('zaker/ai_jobs');
+
+  Future<void> _reportJob(String method, String title, int progress) async {
+    try {
+      await _jobChannel.invokeMethod<void>(method, {
+        'title': title,
+        'progress': progress,
+      });
+    } catch (_) {
+      // Without the service the job still runs; only its notification is gone.
+    }
   }
 
   /// Runs [action], returning [fallback] if it throws.

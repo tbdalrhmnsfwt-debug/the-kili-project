@@ -1,9 +1,11 @@
-/// Small platform bridge for the adhan settings screen.
+/// Small platform bridge for the adhan and prayer screens.
 ///
 /// * Battery-optimisation state and the system exemption prompt.
 /// * The app-settings screen (for notifications disabled outside the app).
 /// * In-app preview of a bundled raw sound, so a voice can be heard without
 ///   posting a notification.
+/// * Keeping the screen awake for the two screens that need it — aiming the
+///   qibla compass and a full-screen adhan — instead of every screen.
 ///
 /// Every call is guarded: on a platform without the channel (tests, desktop)
 /// the methods return `false` instead of throwing.
@@ -116,6 +118,18 @@ class AdhanPlatform {
       await _channel.invokeMethod<void>('stopPreview');
     } catch (_) {
       // Nothing to stop.
+    }
+  }
+
+  /// Keeps the screen awake while [on] is true.
+  ///
+  /// Only the qibla aim and the full-screen adhan ask for this; every other
+  /// screen leaves the display on the system timeout.
+  static Future<void> setKeepScreenOn(bool on) async {
+    try {
+      await _channel.invokeMethod<void>('setKeepScreenOn', {'on': on});
+    } catch (_) {
+      // Not fatal: the screen simply follows the system timeout.
     }
   }
 

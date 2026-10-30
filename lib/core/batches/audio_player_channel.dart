@@ -4,6 +4,8 @@
 /// fake [AudioPlayerBindings], so no MediaPlayer runs inside a widget test.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 
 /// The states the native player reports.
@@ -63,8 +65,70 @@ abstract interface class AudioPlayerBindings {
   Stream<AudioPlaybackEvent> get events;
 }
 
+/// Fans the one native event stream out to every client.
+///
+/// `EventChannel.receiveBroadcastStream` installs the channel's single
+/// message handler on each call, so a second subscriber silently takes every
+/// event from the first. The native side already tags each payload with its
+/// `clientId`; this keeps one subscription and hands each client only its own.
+class AudioEventHub {
+  /// A hub over [open], for tests that need an event source of their own.
+  AudioEventHub(this._open);
+
+  AudioEventHub._forChannel(EventChannel events)
+      : _open = events.receiveBroadcastStream;
+
+  /// The hub for [events]'s channel. Two channels with one name share the
+  /// single native sink that name addresses.
+  factory AudioEventHub.forChannel(EventChannel events) => _hubs.putIfAbsent(
+        events.name,
+        () => AudioEventHub._forChannel(events),
+      );
+
+  static final Map<String, AudioEventHub> _hubs = {};
+
+  final Stream<dynamic> Function() _open;
+
+  StreamSubscription<dynamic>? _subscription;
+  final Map<String, Set<StreamController<AudioPlaybackEvent>>> _clients = {};
+
+  /// The events addressed to [clientId].
+  Stream<AudioPlaybackEvent> eventsFor(String clientId) {
+    late StreamController<AudioPlaybackEvent> controller;
+    controller = StreamController<AudioPlaybackEvent>.broadcast(
+      onListen: () {
+        // `listen` opens the native stream at most once, and only while some
+        // client is listening: an idle app holds no event channel.
+        _subscription ??= _open().listen(_dispatch);
+        _clients.putIfAbsent(clientId, () => {}).add(controller);
+      },
+      onCancel: () {
+        final listeners = _clients[clientId];
+        listeners?.remove(controller);
+        if (listeners != null && listeners.isEmpty) _clients.remove(clientId);
+        if (_clients.isEmpty) {
+          _subscription?.cancel();
+          _subscription = null;
+        }
+      },
+    );
+    return controller.stream;
+  }
+
+  void _dispatch(Object? raw) {
+    if (raw is! Map) return;
+    final listeners = _clients[raw['clientId']];
+    if (listeners == null) return;
+    final event = AudioPlaybackEvent.fromMap(raw);
+    for (final controller in listeners.toList()) {
+      if (!controller.isClosed) controller.add(event);
+    }
+  }
+}
+
 class AudioPlayerChannel implements AudioPlayerBindings {
   AudioPlayerChannel({
+    required this.clientId,
     MethodChannel? methods,
     EventChannel? events,
   })  : _methods = methods ?? const MethodChannel(methodName),
@@ -73,32 +137,36 @@ class AudioPlayerChannel implements AudioPlayerBindings {
   static const String methodName = 'zaker/audio_player';
   static const String eventName = 'zaker/audio_events';
 
+  /// This player's identity on the native side, so two screens can hold two
+  /// files at once and closing one releases only its own player.
+  final String clientId;
+
   final MethodChannel _methods;
   final EventChannel _events;
 
   @override
-  Stream<AudioPlaybackEvent> get events => _events
-      .receiveBroadcastStream()
-      .map(AudioPlaybackEvent.fromMap);
+  Stream<AudioPlaybackEvent> get events =>
+      AudioEventHub.forChannel(_events).eventsFor(clientId);
 
   @override
-  Future<int?> open(String path) => _call<int?>('open', {'path': path});
+  Future<int?> open(String path) =>
+      _call<int?>('open', {'clientId': clientId, 'path': path});
 
   @override
-  Future<void> play() => _call<void>('play');
+  Future<void> play() => _call<void>('play', {'clientId': clientId});
 
   @override
-  Future<void> pause() => _call<void>('pause');
+  Future<void> pause() => _call<void>('pause', {'clientId': clientId});
 
   @override
   Future<void> seek(int positionMs) =>
-      _call<void>('seek', {'positionMs': positionMs});
+      _call<void>('seek', {'clientId': clientId, 'positionMs': positionMs});
 
   @override
-  Future<void> stop() => _call<void>('stop');
+  Future<void> stop() => _call<void>('stop', {'clientId': clientId});
 
   @override
-  Future<void> close() => _call<void>('dispose');
+  Future<void> close() => _call<void>('dispose', {'clientId': clientId});
 
   Future<T?> _call<T>(String method, [Map<String, Object?>? arguments]) async {
     try {
