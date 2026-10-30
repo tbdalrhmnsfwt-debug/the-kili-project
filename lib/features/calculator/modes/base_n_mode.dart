@@ -3,7 +3,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../calc_history.dart';
 import '../calc_session.dart';
@@ -131,7 +130,6 @@ class BaseNModeState extends State<BaseNMode> {
   }
 
   void _clear() {
-    HapticFeedback.mediumImpact();
     _controller.clear();
     setState(() {
       _result = null;
@@ -195,13 +193,11 @@ class BaseNModeState extends State<BaseNMode> {
         ),
       );
       widget.onChanged();
-      HapticFeedback.mediumImpact();
     } on CalcError catch (error) {
       setState(() {
         _error = error;
         _result = null;
       });
-      HapticFeedback.heavyImpact();
     }
   }
 
@@ -228,157 +224,162 @@ class BaseNModeState extends State<BaseNMode> {
               'حساب في ${_base.label} مع أقواس وأسبقية، وتحويل فوري لكل الأنظمة.',
           scrollable: compact,
           child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          CalcPanel(
-            padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
-            radius: 18,
-            color: palette.display,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              CalcPanel(
+                padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
+                radius: 18,
+                color: palette.display,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: CalcSegmented<NumberBase>(
-                        values: NumberBase.values,
-                        selected: _base,
-                        labelFor: (value) => value.label,
-                        compact: true,
-                        onChanged: _switchBase,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CalcSegmented<NumberBase>(
+                            values: NumberBase.values,
+                            selected: _base,
+                            labelFor: (value) => value.label,
+                            compact: true,
+                            haptics: widget.session.settings.haptics,
+                            onChanged: _switchBase,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        CalcPill(
+                          label: '${_base.radix}',
+                          compact: true,
+                          color: palette.accent,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      height: 34,
+                      child: TextField(
+                        controller: _controller,
+                        textDirection: TextDirection.ltr,
+                        textAlign: TextAlign.left,
+                        maxLines: 1,
+                        style: CalcTypography.math(palette, size: 18),
+                        cursorColor: palette.accent,
+                        onChanged: (_) {
+                          setState(() {
+                            _error = null;
+                            _notice = null;
+                            _result = null;
+                          });
+                        },
+                        onSubmitted: (_) => _equals(),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          hintText: 'اكتب تعبير BASE-N',
+                          hintStyle: TextStyle(color: palette.mathMuted),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    CalcPill(
-                      label: '${_base.radix}',
-                      compact: true,
-                      color: palette.accent,
+                    const SizedBox(height: 2),
+                    Text(
+                      _error?.label ??
+                          (displayValue == null
+                              ? '—'
+                              : formatBase(displayValue, _base)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textDirection: TextDirection.ltr,
+                      style: CalcTypography.math(
+                        palette,
+                        size: 24,
+                        color: _error != null ? palette.danger : palette.accent,
+                      ).copyWith(
+                          fontWeight: FontWeight.w700, letterSpacing: 0.5),
                     ),
+                    if (_error != null)
+                      Text(
+                        '${_error!.hint}${_error!.detail == null ? '' : ' ${_error!.detail}'}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textDirection: TextDirection.rtl,
+                        style:
+                            CalcTypography.label(palette, size: 9.5).copyWith(
+                          color: palette.danger,
+                        ),
+                      )
+                    else if (_notice != null)
+                      Text(
+                        _notice!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textDirection: TextDirection.rtl,
+                        style:
+                            CalcTypography.label(palette, size: 9.5).copyWith(
+                          color: palette.mathMuted,
+                        ),
+                      ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                SizedBox(
-                  height: 34,
-                  child: TextField(
-                    controller: _controller,
-                    textDirection: TextDirection.ltr,
-                    textAlign: TextAlign.left,
-                    maxLines: 1,
-                    style: CalcTypography.math(palette, size: 18),
-                    cursorColor: palette.accent,
-                    onChanged: (_) {
-                      setState(() {
-                        _error = null;
-                        _notice = null;
-                        _result = null;
-                      });
-                    },
-                    onSubmitted: (_) => _equals(),
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      hintText: 'اكتب تعبير BASE-N',
-                      hintStyle: TextStyle(color: palette.mathMuted),
-                    ),
+              ),
+              const SizedBox(height: 6),
+              if (displayValue != null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: palette.isDark
+                        ? Colors.black.withValues(alpha: 0.16)
+                        : Colors.white.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: palette.divider),
+                  ),
+                  child: Row(
+                    children: [
+                      for (final base in NumberBase.values)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                base.label,
+                                style: CalcTypography.label(palette, size: 8)
+                                    .copyWith(
+                                  color: base == _base
+                                      ? palette.accent
+                                      : palette.mathMuted,
+                                ),
+                              ),
+                              Text(
+                                formatBase(displayValue, base),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: CalcTypography.math(
+                                  palette,
+                                  size: 11,
+                                  color: base == _base
+                                      ? palette.accent
+                                      : palette.math,
+                                ),
+                                textDirection: TextDirection.ltr,
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  _error?.label ??
-                      (displayValue == null
-                          ? '—'
-                          : formatBase(displayValue, _base)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textDirection: TextDirection.ltr,
-                  style: CalcTypography.math(
-                    palette,
-                    size: 24,
-                    color: _error != null ? palette.danger : palette.accent,
-                  ).copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.5),
-                ),
-                if (_error != null)
-                  Text(
-                    '${_error!.hint}${_error!.detail == null ? '' : ' ${_error!.detail}'}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textDirection: TextDirection.rtl,
-                    style: CalcTypography.label(palette, size: 9.5).copyWith(
-                      color: palette.danger,
-                    ),
-                  )
-                else if (_notice != null)
-                  Text(
-                    _notice!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textDirection: TextDirection.rtl,
-                    style: CalcTypography.label(palette, size: 9.5).copyWith(
-                      color: palette.mathMuted,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-          if (displayValue != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: palette.isDark
-                    ? Colors.black.withValues(alpha: 0.16)
-                    : Colors.white.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: palette.divider),
+              const SizedBox(height: 6),
+              if (compact)
+                SizedBox(height: 240, child: _buildKeypad(palette))
+              else
+                Expanded(child: _buildKeypad(palette)),
+              const SizedBox(height: 4),
+              const CalcNote(
+                text: 'العمليات المنطقية: AND OR XOR XNOR NOT، والإزاحة ≪ ≫. '
+                    'الأرقام بتخص الأساس الحالي، والأرقام غير الصالحة بتكون معطلة.',
               ),
-              child: Row(
-                children: [
-                  for (final base in NumberBase.values)
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            base.label,
-                            style: CalcTypography.label(palette, size: 8).copyWith(
-                              color: base == _base
-                                  ? palette.accent
-                                  : palette.mathMuted,
-                            ),
-                          ),
-                          Text(
-                            formatBase(displayValue, base),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: CalcTypography.math(
-                              palette,
-                              size: 11,
-                              color: base == _base
-                                  ? palette.accent
-                                  : palette.math,
-                            ),
-                            textDirection: TextDirection.ltr,
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 6),
-          if (compact)
-            SizedBox(height: 240, child: _buildKeypad(palette))
-          else
-            Expanded(child: _buildKeypad(palette)),
-          const SizedBox(height: 4),
-          const CalcNote(
-            text:
-                'العمليات المنطقية: AND OR XOR XNOR NOT، والإزاحة ≪ ≫. '
-                'الأرقام بتخص الأساس الحالي، والأرقام غير الصالحة بتكون معطلة.',
+            ],
           ),
-        ],
-      ),
         );
       },
     );
@@ -397,11 +398,19 @@ class BaseNModeState extends State<BaseNMode> {
         ('NOT', ' NOT '),
         ('MOD', ' MOD '),
       ],
-      [('+', '+'), ('−', '−'), ('×', '×'), ('÷', '÷'), ('≪', '<<'), ('≫', '>>')],
+      [
+        ('+', '+'),
+        ('−', '−'),
+        ('×', '×'),
+        ('÷', '÷'),
+        ('≪', '<<'),
+        ('≫', '>>')
+      ],
     ];
-    Widget key(String label, String? token, {CalcKeyTone? tone, VoidCallback? action}) {
-      final isDigit = label.length == 1 &&
-          RegExp(r'^[0-9A-F]$').hasMatch(label);
+    Widget key(String label, String? token,
+        {CalcKeyTone? tone, VoidCallback? action}) {
+      final isDigit =
+          label.length == 1 && RegExp(r'^[0-9A-F]$').hasMatch(label);
       final enabled = !isDigit || _digitValid(label);
       return CalcKeyButton(
         haptics: widget.session.settings.haptics,
@@ -411,10 +420,11 @@ class BaseNModeState extends State<BaseNMode> {
           tone: tone ??
               (isDigit
                   ? CalcKeyTone.basic
-                  : (token == null ? CalcKeyTone.clear : CalcKeyTone.operation)),
-          semanticLabel: isDigit && !enabled
-              ? '$label غير صالح في ${_base.label}'
-              : label,
+                  : (token == null
+                      ? CalcKeyTone.clear
+                      : CalcKeyTone.operation)),
+          semanticLabel:
+              isDigit && !enabled ? '$label غير صالح في ${_base.label}' : label,
           onTap: enabled
               ? (action ?? (token == null ? null : () => _insert(token)))
               : null,
@@ -450,14 +460,13 @@ class BaseNModeState extends State<BaseNMode> {
               const SizedBox(width: 5),
               Expanded(
                 flex: 2,
-                child: key('AC', null,
-                    tone: CalcKeyTone.clear, action: _clear),
+                child: key('AC', null, tone: CalcKeyTone.clear, action: _clear),
               ),
               const SizedBox(width: 5),
               Expanded(
                 flex: 2,
-                child: key('=', null,
-                    tone: CalcKeyTone.equals, action: _equals),
+                child:
+                    key('=', null, tone: CalcKeyTone.equals, action: _equals),
               ),
             ],
           ),

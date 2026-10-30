@@ -1,15 +1,18 @@
 /// The home screen.
 ///
-/// Layout follows the approved mockup: a teal gradient hero with the
-/// greeting, search and live study stats; the three 3D action cards; the
-/// countdown and daily-advice banners; the six-tool daily grid (including the
-/// calculator and the إعراب guide); the subject cards for the selected grade;
-/// and — below them — the complete feature grid so every screen stays one tap
-/// away.
+/// The compact order from the approved mockup: the navy top strip with the
+/// app name, the navy-slate hero with the live prayer badge, [WelcomeSearch]
+/// and the glass stat chips, the three side-by-side action cards, the six
+/// core-feature cards, the countdown and daily-advice banners, the all-tools
+/// grid, and the developer credit at the bottom.
+///
+/// The hero, action cards, feature cards and tools all share the
+/// [HomePalette] navy-glass treatment: deep navy slate anchored by champagne
+/// gold, with emerald teal, amber and coral carrying the data and actions.
 ///
 /// The data is the app's own: the display name comes from
 /// [authUserProvider], the streak/minutes from [studyStatsProvider], the
-/// pending reminders from [taskScheduleProvider], and the subjects from
+/// pending reminders from [taskScheduleProvider], and the shelves from
 /// [gradesProvider].
 library;
 
@@ -18,66 +21,26 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:shadcn_ui/shadcn_ui.dart'
-    show ShadDecoration, ShadIconButton, ShadInput;
+import 'package:shadcn_ui/shadcn_ui.dart' show ShadDecoration, ShadIconButton;
 
-import '../../core/appearance.dart';
-import '../../core/curriculum.dart';
-import '../../core/hijri_date.dart';
-import '../../core/prayer_formats.dart';
+import '../../core/brand/rafiq_brand.dart';
+import '../../core/brand/rafiq_mark.dart';
 import '../../core/router.dart';
 import '../../core/strings.dart' show ZakerStrings;
 import '../../core/theme.dart';
-import '../../models/manhaji.dart';
 import '../../models/schedule.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import '../../widgets/zaker_visuals.dart';
 import '../focus/focus_screen.dart';
-import '../prayer/location_flow.dart';
-import '../prayer/prayer_models.dart';
-import '../prayer/prayer_onboarding.dart';
-import '../prayer/prayer_providers.dart';
 import 'shell_screen.dart';
-
-/// Accent colours for the tinted cards in the mockup.
-class _Accents {
-  const _Accents._();
-
-  static const Color purple = Color(0xFF7C3AED);
-  static const Color teal = ZakerColors.primary;
-  static const Color blue = Color(0xFF2563EB);
-  static const Color amber = Color(0xFFD97706);
-  static const Color rose = Color(0xFFE11D48);
-  static const Color sky = Color(0xFF0284C7);
-  static const Color green = Color(0xFF059669);
-}
-
-const List<Color> _subjectAccents = [
-  _Accents.blue,
-  _Accents.amber,
-  _Accents.purple,
-  _Accents.green,
-  _Accents.rose,
-  _Accents.sky,
-  _Accents.teal,
-];
-
-/// A pastel wash of [accent] that still works on the dark theme.
-Color _wash(BuildContext context, Color accent) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
-  return Color.alphaBlend(
-    accent.withValues(alpha: isDark ? 0.16 : 0.07),
-    theme.scaffoldBackgroundColor,
-  );
-}
-
-Color _hairline(BuildContext context, Color accent) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  return accent.withValues(alpha: isDark ? 0.32 : 0.20);
-}
+import 'widgets/core_features_grid.dart';
+import 'widgets/home_style.dart';
+import 'widgets/home_top_bar.dart';
+import 'widgets/prayer_pill.dart';
+import 'widgets/stats_strip.dart';
+import 'widgets/welcome_search.dart';
 
 Color _depth(BuildContext context, Color accent) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -93,53 +56,84 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final grades = ref.watch(gradesProvider);
     final stats = ref.watch(studyStatsProvider);
     final user = ref.watch(authUserProvider);
     final notificationsOn = ref.watch(notificationsEnabledProvider);
-    final gradeId = ref.watch(selectedGradeProvider);
     final schedule = ref.watch(taskScheduleProvider);
     final pending = schedule.forDay().where((e) => !e.done).toList();
     final nextDeadline = _nextDeadline(schedule.entries);
+    final openDrawer = shellDrawerOpener(context);
 
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(gradesProvider);
-          await ref.read(gradesProvider.future);
-        },
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1080),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 40),
-              children: [
-                _HeroBanner(
-                  name: user?.displayName ?? 'ضيف',
-                  showBadge: notificationsOn && pending.isNotEmpty,
-                  streakDays: stats.streakDays,
-                  minutesToday: stats.minutesToday,
-                  pendingCount: pending.length,
-                  onNotifications: () => _showNotifications(context),
-                  onSettings: () => context.push(ZakerRoutes.settings),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1080),
+          child: Column(
+            children: [
+              HomeTopBar(
+                showBadge: notificationsOn && pending.isNotEmpty,
+                onMenu: openDrawer,
+                onNotifications: () => _showNotifications(context),
+                onSettings: () => context.push(ZakerRoutes.settings),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    // Refresh what this screen actually shows. Grades are no
+                    // longer on the home, but the bag still reads them, so
+                    // they are refreshed in the background for that screen.
+                    ref.invalidate(taskScheduleProvider);
+                    ref.invalidate(studyStatsProvider);
+                    ref.invalidate(gradesProvider);
+                    try {
+                      await ref.read(gradesProvider.future);
+                    } catch (_) {
+                      // The home shows no grades, so a failed background
+                      // refresh must not escape the indicator as an unhandled
+                      // error. The bag reports its own load failure.
+                    }
+                  },
+                  child: ListView(
+                    key: const Key('home-body'),
+                    padding: EdgeInsets.zero,
+                    children: [
+                      _HomeHeader(
+                        name: user?.displayName ?? 'ضيف',
+                        streakDays: stats.streakDays,
+                        minutesToday: stats.minutesToday,
+                        pendingCount: pending.length,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const _OrganicActionCards(),
+                            const SizedBox(height: 22),
+                            const _SectionTitle(
+                              title: 'ميزاتك الأساسية',
+                              icon: HugeIcons.strokeRoundedGrid02,
+                            ),
+                            const SizedBox(height: ZakerSpacing.md),
+                            const CoreFeaturesGrid(),
+                            const SizedBox(height: 22),
+                            _BannerRow(
+                              nextDeadline: nextDeadline,
+                              onCountdown: () =>
+                                  context.push(ZakerRoutes.tasks),
+                            ),
+                            const SizedBox(height: 22),
+                            const _AllToolsSection(),
+                            const SizedBox(height: ZakerSpacing.xl),
+                            const _HomeFooter(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 20),
-                _ActionCards(streakDays: stats.streakDays),
-                const SizedBox(height: 12),
-                const _IslamicHubCard(),
-                const SizedBox(height: 22),
-                _BannerRow(
-                  nextDeadline: nextDeadline,
-                  onCountdown: () => context.push(ZakerRoutes.tasks),
-                ),
-                const SizedBox(height: 26),
-                const _DailyTools(),
-                const SizedBox(height: 26),
-                _LibrarySection(grades: grades, gradeId: gradeId),
-                const SizedBox(height: 26),
-                const _AllToolsSection(),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -149,9 +143,10 @@ class HomeScreen extends ConsumerWidget {
   /// The nearest task still ahead of us, or the most recent overdue one.
   static ScheduleEntry? _nextDeadline(List<ScheduleEntry> entries) {
     final now = DateTime.now();
-    final dated =
-        entries.where((e) => !e.done && e.dueAt != null).toList(growable: false)
-          ..sort((a, b) => a.dueAt!.compareTo(b.dueAt!));
+    final dated = entries
+        .where((e) => !e.done && e.dueAt != null)
+        .toList(growable: false)
+      ..sort((a, b) => a.dueAt!.compareTo(b.dueAt!));
     if (dated.isEmpty) return null;
     for (final entry in dated) {
       if (!entry.dueAt!.isBefore(now)) return entry;
@@ -170,887 +165,152 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-// ---------------------------------------------------------------- hero banner
+// -------------------------------------------------------------------- header
 
-/// The greeting banner: greeting, name, actions, search, the live next-prayer
-/// countdown and the three Islamic quick actions.
-class _HeroBanner extends ConsumerStatefulWidget {
-  const _HeroBanner({
+/// The navy welcome panel directly under the fixed top strip.
+///
+/// The fixed top strip owns the menu, notifications and settings. This panel
+/// carries the compact prayer badge and continues the same navy field into the
+/// greeting and the AI search, then softly rounds back into the off-white body.
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
     required this.name,
-    required this.showBadge,
     required this.streakDays,
     required this.minutesToday,
     required this.pendingCount,
-    required this.onNotifications,
-    required this.onSettings,
   });
 
   final String name;
-  final bool showBadge;
   final int streakDays;
   final int minutesToday;
   final int pendingCount;
-  final VoidCallback onNotifications;
-  final VoidCallback onSettings;
-
-  @override
-  ConsumerState<_HeroBanner> createState() => _HeroBannerState();
-}
-
-class _HeroBannerState extends ConsumerState<_HeroBanner>
-    with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!ref.read(prayerSettingsProvider).onboarded) {
-        maybeShowPrayerOnboarding(context, ref);
-      } else {
-        refreshLocationIfMoved(ref);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && mounted) {
-      refreshLocationIfMoved(ref);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final palette = ZakerTheme.paletteFor(
-      ref.watch(appearanceProvider).themeStyle,
-    );
-    final location = ref.watch(prayerLocationProvider);
-    final day = ref.watch(prayerDayProvider);
-    final hijri = ref.watch(prayerHijriProvider);
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'صباح الخير' : 'مساء الخير';
-    final openDrawer = shellDrawerOpener(context);
-    final radius = BorderRadius.circular(28);
-    const softWhite = Color(0xFFF0FDFA);
-
     return Container(
+      key: const Key('home-header'),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: radius,
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: palette.heroGradient,
-          stops: const [0, 0.58, 1],
+        gradient: const LinearGradient(
+          begin: AlignmentDirectional.topEnd,
+          end: AlignmentDirectional.bottomStart,
+          colors: HomePalette.headerGradient,
         ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
-            color: palette.heroGradient.first.withValues(alpha: 0.34),
-            blurRadius: 32,
-            offset: const Offset(0, 15),
+            color: HomePalette.midnight.withValues(alpha: 0.30),
+            blurRadius: 30,
+            offset: const Offset(0, 14),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => context.push(ZakerRoutes.prayer),
-          child: Stack(
-            children: [
-              Positioned(
-                top: -70,
-                right: -40,
-                child: _Bubble(size: 200, opacity: 0.08),
-              ),
-              Positioned(
-                bottom: -90,
-                left: -50,
-                child: _Bubble(size: 220, opacity: 0.05),
-              ),
-              Positioned(
-                top: 24,
-                left: 92,
-                child: _Bubble(size: 56, opacity: 0.06),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 11,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.14),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: TrText(
-                                  '$greeting يا ${widget.name}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: softWhite,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 9),
-                              TrText(
-                                'عايز تعمل إيه النهاردة؟',
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  color: Colors.white,
-                                  fontSize: 21,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.3,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        if (openDrawer != null) ...[
-                          _HeroButton(
-                            icon: HugeIcons.strokeRoundedMenu01,
-                            onTap: openDrawer,
-                            tooltip: 'القائمة',
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        _HeroButton(
-                          icon: HugeIcons.strokeRoundedDashboardSquare01,
-                          onTap: () => context.push(ZakerRoutes.appearance),
-                          tooltip: 'تغيير الشكل',
-                        ),
-                        const SizedBox(width: 6),
-                        _HeroButton(
-                          icon: HugeIcons.strokeRoundedNotification01,
-                          showDot: widget.showBadge,
-                          onTap: widget.onNotifications,
-                          tooltip: 'التنبيهات',
-                        ),
-                        if (openDrawer == null) ...[
-                          const SizedBox(width: 6),
-                          _HeroButton(
-                            icon: HugeIcons.strokeRoundedSettings01,
-                            onTap: widget.onSettings,
-                            tooltip: 'الإعدادات',
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    const _SearchBox(),
-                    const SizedBox(height: 14),
-                    if (location == null)
-                      _HeroPrayerSetup(
-                        onDevice: () => startLocationFlow(context, ref),
-                        onCity: () => chooseCity(context, ref),
-                      )
-                    else if (day == null)
-                      const _HeroPrayerLoading()
-                    else
-                      _HeroPrayerBlock(
-                        day: day,
-                        hijri: hijri,
-                        onLocation: () => showLocationPickerSheet(context, ref),
-                      ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _HeroQuickAction(
-                            icon: HugeIcons.strokeRoundedVolumeHigh,
-                            label: 'الأذان',
-                            onTap: () =>
-                                context.push(ZakerRoutes.prayerNotifications),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _HeroQuickAction(
-                            icon: HugeIcons.strokeRoundedKaaba01,
-                            label: 'القبلة',
-                            onTap: () => context.push(ZakerRoutes.qibla),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _HeroQuickAction(
-                            icon: HugeIcons.strokeRoundedSunrise,
-                            label: 'الأذكار',
-                            onTap: () => context.push(ZakerRoutes.azkar),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.10),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _HeroStat(
-                              value: '${widget.streakDays}',
-                              label: 'يوم متواصل',
-                            ),
-                          ),
-                          const _HeroDivider(),
-                          Expanded(
-                            child: _HeroStat(
-                              value: '${widget.minutesToday}',
-                              label: 'دقيقة النهاردة',
-                            ),
-                          ),
-                          const _HeroDivider(),
-                          Expanded(
-                            child: _HeroStat(
-                              value: '${widget.pendingCount}',
-                              label: 'مهمة مستنية',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The next prayer, its live HH:MM:SS countdown and the day's progress.
-class _HeroPrayerBlock extends StatelessWidget {
-  const _HeroPrayerBlock({
-    required this.day,
-    required this.hijri,
-    required this.onLocation,
-  });
-
-  final PrayerDay day;
-  final HijriDate hijri;
-  final VoidCallback onLocation;
-
-  static const Color _meta = Color(0xFFD9F5F2);
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Flexible(
-              child: _HeroPill(
-                icon: HugeIcons.strokeRoundedLocation01,
-                label: day.location.displayName,
-                onTap: onLocation,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: _HeroPill(
-                icon: HugeIcons.strokeRoundedCalendar03,
-                label: hijri.formatted,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            const TrText(
-              'الصلاة القادمة',
-              style: TextStyle(
-                color: _meta,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            if (day.next.tomorrow) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const TrText(
-                  'غدًا',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-            const Spacer(),
-            const HugeIcon(
-              icon: HugeIcons.strokeRoundedArrowLeft01,
-              size: 17,
-              color: _meta,
-            ),
-          ],
-        ),
-        const SizedBox(height: 3),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 380),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          child: Row(
-            key: ValueKey('${day.next.name.name}-${day.next.tomorrow}'),
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: TrText(
-                  day.next.name.invocation,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 25,
-                    fontWeight: FontWeight.w900,
-                    height: 1.15,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                formatClockTime(day.next.time),
-                textDirection: TextDirection.ltr,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const TrText(
-              'متبقي',
-              style: TextStyle(
-                color: _meta,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 7),
-            Text(
-              formatCountdown(day.remaining),
-              textDirection: TextDirection.ltr,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 27,
-                height: 1.1,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: day.progress,
-            minHeight: 5,
-            backgroundColor: Colors.white.withValues(alpha: 0.22),
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
-        ),
-        const SizedBox(height: 5),
-        Row(
-          children: [
-            Text(
-              formatShortClockTime(day.previousTime),
-              textDirection: TextDirection.ltr,
-              style: const TextStyle(
-                color: _meta,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-            const Spacer(),
-            Text(
-              formatShortClockTime(day.next.time),
-              textDirection: TextDirection.ltr,
-              style: const TextStyle(
-                color: _meta,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _HeroPill extends StatelessWidget {
-  const _HeroPill({required this.icon, required this.label, this.onTap});
-
-  final dynamic icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          HugeIcon(icon: icon, size: 13, color: Colors.white),
-          const SizedBox(width: 5),
-          Flexible(
-            child: TrText(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (onTap == null) return content;
-    return Semantics(
-      button: true,
-      label: 'تغيير الموقع',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: content,
-      ),
-    );
-  }
-}
-
-/// The no-location state inside the hero: two ways to set a location.
-class _HeroPrayerSetup extends StatelessWidget {
-  const _HeroPrayerSetup({required this.onDevice, required this.onCity});
-
-  final VoidCallback onDevice;
-  final VoidCallback onCity;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              HugeIcon(
-                icon: HugeIcons.strokeRoundedMosqueLocation,
-                size: 19,
-                color: Colors.white,
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: TrText(
-                  'حدّد موقعك تشوف مواقيت الصلاة والعدّاد',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: onDevice,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: ZakerColors.primaryDark,
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    textStyle: const TextStyle(
-                      fontFamily: ZakerTheme.fontUi,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  child: const TrText('موقعي الحالي'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onCity,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.55),
-                    ),
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    textStyle: const TextStyle(
-                      fontFamily: ZakerTheme.fontUi,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  child: const TrText('اختار مدينة'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroPrayerLoading extends StatelessWidget {
-  const _HeroPrayerLoading();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Row(
-        children: [
-          ZakerSkeleton(width: 16, height: 16, radius: 8),
-          SizedBox(width: 10),
-          TrText(
-            'بنحسب مواقيت النهاردة…',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One of the three hero shortcuts. An item with no route is rendered
-/// disabled instead of pushing a dead path.
-class _HeroQuickAction extends StatelessWidget {
-  const _HeroQuickAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final dynamic icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    return Opacity(
-      opacity: enabled ? 1 : 0.5,
-      child: Material(
-        color: Colors.black.withValues(alpha: 0.13),
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            height: 44,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          // Three soft colour fields keep the navy from reading as a flat bar:
+          // champagne warms the top, emerald lifts the stats, coral grounds
+          // the lower edge.
+          const Positioned.fill(child: HomeHeaderAtmosphere()),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                HugeIcon(icon: icon, size: 18, color: Colors.white),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: TrText(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+                // The live badge sits just under the app bar so the app name
+                // can stay the top strip's clear, permanent title.
+                const Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: PrayerPill(compact: true),
+                ),
+                const SizedBox(height: 6),
+                WelcomeSearch(name: name),
+                const SizedBox(height: 14),
+                HomeStatsStrip(
+                  streakDays: streakDays,
+                  minutesToday: minutesToday,
+                  pendingCount: pendingCount,
                 ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.size, required this.opacity});
-
-  final double size;
-  final double opacity;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: opacity),
-        border: Border.all(color: Colors.white.withValues(alpha: opacity / 2)),
-      ),
-    );
-  }
-}
-
-class _HeroStat extends StatelessWidget {
-  const _HeroStat({required this.value, required this.label});
-
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 19,
-            height: 1.1,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 4),
-        TrText(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeroDivider extends StatelessWidget {
-  const _HeroDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 30,
-      color: Colors.white.withValues(alpha: 0.16),
-    );
-  }
-}
-
-/// A translucent circular action in the banner.
-class _HeroButton extends StatelessWidget {
-  const _HeroButton({
-    required this.icon,
-    required this.onTap,
-    this.showDot = false,
-    this.tooltip,
-  });
-
-  final List<List<dynamic>> icon;
-  final VoidCallback onTap;
-  final bool showDot;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    final button = ShadIconButton(
-      width: 42,
-      height: 42,
-      padding: EdgeInsets.zero,
-      backgroundColor: Colors.white.withValues(alpha: 0.18),
-      hoverBackgroundColor: Colors.white.withValues(alpha: 0.30),
-      pressedBackgroundColor: Colors.white.withValues(alpha: 0.34),
-      decoration: const ShadDecoration(shape: BoxShape.circle),
-      onPressed: onTap,
-      icon: SizedBox(
-        width: 24,
-        height: 24,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            HugeIcon(icon: icon, size: 22, color: Colors.white),
-            if (showDot)
-              Positioned(
-                top: -1,
-                right: -1,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFBBF24),
-                    shape: BoxShape.circle,
+          // A hairline of champagne closes the hero into the page.
+          PositionedDirectional(
+            bottom: 0,
+            start: 28,
+            end: 28,
+            child: IgnorePointer(
+              child: Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      HomePalette.champagne.withValues(alpha: 0),
+                      HomePalette.champagne.withValues(alpha: 0.45),
+                      HomePalette.champagne.withValues(alpha: 0),
+                    ],
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
-    return tooltip == null ? button : Tooltip(message: tooltip!, child: button);
   }
 }
 
-/// The mockup's translucent search pill. Submitting opens the AI chat with
-/// the typed question, which is the app's free-text entry point.
-class _SearchBox extends StatefulWidget {
-  const _SearchBox();
+// ------------------------------------------------------------ organic cards
 
-  @override
-  State<_SearchBox> createState() => _SearchBoxState();
-}
-
-class _SearchBoxState extends State<_SearchBox> {
-  final TextEditingController _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit(String value) {
-    final query = value.trim();
-    if (query.isEmpty) return;
-    _controller.clear();
-    FocusScope.of(context).unfocus();
-    context.push('${ZakerRoutes.chat}?q=${Uri.encodeQueryComponent(query)}');
-  }
+/// The three primary actions, always side by side in their own glass fields.
+///
+/// The row is deliberately not a responsive stack: the brief asks for one
+/// horizontal three-column band, so each child gets an [Expanded] share and
+/// the card contents shrink/ellipsize instead of dropping to a column.
+class _OrganicActionCards extends StatelessWidget {
+  const _OrganicActionCards();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
-      ),
+    return IntrinsicHeight(
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const HugeIcon(
-            icon: HugeIcons.strokeRoundedSearch01,
-            size: 20,
-            color: Colors.white,
+          Expanded(
+            child: _OrganicActionCard(
+              cardKey: const Key('home-card-assistant'),
+              icon: HugeIcons.strokeRoundedAiSparkles,
+              accent: HomePalette.champagne,
+              accentSoft: HomePalette.champagneLight,
+              gradient: HomePalette.assistantGradient,
+              title: 'المساعد الذكي',
+              subtitle: 'اسأل عن أي حاجة',
+              onTap: () => context.push(ZakerRoutes.chat),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: ShadInput(
-              controller: _controller,
-              decoration: ShadDecoration.none,
-              padding: const EdgeInsets.symmetric(vertical: 13),
-              cursorColor: Colors.white,
-              style: const TextStyle(
-                color: Colors.white,
-                fontFamily: ZakerTheme.fontUi,
-                fontSize: 14,
-              ),
-              placeholder: const TrText(
-                'اسأل معلم AI عن أي حاجة…',
-                style: TextStyle(
-                  color: Color(0xFFE3F4F2),
-                  fontFamily: ZakerTheme.fontUi,
-                  fontSize: 14,
-                ),
-              ),
-              textInputAction: TextInputAction.search,
-              onSubmitted: _submit,
+            child: _OrganicActionCard(
+              cardKey: const Key('home-card-bag'),
+              icon: HugeIcons.strokeRoundedShoppingBag01,
+              accent: HomePalette.emerald,
+              accentSoft: HomePalette.emeraldLight,
+              gradient: HomePalette.bagGradient,
+              title: 'ملفاتي بالمادة',
+              subtitle: 'شنطة كل مادة',
+              onTap: () => context.push(ZakerRoutes.bag),
             ),
           ),
-          const SizedBox(width: 6),
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.16),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: HugeIcon(
-                icon: HugeIcons.strokeRoundedArrowLeft01,
-                size: 16,
-                color: Colors.white,
-              ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _OrganicActionCard(
+              cardKey: const Key('home-card-tasks'),
+              icon: HugeIcons.strokeRoundedCheckList,
+              accent: HomePalette.coral,
+              accentSoft: HomePalette.coralLight,
+              gradient: HomePalette.tasksGradient,
+              title: 'مهامي',
+              subtitle: 'رتب مهام يومك',
+              onTap: () => context.push(ZakerRoutes.tasks),
             ),
           ),
         ],
@@ -1059,308 +319,224 @@ class _SearchBoxState extends State<_SearchBox> {
   }
 }
 
-// --------------------------------------------------------------- action cards
-
-/// The three primary actions, rendered as raised 3D cards.
-class _ActionCards extends StatelessWidget {
-  const _ActionCards({required this.streakDays});
-
-  final int streakDays;
-
-  @override
-  Widget build(BuildContext context) {
-    final cards = <Widget>[
-      _ActionCard(
-        aurora: true,
-        accent: _Accents.purple,
-        title: 'المساعد الذكي',
-        subtitle: 'أسأل عن أي حاجة',
-        onTap: () => context.push(ZakerRoutes.chat),
-      ),
-      _ActionCard(
-        icon: HugeIcons.strokeRoundedBookOpen01,
-        accent: _Accents.teal,
-        title: 'المكتبة الدراسية',
-        subtitle: 'كل الكتب والمناهج',
-        onTap: () => context.push(ZakerRoutes.courses),
-      ),
-      _ActionCard(
-        icon: HugeIcons.strokeRoundedTaskDone01,
-        accent: _Accents.blue,
-        title: 'مهامي',
-        subtitle: streakDays == 0
-            ? 'رتب مهام يومك'
-            : 'مذاكرة $streakDays يوم متواصل',
-        onTap: () => context.push(ZakerRoutes.tasks),
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 620;
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < cards.length; i++) ...[
-                Expanded(child: cards[i]),
-                if (i != cards.length - 1) SizedBox(width: compact ? 8 : 12),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ActionCard extends StatelessWidget {
-  const _ActionCard({
-    this.icon,
+/// One tall glass card: a tinted badge, a two-line title block and a solid
+/// circular arrow that anchors the bottom edge.
+class _OrganicActionCard extends StatelessWidget {
+  const _OrganicActionCard({
+    required this.cardKey,
+    required this.icon,
     required this.accent,
+    required this.accentSoft,
+    required this.gradient,
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.aurora = false,
   });
 
-  final List<List<dynamic>>? icon;
+  final Key cardKey;
+  final List<List<dynamic>> icon;
   final Color accent;
+  final Color accentSoft;
+  final List<Color> gradient;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
 
-  /// The assistant card uses the animated aurora mark instead of a glyph.
-  final bool aurora;
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final compact = MediaQuery.sizeOf(context).width < 620;
-    final surface = theme.cardTheme.color ?? theme.colorScheme.surface;
+    final tight = MediaQuery.sizeOf(context).width < 380;
+    final badgeSize = tight ? 36.0 : 40.0;
+    final arrowSize = tight ? 28.0 : 30.0;
 
     return _Pressable3D(
       accent: accent,
-      depth: 6,
-      radius: 22,
+      depth: 4,
+      radius: 26,
       onTap: onTap,
       semanticLabel: title,
       child: Container(
-        padding: EdgeInsets.all(compact ? 12 : 18),
+        key: cardKey,
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsetsDirectional.fromSTEB(
+          tight ? 8 : 10,
+          12,
+          tight ? 8 : 10,
+          10,
+        ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [
-              Color.alphaBlend(
-                accent.withValues(alpha: isDark ? 0.30 : 0.16),
-                surface,
-              ),
-              Color.alphaBlend(
-                accent.withValues(alpha: isDark ? 0.12 : 0.04),
-                surface,
-              ),
-            ],
+            begin: AlignmentDirectional.topEnd,
+            end: AlignmentDirectional.bottomStart,
+            colors: gradient,
           ),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: _hairline(context, accent)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 30,
-              height: 3.5,
-              decoration: BoxDecoration(
-                color: accent,
-                borderRadius: BorderRadius.circular(ZakerRadius.pill),
-              ),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: accent.withValues(alpha: 0.30)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.22),
+              blurRadius: 18,
+              offset: const Offset(0, 9),
             ),
-            SizedBox(height: compact ? 9 : 11),
-            if (aurora)
-              AuroraAssistantMark(
-                size: compact ? 46 : 54,
-                radius: compact ? 15 : 18,
-              )
-            else
-              ZakerGlassIcon(
-                icon: icon!,
-                accent: accent,
-                size: compact ? 46 : 54,
-                iconSize: compact ? 24 : 28,
-                radius: compact ? 15 : 18,
-              ),
-            SizedBox(height: compact ? 10 : 12),
-            TrText(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontSize: compact ? 12 : 15,
-                height: 1.25,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            if (!compact) ...[
-              const SizedBox(height: 4),
-              TrText(
-                subtitle,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  height: 1.35,
-                ),
-              ),
-            ],
-            SizedBox(height: compact ? 8 : 14),
-            Container(
-              width: compact ? 30 : 36,
-              height: compact ? 30 : 36,
-              decoration: BoxDecoration(
-                color: accent,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: accent.withValues(alpha: 0.32),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: HugeIcon(
-                icon: HugeIcons.strokeRoundedArrowLeft01,
-                size: compact ? 15 : 18,
-                color: Colors.white,
-              ),
+            BoxShadow(
+              color: accent.withValues(alpha: 0.16),
+              blurRadius: 24,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------- islamic hub card
-
-/// The single home entry to the Islamics hub.
-class _IslamicHubCard extends StatelessWidget {
-  const _IslamicHubCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent =
-        theme.extension<ZakerFeatureAccents>()?.islamic ??
-        theme.colorScheme.primary;
-    final surface = theme.cardTheme.color ?? theme.colorScheme.surface;
-    final muted = theme.colorScheme.onSurfaceVariant;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => context.push(ZakerRoutes.islamicHub),
-        borderRadius: BorderRadius.circular(ZakerRadius.lg),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(
-            horizontal: ZakerSpacing.md,
-            vertical: ZakerSpacing.md,
-          ),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-              colors: [
-                Color.alphaBlend(
-                  accent.withValues(alpha: isDark ? 0.22 : 0.10),
-                  surface,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Two soft accent orbs keep the card organic without adding an
+            // illustration or another tap target.
+            PositionedDirectional(
+              top: -24,
+              end: -18,
+              child: IgnorePointer(
+                child: Container(
+                  width: 66,
+                  height: 66,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.20),
+                    shape: BoxShape.circle,
+                  ),
                 ),
-                surface,
-              ],
+              ),
             ),
-            borderRadius: BorderRadius.circular(ZakerRadius.lg),
-            border: Border.all(color: _hairline(context, accent)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                    colors: [
-                      accent.withValues(alpha: isDark ? 0.30 : 0.18),
-                      accent.withValues(alpha: 0.08),
+            PositionedDirectional(
+              bottom: 8,
+              start: -22,
+              child: IgnorePointer(
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+            // The glass sheen: a narrow white wash along the top edge.
+            PositionedDirectional(
+              top: 0,
+              start: 0,
+              end: 0,
+              height: 48,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white.withValues(alpha: 0.08),
+                        Colors.white.withValues(alpha: 0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: badgeSize,
+                  height: badgeSize,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(
+                      color: accent.withValues(alpha: 0.32),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.12),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(ZakerRadius.md),
-                  border: Border.all(color: accent.withValues(alpha: 0.24)),
-                ),
-                child: Center(
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedMosque01,
-                    size: 22,
-                    color: accent,
+                  child: Center(
+                    child: HugeIcon(
+                      icon: icon,
+                      size: tight ? 19 : 21,
+                      color: accentSoft,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: ZakerSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const TrText(
-                      'الإسلاميات',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: TrText(
+                          title,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: HomePalette.textPrimary,
+                            fontSize: 13,
+                            height: 1.2,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    TrText(
-                      'المواقيت · الأذان · القبلة · الأذكار · الحفظ',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, height: 1.4, color: muted),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: ZakerSpacing.sm),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(ZakerRadius.pill),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TrText(
-                      'افتح',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: accent,
+                      const SizedBox(height: 2),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: TrText(
+                          subtitle,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: accentSoft,
+                            fontSize: 11,
+                            height: 1.2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 2),
-                    Icon(Icons.chevron_left_rounded, size: 16, color: accent),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+                Container(
+                  width: arrowSize,
+                  height: arrowSize,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [accentSoft, accent],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.32),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedArrowLeft01,
+                      size: tight ? 14 : 15,
+                      color: HomePalette.midnight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -1430,6 +606,7 @@ class _CountdownBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    const accent = HomePalette.amber;
     final entry = nextDeadline;
     final due = entry?.dueAt;
 
@@ -1458,21 +635,33 @@ class _CountdownBanner extends StatelessWidget {
     final dateLabel = due == null
         ? null
         : '${due.day} ${_months[due.month - 1]} · '
-              '${due.hour.toString().padLeft(2, '0')}:'
-              '${due.minute.toString().padLeft(2, '0')}';
+            '${due.hour.toString().padLeft(2, '0')}:'
+            '${due.minute.toString().padLeft(2, '0')}';
 
     return _Pressable3D(
-      accent: _Accents.amber,
+      accent: accent,
       depth: 4,
       radius: 20,
       onTap: onTap,
       semanticLabel: 'العد التنازلي',
       child: Container(
+        clipBehavior: Clip.antiAlias,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _wash(context, _Accents.amber),
+          gradient: const LinearGradient(
+            begin: AlignmentDirectional.topEnd,
+            end: AlignmentDirectional.bottomStart,
+            colors: HomePalette.countdownGradient,
+          ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _hairline(context, _Accents.amber)),
+          border: Border.all(color: accent.withValues(alpha: 0.30)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.20),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -1480,14 +669,15 @@ class _CountdownBanner extends StatelessWidget {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: _Accents.amber.withValues(alpha: 0.16),
+                color: accent.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: accent.withValues(alpha: 0.24)),
               ),
               child: const Center(
                 child: HugeIcon(
                   icon: HugeIcons.strokeRoundedHourglass,
                   size: 26,
-                  color: _Accents.amber,
+                  color: accent,
                 ),
               ),
             ),
@@ -1505,6 +695,7 @@ class _CountdownBanner extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
+                      color: HomePalette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -1515,7 +706,7 @@ class _CountdownBanner extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color: HomePalette.textSecondary,
                       height: 1.4,
                     ),
                   ),
@@ -1530,7 +721,7 @@ class _CountdownBanner extends StatelessWidget {
                   Text(
                     daysText,
                     style: const TextStyle(
-                      color: _Accents.amber,
+                      color: HomePalette.champagne,
                       fontSize: 26,
                       height: 1,
                       fontWeight: FontWeight.w800,
@@ -1540,7 +731,7 @@ class _CountdownBanner extends StatelessWidget {
                   TrText(
                     unitText,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color: HomePalette.textSecondary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1548,18 +739,22 @@ class _CountdownBanner extends StatelessWidget {
               ),
             ] else ...[
               const SizedBox(width: 8),
-              ShadIconButton(
-                width: 38,
-                height: 38,
-                padding: EdgeInsets.zero,
-                backgroundColor: _Accents.amber.withValues(alpha: 0.16),
-                hoverBackgroundColor: _Accents.amber.withValues(alpha: 0.24),
-                decoration: const ShadDecoration(shape: BoxShape.circle),
-                onPressed: onTap,
-                icon: const HugeIcon(
-                  icon: HugeIcons.strokeRoundedArrowLeft01,
-                  size: 18,
-                  color: _Accents.amber,
+              // The whole banner is already one labelled button; this is a
+              // visual affordance for the same tap, not a second unnamed one.
+              ExcludeSemantics(
+                child: ShadIconButton(
+                  width: 38,
+                  height: 38,
+                  padding: EdgeInsets.zero,
+                  backgroundColor: accent.withValues(alpha: 0.16),
+                  hoverBackgroundColor: accent.withValues(alpha: 0.24),
+                  decoration: const ShadDecoration(shape: BoxShape.circle),
+                  onPressed: onTap,
+                  icon: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowLeft01,
+                    size: 18,
+                    color: accent,
+                  ),
                 ),
               ),
             ],
@@ -1588,23 +783,36 @@ class _AdviceBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    const accent = HomePalette.emerald;
     final now = DateTime.now();
     final dayOfYear = now.difference(DateTime(now.year, 1, 1)).inDays;
     final tip = _tips[dayOfYear % _tips.length];
 
     return _Pressable3D(
-      accent: _Accents.green,
+      accent: accent,
       depth: 4,
       radius: 20,
       onTap: () => Navigator.of(context)
           .push(MaterialPageRoute<void>(builder: (_) => const FocusScreen())),
       semanticLabel: 'نصيحة النهاردة',
       child: Container(
+        clipBehavior: Clip.antiAlias,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _wash(context, _Accents.green),
+          gradient: const LinearGradient(
+            begin: AlignmentDirectional.topEnd,
+            end: AlignmentDirectional.bottomStart,
+            colors: HomePalette.adviceGradient,
+          ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _hairline(context, _Accents.green)),
+          border: Border.all(color: accent.withValues(alpha: 0.30)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.20),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1613,14 +821,15 @@ class _AdviceBanner extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: _Accents.green.withValues(alpha: 0.16),
+                color: accent.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: accent.withValues(alpha: 0.24)),
               ),
               child: const Center(
                 child: HugeIcon(
                   icon: HugeIcons.strokeRoundedIdea01,
                   size: 23,
-                  color: _Accents.green,
+                  color: HomePalette.emeraldLight,
                 ),
               ),
             ),
@@ -1634,7 +843,7 @@ class _AdviceBanner extends StatelessWidget {
                     'نصيحة النهاردة',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: _Accents.green,
+                      color: HomePalette.emeraldLight,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -1643,409 +852,11 @@ class _AdviceBanner extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface,
+                      color: HomePalette.textSecondary,
                       height: 1.5,
                     ),
                   ),
                 ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------- daily tools
-
-/// The six daily-tool tiles from the mockup.
-class _DailyTools extends StatelessWidget {
-  const _DailyTools();
-
-  @override
-  Widget build(BuildContext context) {
-    final tools =
-        <
-          ({
-            List<List<dynamic>> icon,
-            String label,
-            Color accent,
-            VoidCallback onTap,
-          })
-        >[
-          (
-            icon: HugeIcons.strokeRoundedCalculator01,
-            label: 'الآلة الحاسبة',
-            accent: _Accents.blue,
-            onTap: () => context.push(ZakerRoutes.calculator),
-          ),
-          (
-            icon: HugeIcons.strokeRoundedPen01,
-            label: 'الإعراب',
-            accent: _Accents.amber,
-            onTap: () => context.push(ZakerRoutes.irab),
-          ),
-          (
-            icon: HugeIcons.strokeRoundedCalendar03,
-            label: 'خطة المذاكرة',
-            accent: _Accents.green,
-            onTap: () => context.push(ZakerRoutes.planner),
-          ),
-          (
-            icon: HugeIcons.strokeRoundedTimer01,
-            label: 'إدارة الوقت',
-            accent: _Accents.purple,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const FocusScreen()),
-            ),
-          ),
-          (
-            icon: HugeIcons.strokeRoundedAnalytics01,
-            label: 'متابعة التقدم',
-            accent: _Accents.rose,
-            onTap: () => context.push(ZakerRoutes.weekly),
-          ),
-          (
-            icon: HugeIcons.strokeRoundedTarget01,
-            label: 'مراجعات',
-            accent: _Accents.sky,
-            onTap: () => context.push(ZakerRoutes.recall),
-          ),
-        ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionTitle(
-          title: 'أدواتك اليومية',
-          icon: HugeIcons.strokeRoundedWrench01,
-        ),
-        const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            const spacing = 10.0;
-            final columns = constraints.maxWidth >= 720 ? 6 : 3;
-            final tileWidth =
-                (constraints.maxWidth - spacing * (columns - 1)) / columns;
-            return Wrap(
-              spacing: spacing,
-              runSpacing: spacing,
-              children: [
-                for (final tool in tools)
-                  SizedBox(
-                    width: tileWidth,
-                    child: _ToolTile(
-                      icon: tool.icon,
-                      label: tool.label,
-                      accent: tool.accent,
-                      onTap: tool.onTap,
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _ToolTile extends StatelessWidget {
-  const _ToolTile({
-    required this.icon,
-    required this.label,
-    required this.accent,
-    required this.onTap,
-  });
-
-  final List<List<dynamic>> icon;
-  final String label;
-  final Color accent;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return _Pressable3D(
-      accent: accent,
-      depth: 4,
-      radius: 18,
-      onTap: onTap,
-      semanticLabel: label,
-      child: Container(
-        height: 104,
-        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 6),
-        decoration: BoxDecoration(
-          color: _wash(context, accent),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _hairline(context, accent)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ZakerGlassIcon(
-              icon: icon,
-              accent: accent,
-              size: 36,
-              iconSize: 21,
-              radius: 11,
-            ),
-            const SizedBox(height: 8),
-            TrText(
-              label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontSize: 12,
-                height: 1.3,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ------------------------------------------------------------------- subjects
-
-/// The selected grade's subjects as tappable cards.
-class _LibrarySection extends StatelessWidget {
-  const _LibrarySection({required this.grades, required this.gradeId});
-
-  final AsyncValue<List<Grade>> grades;
-  final String gradeId;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        grades.when(
-          loading: () => const _SectionTitle(
-            title: 'موادك',
-            icon: HugeIcons.strokeRoundedBookOpen01,
-          ),
-          error: (_, __) => const _SectionTitle(
-            title: 'موادك',
-            icon: HugeIcons.strokeRoundedBookOpen01,
-          ),
-          data: (list) {
-            final label = list
-                .where((g) => g.id == gradeId)
-                .map((g) => g.label)
-                .firstOrNull;
-            return _SectionTitle(
-              title: 'موادك',
-              icon: HugeIcons.strokeRoundedBookOpen01,
-              badge: label,
-              actionLabel: 'كل المكتبة',
-              onAction: () => context.push(ZakerRoutes.courses),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        grades.when(
-          loading: () => const LoadingBox(),
-          error: (e, _) => EmptyState(
-            icon: Icons.cloud_off_rounded,
-            title: 'مقدرناش نحمّل المواد',
-            message: '$e',
-          ),
-          data: (list) => _SubjectGrid(grades: list, gradeId: gradeId),
-        ),
-      ],
-    );
-  }
-}
-
-class _SubjectGrid extends StatelessWidget {
-  const _SubjectGrid({required this.grades, required this.gradeId});
-
-  final List<Grade> grades;
-  final String gradeId;
-
-  @override
-  Widget build(BuildContext context) {
-    if (grades.isEmpty) {
-      return EmptyState(
-        icon: Icons.library_books_outlined,
-        title: 'مكتبتك فاضية',
-        message: 'افتح أي مادة وابدأ المذاكرة.',
-        action: FilledButton(
-          onPressed: () => context.push(ZakerRoutes.courses),
-          child: const TrText('افتح المكتبة'),
-        ),
-      );
-    }
-
-    final grade = grades.firstWhere(
-      (g) => g.id == gradeId,
-      orElse: () => grades.first,
-    );
-
-    // Several variants can ship for one subject; the card represents the
-    // subject and opens the first book, while the count hints at the rest.
-    final subjects = <String, List<Book>>{};
-    for (final book in grade.books) {
-      subjects.putIfAbsent(book.subject, () => <Book>[]).add(book);
-    }
-
-    if (subjects.isEmpty) {
-      return EmptyState(
-        icon: Icons.menu_book_outlined,
-        title: 'مفيش مواد في الصف ده',
-        message: 'جرّب صف دراسي تاني من «كل المواد».',
-        action: FilledButton(
-          onPressed: () => context.push(ZakerRoutes.courses),
-          child: const TrText('افتح المكتبة'),
-        ),
-      );
-    }
-
-    final entries = subjects.entries.toList(growable: false);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 900
-            ? 4
-            : constraints.maxWidth >= 600
-            ? 3
-            : 2;
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          itemCount: entries.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            mainAxisExtent: 138,
-          ),
-          itemBuilder: (context, index) {
-            final entry = entries[index];
-            final accent = _subjectAccents[index % _subjectAccents.length];
-            return _SubjectCard(
-              subject: entry.key,
-              books: entry.value,
-              accent: accent,
-              onTap: () =>
-                  context.push(_subjectRoute(grade, entry.value.first)),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-/// Routes a subject card of a secondary grade to the curriculum screen; other
-/// grades keep opening the first book directly.
-String _subjectRoute(Grade grade, Book book) {
-  final curriculum = curriculumForGrade(grade.id);
-  if (curriculum != null) {
-    for (final subject in curriculum.subjects) {
-      if (!subject.assetSubjects.contains(book.subject)) continue;
-      final trackId = subject.tracks.isEmpty ? null : subject.tracks.first;
-      return ZakerRoutes.subjectPath(grade.id, subject.id, track: trackId);
-    }
-  }
-  return ZakerRoutes.lessonPath(book);
-}
-
-class _SubjectCard extends StatelessWidget {
-  const _SubjectCard({
-    required this.subject,
-    required this.books,
-    required this.accent,
-    required this.onTap,
-  });
-
-  final String subject;
-  final List<Book> books;
-  final Color accent;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final lessons = books.fold<int>(0, (sum, book) => sum + book.lessons);
-
-    return _Pressable3D(
-      accent: accent,
-      depth: 5,
-      radius: 18,
-      onTap: onTap,
-      semanticLabel: subject,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _hairline(context, accent)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.13),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Center(
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedBookOpen01,
-                      size: 20,
-                      color: accent,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.10),
-                    shape: BoxShape.circle,
-                  ),
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedArrowLeft01,
-                    size: 15,
-                    color: accent,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: TrText(
-                subject,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  height: 1.3,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            TrText(
-              books.length > 1
-                  ? '$lessons درس · ${books.length} كتب'
-                  : '$lessons درس',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -2064,20 +875,21 @@ class _AllToolsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      key: const Key('home-tools-section'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionTitle(
-          title: 'كل الأدوات',
+          title: 'قسم الأدوات',
           icon: HugeIcons.strokeRoundedDashboardSquare01,
         ),
         const SizedBox(height: 4),
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: TrText(
-            'كل حاجة في ذاكرلي على بُعد ضغطة واحدة.',
+            'المكتبة الدراسية وكل أدوات رفيق الطالب على بُعد ضغطة واحدة.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
         ),
         LayoutBuilder(
@@ -2085,9 +897,26 @@ class _AllToolsSection extends StatelessWidget {
             final columns = constraints.maxWidth >= 980
                 ? 4
                 : constraints.maxWidth >= 620
-                ? 3
-                : 2;
+                    ? 3
+                    : 2;
             final tiles = _tiles(context);
+            // The cell must hold the glyph, both text blocks at their own
+            // scale, and the padding; a flat 168 clips the text at 2.0x.
+            final scaler = MediaQuery.textScalerOf(context);
+            final text = Theme.of(context).textTheme;
+            double block(TextStyle? style, double size, double height) =>
+                2 *
+                scaler.scale(style?.fontSize ?? size) *
+                (style?.height ?? height);
+            final needed = ZakerSpacing.md * 2 +
+                38 + // glyph
+                ZakerSpacing.sm +
+                2 +
+                block(text.titleSmall, 14, 1.43) +
+                block(text.bodySmall, 12, 1.33) +
+                // Line boxes round up to whole pixels; the slack keeps the
+                // cell from overflowing its own text by a fraction.
+                ZakerSpacing.xs;
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -2096,10 +925,10 @@ class _AllToolsSection extends StatelessWidget {
                 crossAxisCount: columns,
                 mainAxisSpacing: ZakerSpacing.md,
                 crossAxisSpacing: ZakerSpacing.md,
-                // A fixed tile height keeps the icon, title and subtitle
-                // together instead of stretching into tall squares on wide
-                // screens.
-                mainAxisExtent: 168,
+                // A floor keeps the icon, title and subtitle together instead
+                // of stretching into tall squares on wide screens, and the
+                // scaled height lets the text grow with the user's setting.
+                mainAxisExtent: needed < 168 ? 168 : needed,
               ),
               itemCount: tiles.length,
               itemBuilder: (_, index) => tiles[index],
@@ -2111,183 +940,217 @@ class _AllToolsSection extends StatelessWidget {
   }
 
   List<Widget> _tiles(BuildContext context) {
+    const colors = HomePalette.toolAccents;
     final tiles =
         <({String title, IconData icon, String? subtitle, VoidCallback onTap})>[
-          (
-            title: 'امتحان',
-            icon: Icons.fact_check_rounded,
-            subtitle: 'اختبار بالدرجات',
-            onTap: () => context.push(ZakerRoutes.exams),
-          ),
-          (
-            title: 'منهج الثانوي',
-            icon: Icons.school_rounded,
-            subtitle: 'مواد ومسارات',
-            onTap: () => context.push(ZakerRoutes.subjects),
-          ),
-          (
-            title: ZakerStrings.s_9cfe0, // بنك الأسئلة
-            icon: Icons.quiz_rounded,
-            subtitle: ZakerStrings.s_d6b7e, // بنك الأسئلة اللي في مكتبتك
-            onTap: () => context.push(ZakerRoutes.questionBank),
-          ),
-          (
-            title: 'تركيز',
-            icon: Icons.timer_rounded,
-            subtitle: 'جلسات مذاكرة',
-            onTap: () => Navigator.of(context).push(
+      (
+        title: 'المكتبة الدراسية',
+        icon: Icons.library_books_rounded,
+        subtitle: 'كل الكتب والمناهج',
+        onTap: () => context.push(ZakerRoutes.courses),
+      ),
+      (
+        title: 'امتحان',
+        icon: Icons.fact_check_rounded,
+        subtitle: 'اختبار بالدرجات',
+        onTap: () => context.push(ZakerRoutes.exams),
+      ),
+      (
+        title: 'منهج الثانوي',
+        icon: Icons.school_rounded,
+        subtitle: 'مواد ومسارات',
+        onTap: () => context.push(ZakerRoutes.subjects),
+      ),
+      (
+        title: ZakerStrings.s_9cfe0, // بنك الأسئلة
+        icon: Icons.quiz_rounded,
+        subtitle: ZakerStrings.s_d6b7e, // بنك الأسئلة اللي في مكتبتك
+        onTap: () => context.push(ZakerRoutes.questionBank),
+      ),
+      (
+        title: 'تركيز',
+        icon: Icons.timer_rounded,
+        subtitle: 'جلسات مذاكرة',
+        onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const FocusScreen()),
             ),
-          ),
-          (
-            title: 'القرآن الكريم',
-            icon: Icons.menu_book_rounded,
-            subtitle: 'أذكار وتلاوة',
-            onTap: () => context.push(ZakerRoutes.quran),
-          ),
-          (
-            title: 'فهرس المصطلحات',
-            icon: Icons.menu_book_outlined,
-            subtitle: 'معاني الكلمات',
-            onTap: () => context.push(ZakerRoutes.glossary),
-          ),
-          (
-            title: 'أدوات الـPDF',
-            icon: Icons.picture_as_pdf_rounded,
-            subtitle: 'ادمج وحول واطبع',
-            onTap: () => context.push(ZakerRoutes.pdfTools),
-          ),
-          (
-            title: 'المسح الضوئي',
-            icon: Icons.document_scanner_rounded,
-            subtitle: 'صوّر الواجب',
-            onTap: () => context.push(ZakerRoutes.scan),
-          ),
-          (
-            title: 'الآلة الحاسبة',
-            icon: Icons.calculate_rounded,
-            subtitle: 'علمية متقدمة',
-            onTap: () => context.push(ZakerRoutes.calculator),
-          ),
-          (
-            title: 'دليل الإعراب',
-            icon: Icons.spellcheck_rounded,
-            subtitle: 'قواعد وأمثلة',
-            onTap: () => context.push(ZakerRoutes.irab),
-          ),
-          (
-            title: 'استرجاع نشط',
-            icon: Icons.style_rounded,
-            subtitle: 'كارت المراجعة',
-            onTap: () => context.push(ZakerRoutes.recall),
-          ),
-          (
-            title: 'الخريطة الذهنية',
-            icon: Icons.account_tree_rounded,
-            subtitle: 'ارسم أفكارك',
-            onTap: () => context.push(ZakerRoutes.mindMap),
-          ),
-          (
-            title: 'المهام',
-            icon: Icons.checklist_rounded,
-            subtitle: 'واجباتك وتذكيراتك',
-            onTap: () => context.push(ZakerRoutes.tasks),
-          ),
-          (
-            title: 'أهداف اليوم',
-            icon: Icons.flag_rounded,
-            subtitle: 'خطتك النهارده',
-            onTap: () => context.push(ZakerRoutes.planner),
-          ),
-          (
-            title: 'إنجازاتي',
-            icon: Icons.workspace_premium_rounded,
-            subtitle: 'الشارات والدعوة',
-            onTap: () => context.push(ZakerRoutes.achievements),
-          ),
-          (
-            title: 'المتصدرين',
-            icon: Icons.emoji_events_rounded,
-            subtitle: 'نقاطك وسلسلتك',
-            onTap: () => context.push(ZakerRoutes.leaderboard),
-          ),
-          (
-            title: 'دفتر أخطائي',
-            icon: Icons.error_outline_rounded,
-            subtitle: 'غلطاتك ترجعلك',
-            onTap: () => context.push(ZakerRoutes.mistakes),
-          ),
-          (
-            title: ZakerStrings.s_7859a, // ترجمة
-            icon: Icons.translate_rounded,
-            subtitle: 'ترجمة نصوص ومحاضرات',
-            onTap: () => context.push(ZakerRoutes.translate),
-          ),
-          (
-            title: ZakerStrings.s_35563, // كلماتي
-            icon: Icons.translate_rounded,
-            subtitle: 'قاموس الكلمات',
-            onTap: () => context.push(ZakerRoutes.words),
-          ),
-          (
-            title: ZakerStrings.s_5588a, // ملاحظاتي
-            icon: Icons.edit_note_rounded,
-            subtitle: 'دفتر ملاحظاتك',
-            onTap: () => context.push(ZakerRoutes.notebooks),
-          ),
-          (
-            title: ZakerStrings.s_a03b0, // الحديقة
-            icon: Icons.grain_rounded,
-            subtitle: 'بتنمو بالأيام',
-            onTap: () => context.push(ZakerRoutes.garden),
-          ),
-          (
-            title: ZakerStrings.s_feeca, // تحديات
-            icon: Icons.bolt_rounded,
-            subtitle: ZakerStrings.s_1da21, // تحدي مع صحابك
-            onTap: () => context.push(ZakerRoutes.challenges),
-          ),
-          (
-            title: ZakerStrings.s_03af3, // نقاط ضعفي
-            icon: Icons.trending_down_rounded,
-            subtitle: 'راجع نقاط ضعفي',
-            onTap: () => context.push(ZakerRoutes.weakness),
-          ),
-          (
-            title: ZakerStrings.s_97497, // ألعاب المذاكرة
-            icon: Icons.sports_esports_rounded,
-            subtitle: ZakerStrings.s_928ae, // مذاكرة على شكل لعبة…
-            onTap: () => context.push(ZakerRoutes.games),
-          ),
-          (
-            title: ZakerStrings.s_f30a0, // سبورة
-            icon: Icons.draw_rounded,
-            subtitle: ZakerStrings.s_ddb1c, // اشرح الدرس على السبورة
-            onTap: () => context.push(ZakerRoutes.whiteboard),
-          ),
-          (
-            title: ZakerStrings.s_02316, // تقدمي الأسبوعي
-            icon: Icons.insights_rounded,
-            subtitle: ZakerStrings.s_a3f5a, // ملخص أسبوعك…
-            onTap: () => context.push(ZakerRoutes.weekly),
-          ),
-        ];
+      ),
+      (
+        title: 'القرآن الكريم',
+        icon: Icons.menu_book_rounded,
+        subtitle: 'أذكار وتلاوة',
+        onTap: () => context.push(ZakerRoutes.quran),
+      ),
+      (
+        title: 'فهرس المصطلحات',
+        icon: Icons.menu_book_outlined,
+        subtitle: 'معاني الكلمات',
+        onTap: () => context.push(ZakerRoutes.glossary),
+      ),
+      (
+        title: 'أدوات الـPDF',
+        icon: Icons.picture_as_pdf_rounded,
+        subtitle: 'ادمج وحول واطبع',
+        onTap: () => context.push(ZakerRoutes.pdfTools),
+      ),
+      (
+        title: 'المسح الضوئي',
+        icon: Icons.document_scanner_rounded,
+        subtitle: 'صوّر الواجب',
+        onTap: () => context.push(ZakerRoutes.scan),
+      ),
+      (
+        title: 'الآلة الحاسبة',
+        icon: Icons.calculate_rounded,
+        subtitle: 'علمية متقدمة',
+        onTap: () => context.push(ZakerRoutes.calculator),
+      ),
+      (
+        title: 'دليل الإعراب',
+        icon: Icons.spellcheck_rounded,
+        subtitle: 'قواعد وأمثلة',
+        onTap: () => context.push(ZakerRoutes.irab),
+      ),
+      (
+        title: 'استرجاع نشط',
+        icon: Icons.style_rounded,
+        subtitle: 'كارت المراجعة',
+        onTap: () => context.push(ZakerRoutes.recall),
+      ),
+      (
+        title: 'الخريطة الذهنية',
+        icon: Icons.account_tree_rounded,
+        subtitle: 'ارسم أفكارك',
+        onTap: () => context.push(ZakerRoutes.mindMap),
+      ),
+      (
+        title: 'المهام',
+        icon: Icons.checklist_rounded,
+        subtitle: 'واجباتك وتذكيراتك',
+        onTap: () => context.push(ZakerRoutes.tasks),
+      ),
+      (
+        title: 'أهداف اليوم',
+        icon: Icons.flag_rounded,
+        subtitle: 'خطتك النهارده',
+        onTap: () => context.push(ZakerRoutes.planner),
+      ),
+      (
+        title: 'إنجازاتي',
+        icon: Icons.workspace_premium_rounded,
+        subtitle: 'الشارات والدعوة',
+        onTap: () => context.push(ZakerRoutes.achievements),
+      ),
+      (
+        title: 'المتصدرين',
+        icon: Icons.emoji_events_rounded,
+        subtitle: 'نقاطك وسلسلتك',
+        onTap: () => context.push(ZakerRoutes.leaderboard),
+      ),
+      (
+        title: 'دفتر أخطائي',
+        icon: Icons.error_outline_rounded,
+        subtitle: 'غلطاتك ترجعلك',
+        onTap: () => context.push(ZakerRoutes.mistakes),
+      ),
+      (
+        title: ZakerStrings.s_7859a, // ترجمة
+        icon: Icons.translate_rounded,
+        subtitle: 'ترجمة نصوص ومحاضرات',
+        onTap: () => context.push(ZakerRoutes.translate),
+      ),
+      (
+        title: ZakerStrings.s_35563, // كلماتي
+        icon: Icons.translate_rounded,
+        subtitle: 'قاموس الكلمات',
+        onTap: () => context.push(ZakerRoutes.words),
+      ),
+      (
+        title: ZakerStrings.s_5588a, // ملاحظاتي
+        icon: Icons.edit_note_rounded,
+        subtitle: 'دفتر ملاحظاتك',
+        onTap: () => context.push(ZakerRoutes.notebooks),
+      ),
+      (
+        title: ZakerStrings.s_a03b0, // الحديقة
+        icon: Icons.grain_rounded,
+        subtitle: 'بتنمو بالأيام',
+        onTap: () => context.push(ZakerRoutes.garden),
+      ),
+      (
+        title: ZakerStrings.s_feeca, // تحديات
+        icon: Icons.bolt_rounded,
+        subtitle: ZakerStrings.s_1da21, // تحدي مع صحابك
+        onTap: () => context.push(ZakerRoutes.challenges),
+      ),
+      (
+        title: ZakerStrings.s_03af3, // نقاط ضعفي
+        icon: Icons.trending_down_rounded,
+        subtitle: 'راجع نقاط ضعفي',
+        onTap: () => context.push(ZakerRoutes.weakness),
+      ),
+      (
+        title: ZakerStrings.s_97497, // ألعاب المذاكرة
+        icon: Icons.sports_esports_rounded,
+        subtitle: ZakerStrings.s_928ae, // مذاكرة على شكل لعبة…
+        onTap: () => context.push(ZakerRoutes.games),
+      ),
+      (
+        title: ZakerStrings.s_f30a0, // سبورة
+        icon: Icons.draw_rounded,
+        subtitle: ZakerStrings.s_ddb1c, // اشرح الدرس على السبورة
+        onTap: () => context.push(ZakerRoutes.whiteboard),
+      ),
+      (
+        title: ZakerStrings.s_02316, // تقدمي الأسبوعي
+        icon: Icons.insights_rounded,
+        subtitle: ZakerStrings.s_a3f5a, // ملخص أسبوعك…
+        onTap: () => context.push(ZakerRoutes.weekly),
+      ),
+    ];
+
+    Widget glassTile({
+      required String title,
+      required String? subtitle,
+      required IconData icon,
+      required Color accent,
+      Widget? art,
+      required VoidCallback onTap,
+    }) {
+      return FeatureTile(
+        title: title,
+        subtitle: subtitle,
+        icon: icon,
+        art: art,
+        color: accent,
+        gradient: LinearGradient(
+          begin: AlignmentDirectional.topEnd,
+          end: AlignmentDirectional.bottomStart,
+          colors: HomePalette.tintedCardGradient(accent),
+        ),
+        borderColor: accent.withValues(alpha: 0.26),
+        titleColor: HomePalette.textPrimary,
+        subtitleColor: HomePalette.textSecondary,
+        iconOnDark: true,
+        onTap: onTap,
+      );
+    }
 
     return [
-      FeatureTile(
+      glassTile(
         title: 'معلم AI',
         subtitle: 'اسأل واشرح',
         icon: Icons.auto_awesome_rounded,
         art: const AuroraAssistantMark(size: 38, radius: ZakerRadius.sm),
-        color: _subjectAccents[0],
+        accent: colors[0],
         onTap: () => context.push(ZakerRoutes.chat),
       ),
       for (var i = 0; i < tiles.length; i++)
-        FeatureTile(
+        glassTile(
           title: tiles[i].title,
           subtitle: tiles[i].subtitle,
           icon: tiles[i].icon,
-          color: _subjectAccents[(i + 1) % _subjectAccents.length],
+          accent: colors[(i + 1) % colors.length],
           onTap: tiles[i].onTap,
         ),
     ];
@@ -2296,58 +1159,127 @@ class _AllToolsSection extends StatelessWidget {
 
 /// A section header with a Hugeicons glyph, matching the mockup.
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({
-    required this.title,
-    required this.icon,
-    this.badge,
-    this.actionLabel,
-    this.onAction,
-  });
+  const _SectionTitle({required this.title, required this.icon});
 
   final String title;
   final List<List<dynamic>> icon;
-  final String? badge;
-  final String? actionLabel;
-  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Row(
       children: [
-        HugeIcon(icon: icon, size: 20, color: theme.colorScheme.primary),
-        const SizedBox(width: 8),
-        TrText(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
+        Container(
+          width: 3,
+          height: 17,
+          decoration: BoxDecoration(
+            color: ZakerColors.gold,
+            borderRadius: BorderRadius.circular(ZakerRadius.pill),
           ),
         ),
-        if (badge != null) ...[
-          const SizedBox(width: 8),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: TrText(
-                badge!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
+        const SizedBox(width: 7),
+        HugeIcon(icon: icon, size: 20, color: theme.colorScheme.primary),
+        const SizedBox(width: 8),
+        // Flexible so an Arabic title at 2.0x wraps instead of overflowing
+        // the row.
+        Flexible(
+          child: TrText(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The developer credit that closes the home scroll.
+class _HomeFooter extends StatelessWidget {
+  const _HomeFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    return HomeGlassPanel(
+      key: const Key('home-footer'),
+      accent: HomePalette.champagne,
+      radius: 24,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: HomePalette.champagne.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(
+                    color: HomePalette.champagne.withValues(alpha: 0.30),
+                  ),
                 ),
+                child: const Center(child: RafiqMark(size: 20)),
+              ),
+              const SizedBox(width: ZakerSpacing.sm),
+              // Flexible so the name wraps instead of overflowing the footer
+              // row at 2.0x text on a 320 dp screen.
+              Flexible(
+                child: TrText(
+                  RafiqBrand.appName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: HomePalette.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  HomePalette.champagne.withValues(alpha: 0),
+                  HomePalette.champagne.withValues(alpha: 0.42),
+                  HomePalette.champagne.withValues(alpha: 0),
+                ],
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          const TrText(
+            'من تطوير',
+            style: TextStyle(
+              color: HomePalette.textFaint,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 3),
+          const TrText(
+            RafiqBrand.developer,
+            key: Key('home-footer-copyright'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: HomePalette.champagne,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
-        const Spacer(),
-        if (actionLabel != null && onAction != null)
-          TextButton(onPressed: onAction, child: TrText(actionLabel!)),
-      ],
+      ),
     );
   }
 }
@@ -2362,14 +1294,14 @@ class _NotificationsSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final enabled = ref.watch(notificationsEnabledProvider);
-    final tasks = ref
-        .watch(taskScheduleProvider)
-        .forDay()
-        .where((e) => !e.done)
-        .toList();
+    final tasks =
+        ref.watch(taskScheduleProvider).forDay().where((e) => !e.done).toList();
 
     return SafeArea(
-      child: Padding(
+      // A short phone or 2.0x text can push the sheet past the screen; scroll
+      // instead of overflowing so the two actions stay reachable.
+      child: SingleChildScrollView(
+        key: const Key('notifications-sheet-scroll'),
         padding: const EdgeInsets.fromLTRB(
           ZakerSpacing.lg,
           0,

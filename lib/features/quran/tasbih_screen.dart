@@ -159,10 +159,7 @@ class _CounterDial extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
-            colors: [
-              theme.colorScheme.primary,
-              ZakerColors.primaryLight,
-            ],
+            colors: ZakerColors.navyGradient,
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
           ),

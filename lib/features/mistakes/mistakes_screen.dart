@@ -269,7 +269,7 @@ class _MistakeTile extends StatelessWidget {
               TrText(
                 'غلط — الصح: ${entry.correctAnswer}',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: ZakerColors.success,
+                  color: cardAccentOf(ZakerColors.success, theme),
                   fontWeight: FontWeight.w700,
                 ),
               ),

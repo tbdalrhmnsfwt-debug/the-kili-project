@@ -74,7 +74,7 @@ class QuranHomeScreen extends ConsumerWidget {
             title: ZakerStrings.s_be531, // المتشابهات
             subtitle: ZakerStrings.s_b290f, // كل آية في السورة ليها نظير
             icon: Icons.compare_arrows_rounded,
-            color: ZakerColors.primaryLight,
+            color: theme.colorScheme.primary,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => const MutashabihatScreen(),
@@ -128,6 +128,9 @@ class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tint = color.withValues(alpha: 0.10);
+    final surface = Color.alphaBlend(tint, theme.colorScheme.surface);
+    final ink = readableTextColor(color, surface);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -136,7 +139,7 @@ class _Hero extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(ZakerSpacing.lg),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.10),
+            color: tint,
             borderRadius: BorderRadius.circular(ZakerRadius.lg),
             border: Border.all(color: color.withValues(alpha: 0.25)),
           ),
@@ -150,7 +153,7 @@ class _Hero extends StatelessWidget {
                   color: color.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(ZakerRadius.md),
                 ),
-                child: Icon(icon, color: color, size: 26),
+                child: Icon(icon, color: ink, size: 26),
               ),
               const SizedBox(width: ZakerSpacing.lg),
               Expanded(
@@ -161,7 +164,7 @@ class _Hero extends StatelessWidget {
                       title,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: color,
+                        color: ink,
                       ),
                     ),
                     const SizedBox(height: 2),

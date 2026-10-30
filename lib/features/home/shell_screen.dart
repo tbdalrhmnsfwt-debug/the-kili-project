@@ -3,7 +3,7 @@
 /// Wide screens get a permanent sidebar. Phones get the mockup's floating
 /// rounded bottom bar plus an off-canvas drawer opened from the hamburger in
 /// the hero banner or in each tab's app bar. Both navigation surfaces drive
-/// the same four tabs, and every existing route stays untouched.
+/// the same five tabs, and every existing route stays untouched.
 library;
 
 import 'package:flutter/material.dart';
@@ -11,12 +11,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import '../../core/brand/rafiq_brand.dart';
+import '../../core/brand/rafiq_mark.dart';
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/tr_text.dart';
+import '../bag/my_bag_screen.dart';
+import '../batches/batches_screen.dart';
 import '../exam/exam_home_screen.dart';
-import '../library/study_library_screen.dart';
 import '../quran/quran_home_screen.dart';
 import 'home_screen.dart';
 
@@ -30,9 +33,10 @@ class _Tab {
 
 const List<_Tab> _tabs = [
   _Tab(icon: HugeIcons.strokeRoundedHome01, label: 'الرئيسية'),
-  _Tab(icon: HugeIcons.strokeRoundedBookOpen01, label: 'المكتبة الدراسية'),
+  _Tab(icon: HugeIcons.strokeRoundedBackpack01, label: 'شنطتي'),
   _Tab(icon: HugeIcons.strokeRoundedTaskDone01, label: 'الاختبار'),
   _Tab(icon: HugeIcons.strokeRoundedBook02, label: 'القرآن'),
+  _Tab(icon: HugeIcons.strokeRoundedUserGroup, label: 'الدفعات'),
 ];
 
 /// Makes the shell's drawer reachable from any tab screen.
@@ -99,15 +103,17 @@ class ShellScreen extends ConsumerStatefulWidget {
 
 class _ShellScreenState extends ConsumerState<ShellScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  late int _index = widget.initialIndex.clamp(0, 3);
+  late int _index = widget.initialIndex.clamp(0, 4);
 
   Widget _bodyFor(int i) {
     if (i == widget.initialIndex && widget.child != null) return widget.child!;
     return switch (i) {
       0 => const HomeScreen(),
-      1 => const StudyLibraryScreen(),
+      1 => const MyBagScreen(),
       2 => const ExamHomeScreen(),
-      _ => const QuranHomeScreen(),
+      3 => const QuranHomeScreen(),
+      4 => const BatchesScreen(),
+      _ => const HomeScreen(),
     };
   }
 
@@ -121,6 +127,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final userName = (ref.watch(authUserProvider)?.displayName ?? 'ضيف').trim();
     final body = IndexedStack(
       index: _index,
       children: [for (var i = 0; i < _tabs.length; i++) _bodyFor(i)],
@@ -135,7 +142,11 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
             body: SafeArea(
               child: Row(
                 children: [
-                  _Sidebar(selected: _index, onSelect: _select),
+                  ShellSidebar(
+                    selected: _index,
+                    onSelect: _select,
+                    userName: userName,
+                  ),
                   VerticalDivider(width: 1, color: theme.dividerTheme.color),
                   Expanded(child: body),
                 ],
@@ -153,9 +164,10 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
               borderRadius: BorderRadius.horizontal(left: Radius.circular(26)),
             ),
             child: SafeArea(
-              child: _Sidebar(
+              child: ShellSidebar(
                 selected: _index,
                 onSelect: _selectFromDrawer,
+                userName: userName,
                 drawer: true,
               ),
             ),
@@ -165,7 +177,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
             enabled: true,
             child: body,
           ),
-          bottomNavigationBar: _FloatingNav(
+          bottomNavigationBar: ShellBottomNav(
             selected: _index,
             onSelect: _select,
           ),
@@ -181,22 +193,24 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 ///
 /// The same widget backs the permanent panel on wide screens and the content
 /// of the mobile drawer, so both surfaces can never drift apart.
-class _Sidebar extends ConsumerWidget {
-  const _Sidebar({
+class ShellSidebar extends StatelessWidget {
+  const ShellSidebar({
+    super.key,
     required this.selected,
     required this.onSelect,
+    required this.userName,
     this.drawer = false,
   });
 
   final int selected;
   final ValueChanged<int> onSelect;
+  final String userName;
   final bool drawer;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final user = ref.watch(authUserProvider);
-    final name = (user?.displayName ?? 'ضيف').trim();
+    final name = userName.trim();
     final initial = name.isEmpty ? 'ض' : name.characters.first;
 
     return Container(
@@ -216,24 +230,18 @@ class _Sidebar extends ConsumerWidget {
                     gradient: const LinearGradient(
                       begin: Alignment.topRight,
                       end: Alignment.bottomLeft,
-                      colors: [ZakerColors.primary, ZakerColors.primaryLight],
+                      colors: [ZakerColors.navy, ZakerColors.navyLight],
                     ),
                     borderRadius: BorderRadius.circular(13),
                     boxShadow: [
                       BoxShadow(
-                        color: ZakerColors.primary.withValues(alpha: 0.28),
+                        color: ZakerColors.navy.withValues(alpha: 0.28),
                         blurRadius: 12,
                         offset: const Offset(0, 5),
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedBookOpen02,
-                      size: 22,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: const Center(child: RafiqMark(size: 22)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -241,13 +249,13 @@ class _Sidebar extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       TrText(
-                        'ذاكرلي',
+                        RafiqBrand.appName,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       TrText(
-                        'رفيق الطالب',
+                        RafiqBrand.studio,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.labelSmall?.copyWith(
@@ -329,8 +337,8 @@ class _Sidebar extends ConsumerWidget {
                         backgroundColor: theme.colorScheme.primary,
                         child: TrText(
                           initial,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: theme.colorScheme.onPrimary,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -427,18 +435,13 @@ class _SidebarItem extends StatelessWidget {
             curve: Curves.easeOut,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              gradient: selected
-                  ? const LinearGradient(
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                      colors: [ZakerColors.primary, ZakerColors.primaryLight],
-                    )
-                  : null,
+              color: selected ? theme.colorScheme.primary : null,
               borderRadius: BorderRadius.circular(14),
               boxShadow: selected
                   ? [
                       BoxShadow(
-                        color: ZakerColors.primary.withValues(alpha: 0.24),
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.24),
                         blurRadius: 14,
                         offset: const Offset(0, 5),
                       ),
@@ -451,7 +454,7 @@ class _SidebarItem extends StatelessWidget {
                   icon: icon,
                   size: 22,
                   color: selected
-                      ? Colors.white
+                      ? theme.colorScheme.onPrimary
                       : theme.colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 14),
@@ -462,7 +465,7 @@ class _SidebarItem extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: selected
-                          ? Colors.white
+                          ? theme.colorScheme.onPrimary
                           : theme.colorScheme.onSurface,
                       fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                     ),
@@ -470,10 +473,11 @@ class _SidebarItem extends StatelessWidget {
                 ),
                 if (selected)
                   Container(
+                    key: const Key('nav-selected-dot'),
                     width: 6,
                     height: 6,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onPrimary,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -489,8 +493,12 @@ class _SidebarItem extends StatelessWidget {
 // ---------------------------------------------------------------- bottom bar
 
 /// The mockup's floating rounded bottom bar for phones.
-class _FloatingNav extends StatelessWidget {
-  const _FloatingNav({required this.selected, required this.onSelect});
+class ShellBottomNav extends StatelessWidget {
+  const ShellBottomNav({
+    super.key,
+    required this.selected,
+    required this.onSelect,
+  });
 
   final int selected;
   final ValueChanged<int> onSelect;
@@ -564,18 +572,12 @@ class _NavItem extends StatelessWidget {
           curve: Curves.easeOut,
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           decoration: BoxDecoration(
-            gradient: selected
-                ? const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [ZakerColors.primary, ZakerColors.primaryLight],
-                  )
-                : null,
+            color: selected ? theme.colorScheme.primary : null,
             borderRadius: BorderRadius.circular(18),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: ZakerColors.primary.withValues(alpha: 0.28),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.28),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -589,7 +591,7 @@ class _NavItem extends StatelessWidget {
                 icon: icon,
                 size: 22,
                 color: selected
-                    ? Colors.white
+                    ? theme.colorScheme.onPrimary
                     : theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(height: 4),
@@ -604,10 +606,21 @@ class _NavItem extends StatelessWidget {
                   height: 1.2,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                   color: selected
-                      ? Colors.white
+                      ? theme.colorScheme.onPrimary
                       : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (selected)
+                Container(
+                  key: const Key('nav-selected-dot'),
+                  width: 4,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 3),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onPrimary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
             ],
           ),
         ),

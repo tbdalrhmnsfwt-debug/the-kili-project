@@ -14,11 +14,14 @@ import '../ui/calc_widgets.dart';
 import 'mode_scaffold.dart';
 
 class MatrixMode extends StatefulWidget {
-  const MatrixMode({super.key, required this.angleUnit});
+  const MatrixMode({super.key, required this.angleUnit, this.haptics = true});
 
   /// Cells may contain trigonometric functions, so they follow the selected
   /// angle unit.
   final AngleUnit angleUnit;
+
+  /// Mirrors the calculator's haptics setting for the toggles in this mode.
+  final bool haptics;
 
   @override
   State<MatrixMode> createState() => _MatrixModeState();
@@ -118,8 +121,7 @@ class _MatrixModeState extends State<MatrixMode> {
         _error = null;
         _detail = a.isSquare
             ? 'det = ${formatReal(a.determinant())}'
-            : 'المصفوفة A مش مربعة، فمفيش محدد.'
-        ;
+            : 'المصفوفة A مش مربعة، فمفيش محدد.';
       });
     } on CalcError catch (error) {
       setState(() {
@@ -161,7 +163,8 @@ class _MatrixModeState extends State<MatrixMode> {
         _result = formatReal(value);
         _operation = 'det(A)';
         _error = null;
-        _detail = 'المحدد عددي؛ القيم القريبة جدًا من الصفر بتتعامل كصفر عدديًا.';
+        _detail =
+            'المحدد عددي؛ القيم القريبة جدًا من الصفر بتتعامل كصفر عدديًا.';
       });
     } on CalcError catch (error) {
       setState(() {
@@ -522,6 +525,7 @@ class _MatrixModeState extends State<MatrixMode> {
           selected: selected,
           labelFor: (value) => '$value',
           compact: true,
+          haptics: widget.haptics,
           onChanged: onChanged,
         ),
       ],
@@ -597,7 +601,8 @@ class _MatrixCell extends StatelessWidget {
           fillColor: palette.isDark
               ? Colors.black.withValues(alpha: 0.23)
               : Colors.white.withValues(alpha: 0.6),
-          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 3),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 10, horizontal: 3),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(9),
             borderSide: BorderSide(color: palette.border),

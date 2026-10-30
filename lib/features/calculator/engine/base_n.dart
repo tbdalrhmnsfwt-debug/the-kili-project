@@ -88,6 +88,24 @@ String formatBase(
   return value.isNegative ? '-$text' : text;
 }
 
+/// Validates a shift count before it reaches [BigInt]'s shift operators.
+///
+/// A negative count makes `BigInt.<<` throw `ArgumentError`, which is not a
+/// [CalcError] and would escape the BASE-N preview straight into `build`.
+int _shiftAmount(BigInt right) {
+  final shift = right.toInt();
+  if (shift < 0) {
+    throw const CalcError(
+      CalcErrorKind.argument,
+      detail: 'الإزاحة لازم تكون صفر أو أكتر.',
+    );
+  }
+  if (shift > 100000) {
+    throw const CalcError(CalcErrorKind.math, detail: 'الإزاحة كبيرة.');
+  }
+  return shift;
+}
+
 int _digitValue(String char) {
   final code = char.codeUnitAt(0);
   if (code >= 0x30 && code <= 0x39) return code - 0x30;
@@ -154,17 +172,9 @@ BigInt applyBaseOperation(
     case BaseOperation.xnor:
       return ~(left ^ right);
     case BaseOperation.shiftLeft:
-      final shift = right.toInt();
-      if (shift.abs() > 100000) {
-        throw const CalcError(CalcErrorKind.math, detail: 'الإزاحة كبيرة.');
-      }
-      return left << shift;
+      return left << _shiftAmount(right);
     case BaseOperation.shiftRight:
-      final shift = right.toInt();
-      if (shift.abs() > 100000) {
-        throw const CalcError(CalcErrorKind.math, detail: 'الإزاحة كبيرة.');
-      }
-      return left >> shift;
+      return left >> _shiftAmount(right);
     case BaseOperation.not:
       return ~left;
   }

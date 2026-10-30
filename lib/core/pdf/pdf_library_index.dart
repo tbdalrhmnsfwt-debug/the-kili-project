@@ -37,9 +37,17 @@ class PdfLibraryIndex {
   final List<PdfDocumentEntry> entries;
 
   Map<String, dynamic> toJson() => {
-    'version': 1,
-    'documents': [for (final entry in entries) entry.toJson()],
-  };
+        'version': 1,
+        'documents': [for (final entry in entries) entry.toJson()],
+      };
+
+  /// The entry with [id], or null when the library does not know it.
+  PdfDocumentEntry? entryById(String id) {
+    for (final entry in entries) {
+      if (entry.id == id) return entry;
+    }
+    return null;
+  }
 
   /// Adds [entry], replacing the one with the same id.
   PdfLibraryIndex upsert(PdfDocumentEntry entry) {
@@ -93,8 +101,8 @@ class PdfLibraryIndex {
     matches.sort(switch (sort) {
       PdfSort.name => (a, b) => a.displayName.compareTo(b.displayName),
       PdfSort.addedAt => (a, b) => (a.lastOpenedAt ?? a.addedAt).compareTo(
-        b.lastOpenedAt ?? b.addedAt,
-      ),
+            b.lastOpenedAt ?? b.addedAt,
+          ),
       PdfSort.size => (a, b) => a.sizeBytes.compareTo(b.sizeBytes),
     });
     if (descending) {

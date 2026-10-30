@@ -21,7 +21,7 @@ import 'package:flutter/widgets.dart';
 /// Access to the active translation table.
 class AppLocalizations {
   AppLocalizations(this.locale, this._table)
-    : _byShape = _indexTemplates(_table);
+      : _byShape = _indexTemplates(_table);
 
   final Locale locale;
 
@@ -147,7 +147,25 @@ class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
 /// Convenience accessors mirroring the original app's `S.of(context)` style.
 extension AppLocalizationsX on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
-  String tr(String key) => AppLocalizations.of(this).t(key);
-  String trf(String key, [List<Object?> args = const []]) =>
-      AppLocalizations.of(this).f(key, args);
+
+  /// The active table, or null when no delegate sits above this context —
+  /// widget tests and error screens build without one.
+  AppLocalizations? get l10nOrNull =>
+      Localizations.of<AppLocalizations>(this, AppLocalizations);
+
+  /// Translates [key], falling back to the Arabic source when there is no
+  /// delegate installed.
+  String tr(String key) => l10nOrNull?.t(key) ?? key;
+
+  /// Translates [key] and fills its `{0}`, `{1}`, … placeholders, falling back
+  /// to the Arabic source with the placeholders filled.
+  String trf(String key, [List<Object?> args = const []]) {
+    final l10n = l10nOrNull;
+    if (l10n != null) return l10n.f(key, args);
+    var out = key;
+    for (var i = 0; i < args.length; i++) {
+      out = out.replaceAll('{$i}', args[i]?.toString() ?? '');
+    }
+    return out;
+  }
 }

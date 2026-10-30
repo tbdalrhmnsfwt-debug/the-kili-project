@@ -800,7 +800,7 @@ class _ReadinessRow extends StatelessWidget {
                 ? okText
                 : problemText,
             style: TextStyle(
-              color: color,
+              color: cardAccentOnTintOf(color, theme, alpha: 0.10),
               fontSize: 12,
               fontWeight: FontWeight.w800,
             ),

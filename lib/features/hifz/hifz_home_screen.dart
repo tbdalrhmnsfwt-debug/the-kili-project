@@ -268,7 +268,7 @@ class _HifzHero extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [Color(0xFF0F766E), Color(0xFF115E59), Color(0xFF0D4F4A)],
+          colors: [ZakerColors.navy, ZakerColors.navyLight, ZakerColors.navyDeep],
         ),
         boxShadow: [
           BoxShadow(
@@ -421,7 +421,7 @@ class _PartCard extends StatelessWidget {
     // Amber on a light surface fails WCAG AA for small text, so the due
     // accent darkens in light mode and brightens in dark mode.
     final dueColor = isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309);
-    final accent = due ? dueColor : ZakerColors.primary;
+    final accent = due ? dueColor : theme.colorScheme.primary;
     final percent = (part.bestScore * 100).round();
 
     return Container(
@@ -539,16 +539,16 @@ class _PartCard extends StatelessWidget {
                     TrText(
                       'سمّع',
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: ZakerColors.primary,
+                        color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w800,
                         fontSize: 10.5,
                       ),
                     ),
                     const SizedBox(width: 2),
-                    const Icon(
+                    Icon(
                       Icons.chevron_left_rounded,
                       size: 16,
-                      color: ZakerColors.primary,
+                      color: theme.colorScheme.primary,
                     ),
                   ],
                 ),

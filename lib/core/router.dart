@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'my_bag/my_bag_models.dart';
 import '../features/achievement/achievement_screen.dart';
 import '../features/account/account_screen.dart';
 import '../features/ai/chat_screen.dart';
@@ -19,6 +20,35 @@ import '../features/azkar/azkar_settings_screen.dart';
 import '../features/azkar/azkar_tasbih_screen.dart';
 import '../features/azkar/kahf_screen.dart';
 import '../features/azkar/salat_counter_screen.dart';
+import '../features/bag/bag_folder_screen.dart';
+import '../features/bag/bag_pocket_screen.dart';
+import '../features/bag/my_bag_screen.dart';
+import '../features/batches/admin/batch_admin_screen.dart';
+import '../features/batches/admin/batch_settings_screen.dart';
+import '../features/batches/admin/join_requests_screen.dart';
+import '../features/batches/admin/members_screen.dart';
+import '../features/batches/batch_created_screen.dart';
+import '../features/batches/batch_hub_screen.dart';
+import '../features/batches/batches_screen.dart';
+import '../features/batches/chat/batch_chat_screen.dart';
+import '../features/batches/create_batch_screen.dart';
+import '../features/batches/join_batch_screen.dart';
+import '../features/batches/schedules/batch_schedules_screen.dart';
+import '../features/batches/schedules/schedule_draft_screen.dart';
+import '../features/batches/subjects/audio_resource_screen.dart';
+import '../features/batches/subjects/batch_subjects_screen.dart';
+import '../features/batches/subjects/information_bank_screen.dart';
+import '../features/batches/subjects/interactive_test_screen.dart';
+import '../features/batches/subjects/mind_map_screen.dart';
+import '../features/batches/subjects/study_tools_screen.dart';
+import '../features/batches/subjects/subject_resources_screen.dart';
+import '../features/batches/exams/batch_exams_screen.dart';
+import '../features/batches/exams/exam_editor_screen.dart';
+import '../features/batches/exams/exam_result_screen.dart';
+import '../features/batches/exams/exam_taking_screen.dart';
+import '../features/batches/updates/batch_updates_screen.dart';
+import '../features/batches/updates/update_detail_screen.dart';
+import '../features/batches/updates/update_editor_screen.dart';
 import '../features/challenges/challenges_screen.dart';
 import '../features/calculator/calc_pro_screen.dart';
 import '../features/courses/course_list_screen.dart';
@@ -73,6 +103,8 @@ import '../features/weakness/weakness_screen.dart';
 import '../features/weekly/weekly_screen.dart';
 import '../features/whiteboard/whiteboard_screen.dart';
 import '../features/words/words_screen.dart';
+import '../models/batch_exam.dart';
+import '../models/batch_update.dart';
 import '../models/manhaji.dart';
 import '../widgets/tr_text.dart';
 
@@ -82,11 +114,156 @@ class ZakerRoutes {
 
   static const String home = '/';
   static const String courses = '/courses';
+  static const String bag = '/bag';
+
+  /// The folder screen under the bag tab.
+  static String bagFolderPath(String folderId) =>
+      '$bag/${Uri.encodeComponent(folderId)}';
+
+  /// One pocket of a bag folder.
+  static String bagPocketPath(String folderId, String kind) =>
+      '${bagFolderPath(folderId)}/$kind';
   static const String library = '/library';
   static const String subjects = '/subjects';
   static const String exams = '/exams';
   static const String quiz = '/quiz';
   static const String quran = '/quran';
+  static const String batches = '/batches';
+  static const String batchCreate = '/batches/create';
+  static const String batchJoin = '/batches/join';
+  static const String batchCreatedPattern = '/batches/:batchId/created';
+  static const String batchHubPattern = '/batches/:batchId';
+  static const String batchSubjectsPattern = '/batches/:batchId/subjects';
+  static const String batchSubjectResourcesPattern =
+      '/batches/:batchId/subjects/:subjectId';
+  static const String batchChatPattern = '/batches/:batchId/chat';
+  static const String batchSchedulesPattern = '/batches/:batchId/schedules';
+  static const String batchScheduleDraftPattern =
+      '/batches/:batchId/schedules/:draftId';
+  static const String batchUpdatesPattern = '/batches/:batchId/updates';
+  static const String batchUpdateNewPattern = '/batches/:batchId/updates/new';
+  static const String batchUpdatePattern =
+      '/batches/:batchId/updates/:updateId';
+  static const String batchUpdateEditPattern =
+      '/batches/:batchId/updates/:updateId/edit';
+  static const String batchExamsPattern = '/batches/:batchId/exams';
+  static const String batchExamNewPattern = '/batches/:batchId/exams/new';
+  static const String batchExamEditPattern =
+      '/batches/:batchId/exams/:examId/edit';
+  static const String batchExamResultPattern =
+      '/batches/:batchId/exams/:examId/result';
+  static const String batchExamPattern = '/batches/:batchId/exams/:examId';
+  static const String batchAdminPattern = '/batches/:batchId/admin';
+  static const String batchAdminSettingsPattern =
+      '/batches/:batchId/admin/settings';
+  static const String batchAdminMembersPattern =
+      '/batches/:batchId/admin/members';
+  static const String batchAdminRequestsPattern =
+      '/batches/:batchId/admin/requests';
+  static const String batchAudioResourcePattern =
+      '/batches/:batchId/audio/:resourceId';
+  static const String batchStudyToolsPattern =
+      '/batches/:batchId/study/:resourceId';
+  static const String batchStudyTestPattern =
+      '/batches/:batchId/study/:resourceId/test';
+  static const String batchStudyBankPattern =
+      '/batches/:batchId/study/:resourceId/bank';
+  static const String batchStudyMapPattern =
+      '/batches/:batchId/study/:resourceId/map';
+
+  static String batchCreated(String batchId) => '/batches/$batchId/created';
+
+  /// The hub of one batch.
+  static String batchHub(String batchId) =>
+      '/batches/${Uri.encodeComponent(batchId)}';
+
+  /// The subject list of one batch.
+  static String batchSubjects(String batchId) =>
+      '${batchHub(batchId)}/subjects';
+
+  /// The resources inside one subject.
+  static String batchSubjectResources(String batchId, String subjectId) =>
+      '${batchSubjects(batchId)}/${Uri.encodeComponent(subjectId)}';
+
+  /// The saved chat of one batch.
+  static String batchChat(String batchId) => '${batchHub(batchId)}/chat';
+
+  /// The local timetable of one batch.
+  static String batchSchedules(String batchId) =>
+      '${batchHub(batchId)}/schedules';
+
+  /// One timetable draft, for review, edits and publishing.
+  static String batchScheduleDraft(String batchId, String draftId) =>
+      '${batchSchedules(batchId)}/${Uri.encodeComponent(draftId)}';
+
+  /// The local updates timeline of one batch.
+  static String batchUpdates(String batchId) => '${batchHub(batchId)}/updates';
+
+  /// The composer for a new update.
+  static String batchUpdateNew(String batchId) =>
+      '${batchUpdates(batchId)}/new';
+
+  /// One update.
+  static String batchUpdate(String batchId, String updateId) =>
+      '${batchUpdates(batchId)}/${Uri.encodeComponent(updateId)}';
+
+  /// The editor for an existing update.
+  static String batchUpdateEdit(String batchId, String updateId) =>
+      '${batchUpdate(batchId, updateId)}/edit';
+
+  /// The exams tab of one batch.
+  static String batchExams(String batchId) => '${batchHub(batchId)}/exams';
+
+  /// The authoring screen for a new exam.
+  static String batchExamNew(String batchId) => '${batchExams(batchId)}/new';
+
+  /// The editor for a draft exam.
+  static String batchExamEdit(String batchId, String examId) =>
+      '${batchExam(batchId, examId)}/edit';
+
+  /// One exam: start, resume or review.
+  static String batchExam(String batchId, String examId) =>
+      '${batchExams(batchId)}/${Uri.encodeComponent(examId)}';
+
+  /// The result of a submitted attempt.
+  static String batchExamResult(String batchId, String examId) =>
+      '${batchExam(batchId, examId)}/result';
+
+  /// Local administration for one batch.
+  static String batchAdmin(String batchId) => '${batchHub(batchId)}/admin';
+
+  /// Owner-only policies and storage maintenance.
+  static String batchAdminSettings(String batchId) =>
+      '${batchAdmin(batchId)}/settings';
+
+  /// Members stored on this device.
+  static String batchAdminMembers(String batchId) =>
+      '${batchAdmin(batchId)}/members';
+
+  /// The blocked join-request queue.
+  static String batchAdminRequests(String batchId) =>
+      '${batchAdmin(batchId)}/requests';
+
+  /// The local player for one audio resource.
+  static String batchAudioResource(String batchId, String resourceId) =>
+      '${batchHub(batchId)}/audio/${Uri.encodeComponent(resourceId)}';
+
+  /// The study-tool hub for one PDF.
+  static String batchStudyTools(String batchId, String resourceId) =>
+      '${batchHub(batchId)}/study/${Uri.encodeComponent(resourceId)}';
+
+  /// The generated interactive test for one PDF.
+  static String batchStudyTest(String batchId, String resourceId) =>
+      '${batchStudyTools(batchId, resourceId)}/test';
+
+  /// The generated information bank for one PDF.
+  static String batchStudyBank(String batchId, String resourceId) =>
+      '${batchStudyTools(batchId, resourceId)}/bank';
+
+  /// The generated mind map for one PDF.
+  static String batchStudyMap(String batchId, String resourceId) =>
+      '${batchStudyTools(batchId, resourceId)}/map';
+
   static const String hifz = '/hifz';
   static const String hifzSetup = '/hifz/setup';
   static const String glossary = '/glossary';
@@ -191,9 +368,25 @@ final GoRouter appRouter = GoRouter(
           const ShellScreen(initialIndex: 0, child: HomeScreen()),
     ),
     GoRoute(
-      path: ZakerRoutes.courses,
+      path: ZakerRoutes.bag,
       builder: (context, state) =>
-          const ShellScreen(initialIndex: 1, child: StudyLibraryScreen()),
+          const ShellScreen(initialIndex: 1, child: MyBagScreen()),
+    ),
+    GoRoute(
+      path: '${ZakerRoutes.bag}/:folderId/:kind',
+      builder: (context, state) => BagPocketScreen(
+        folderId: state.pathParameters['folderId']!,
+        kind: bagPocketKindFromName(state.pathParameters['kind']),
+      ),
+    ),
+    GoRoute(
+      path: '${ZakerRoutes.bag}/:folderId',
+      builder: (context, state) =>
+          BagFolderScreen(folderId: state.pathParameters['folderId']!),
+    ),
+    GoRoute(
+      path: ZakerRoutes.courses,
+      builder: (context, state) => const StudyLibraryScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.official,
@@ -246,6 +439,181 @@ final GoRouter appRouter = GoRouter(
       path: ZakerRoutes.quran,
       builder: (context, state) =>
           const ShellScreen(initialIndex: 3, child: QuranHomeScreen()),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batches,
+      builder: (context, state) =>
+          const ShellScreen(initialIndex: 4, child: BatchesScreen()),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchCreate,
+      builder: (context, state) => const CreateBatchScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchJoin,
+      builder: (context, state) => const JoinBatchScreen(),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchCreatedPattern,
+      builder: (context, state) => BatchCreatedScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchHubPattern,
+      builder: (context, state) => BatchHubScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchSubjectsPattern,
+      builder: (context, state) => BatchSubjectsScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchSubjectResourcesPattern,
+      builder: (context, state) => SubjectResourcesScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        subjectId: state.pathParameters['subjectId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchChatPattern,
+      builder: (context, state) => BatchChatScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchSchedulesPattern,
+      builder: (context, state) => BatchSchedulesScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchScheduleDraftPattern,
+      builder: (context, state) => ScheduleDraftScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        draftId: state.pathParameters['draftId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchUpdatesPattern,
+      builder: (context, state) => BatchUpdatesScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchUpdateNewPattern,
+      builder: (context, state) => UpdateEditorScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchUpdateEditPattern,
+      builder: (context, state) => UpdateEditorScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        original: state.extra as BatchUpdate?,
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchUpdatePattern,
+      builder: (context, state) => UpdateDetailScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        updateId: state.pathParameters['updateId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchExamsPattern,
+      builder: (context, state) => BatchExamsScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchExamNewPattern,
+      builder: (context, state) => ExamEditorScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchExamEditPattern,
+      builder: (context, state) => ExamEditorScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        original: state.extra as BatchExam?,
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchExamResultPattern,
+      builder: (context, state) => ExamResultScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        examId: state.pathParameters['examId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchExamPattern,
+      builder: (context, state) => ExamTakingScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        examId: state.pathParameters['examId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchAdminSettingsPattern,
+      builder: (context, state) => BatchSettingsScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchAdminMembersPattern,
+      builder: (context, state) => BatchMembersScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchAdminRequestsPattern,
+      builder: (context, state) => BatchJoinRequestsScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchAdminPattern,
+      builder: (context, state) => BatchAdminScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchAudioResourcePattern,
+      builder: (context, state) => AudioResourceScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        resourceId: state.pathParameters['resourceId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchStudyToolsPattern,
+      builder: (context, state) => StudyToolsScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        resourceId: state.pathParameters['resourceId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchStudyTestPattern,
+      builder: (context, state) => InteractiveTestScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        resourceId: state.pathParameters['resourceId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchStudyBankPattern,
+      builder: (context, state) => InformationBankScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        resourceId: state.pathParameters['resourceId'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: ZakerRoutes.batchStudyMapPattern,
+      builder: (context, state) => BatchMindMapScreen(
+        batchId: state.pathParameters['batchId'] ?? '',
+        resourceId: state.pathParameters['resourceId'] ?? '',
+      ),
     ),
     GoRoute(
       path: ZakerRoutes.hifz,

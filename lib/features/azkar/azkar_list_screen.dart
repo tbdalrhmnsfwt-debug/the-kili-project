@@ -394,7 +394,9 @@ class _AzkarCard extends ConsumerWidget {
                 Text(
                   '${_arabicNumber(count)} / ${_arabicNumber(entry.target)}',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: _complete ? ZakerColors.success : muted,
+                    color: _complete
+                        ? cardAccentOf(ZakerColors.success, theme)
+                        : muted,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     fontFeatures: const [FontFeature.tabularFigures()],
@@ -437,8 +439,14 @@ class _AzkarCard extends ConsumerWidget {
                         ? ZakerColors.success.withValues(alpha: 0.16)
                         : primary,
                     foregroundColor: _complete
-                        ? ZakerColors.success
-                        : Colors.white,
+                        ? cardAccentOnTintOf(
+                            ZakerColors.success,
+                            theme,
+                            alpha: 0.16,
+                          )
+                        // primary is gold in two palettes; white on it is
+                        // 1.74:1, while onPrimary is 9.57:1.
+                        : theme.colorScheme.onPrimary,
                     shape: const CircleBorder(),
                   ),
                   icon: Icon(

@@ -43,7 +43,7 @@ Future<Uint8List> buildQuestionsPdf({
   required bool withAnswers,
 }) async {
   final theme = await _pdfTheme();
-  final doc = pw.Document(title: title, author: 'ذاكرلي', theme: theme);
+  final doc = pw.Document(title: title, author: 'رفيق الطالب', theme: theme);
 
   doc.addPage(
     pw.MultiPage(
@@ -81,7 +81,7 @@ Future<Uint8List> buildBookPdf({
   required List<Lesson> lessons,
 }) async {
   final theme = await _pdfTheme();
-  final doc = pw.Document(title: book.title, author: 'ذاكرلي', theme: theme);
+  final doc = pw.Document(title: book.title, author: 'رفيق الطالب', theme: theme);
   final meta = [
     if (book.subject.isNotEmpty) book.subject,
     if (book.variant.isNotEmpty) book.variant,
@@ -255,7 +255,7 @@ String _plain(String text) => text
 pw.Widget _footer(pw.Context context) => pw.Align(
   alignment: pw.Alignment.centerLeft,
   child: pw.Text(
-    'ذاكرلي • ${context.pageNumber} / ${context.pagesCount}',
+    'رفيق الطالب • ${context.pageNumber} / ${context.pagesCount}',
     style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey600),
   ),
 );

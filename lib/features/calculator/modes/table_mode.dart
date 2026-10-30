@@ -22,8 +22,7 @@ class TableMode extends StatefulWidget {
 }
 
 class _TableModeState extends State<TableMode> {
-  final TextEditingController _expression =
-      TextEditingController(text: 'x²');
+  final TextEditingController _expression = TextEditingController(text: 'x²');
   final TextEditingController _start = TextEditingController(text: '-3');
   final TextEditingController _end = TextEditingController(text: '3');
   final TextEditingController _step = TextEditingController(text: '1');

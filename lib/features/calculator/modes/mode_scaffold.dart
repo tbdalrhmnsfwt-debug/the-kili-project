@@ -227,7 +227,8 @@ class CalcMetric extends StatelessWidget {
 }
 
 class CalcNote extends StatelessWidget {
-  const CalcNote({super.key, required this.text, this.icon = Icons.info_outline_rounded});
+  const CalcNote(
+      {super.key, required this.text, this.icon = Icons.info_outline_rounded});
 
   final String text;
   final IconData icon;

@@ -22,10 +22,10 @@ class MemoryStore implements KeyValueStore {
 }
 
 PdfImportSource source(String name, String body) => PdfImportSource(
-  name: name,
-  sizeBytes: body.length,
-  openRead: () => Stream.value(body.codeUnits),
-);
+      name: name,
+      sizeBytes: body.length,
+      openRead: () => Stream.value(body.codeUnits),
+    );
 
 void main() {
   late Directory root;
@@ -56,8 +56,7 @@ void main() {
       store: store,
       repository: PdfLibraryRepository(keyValues),
       probe: probe ?? (file) async => const PdfProbeResult(pageCount: 4),
-      thumbnailer:
-          thumbnailer ??
+      thumbnailer: thumbnailer ??
           (base, thumb) async => thumb.writeAsBytes(const [1, 2, 3]),
       newId: () => 'id${++ids}',
     );
@@ -118,9 +117,8 @@ void main() {
 
   test('refresh keeps entries whose base file is gone', () async {
     final lib = controller();
-    final entry = (await lib.import([source('a.pdf', '%PDF-1.7 a')]))
-        .imported
-        .single;
+    final entry =
+        (await lib.import([source('a.pdf', '%PDF-1.7 a')])).imported.single;
 
     await store.baseFile(entry.id).delete();
     await lib.refresh();
@@ -131,9 +129,8 @@ void main() {
 
   test('last read page survives a fresh controller', () async {
     final first = controller();
-    final entry = (await first.import([source('a.pdf', '%PDF-1.7 a')]))
-        .imported
-        .single;
+    final entry =
+        (await first.import([source('a.pdf', '%PDF-1.7 a')])).imported.single;
     await first.markOpened(entry.id, page: 7);
 
     final second = controller();
@@ -144,9 +141,8 @@ void main() {
 
   test('rename and favorite persist, remove deletes the files', () async {
     final lib = controller();
-    final entry = (await lib.import([source('a.pdf', '%PDF-1.7 a')]))
-        .imported
-        .single;
+    final entry =
+        (await lib.import([source('a.pdf', '%PDF-1.7 a')])).imported.single;
 
     await lib.rename(entry.id, 'اسم جديد');
     await lib.setFavorite(entry.id, true);
@@ -158,5 +154,41 @@ void main() {
     expect(lib.state.entries, isEmpty);
     expect(store.baseFile(entry.id).existsSync(), isFalse);
     expect(PdfLibraryRepository(keyValues).load().entries, isEmpty);
+  });
+
+  test('subject tags persist and can be cleared', () async {
+    final lib = controller();
+    final entry = (await lib.import([source('درس.pdf', '%PDF-1.7 body')]))
+        .imported
+        .single;
+
+    await lib.setSubjectTag(
+      entry.id,
+      gradeId: 'sec1',
+      subjectKey: 'الرياضيات',
+    );
+    expect(lib.state.entries.single.subjectKey, 'الرياضيات');
+    expect(lib.state.entries.single.gradeId, 'sec1');
+
+    final reloaded = PdfLibraryRepository(keyValues).load().entries.single;
+    expect(reloaded.subjectKey, 'الرياضيات');
+
+    await lib.clearSubjectTag(entry.id);
+    expect(lib.state.entries.single.subjectKey, isEmpty);
+    expect(lib.state.entries.single.gradeId, isEmpty);
+  });
+
+  test('old entries without tags load with empty strings', () {
+    final json = {
+      'id': 'p9',
+      'name': 'قديم',
+      'base': 'p9.pdf',
+      'size': 10,
+      'addedAt': DateTime.utc(2026, 1, 1).toIso8601String(),
+    };
+    final entry = PdfDocumentEntry.fromJson(json);
+    expect(entry.subjectKey, isEmpty);
+    expect(entry.gradeId, isEmpty);
+    expect(entry.sourceDocId, isEmpty);
   });
 }

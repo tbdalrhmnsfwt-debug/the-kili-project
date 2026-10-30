@@ -123,10 +123,7 @@ class _Content extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: ZakerRadius.card,
             gradient: LinearGradient(
-              colors: [
-                theme.colorScheme.primary,
-                ZakerColors.primaryDark,
-              ],
+              colors: ZakerColors.navyGradient,
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
             ),

@@ -26,18 +26,18 @@ enum _GraphKind { cartesian, polar, parametric, implicit }
 
 extension on _GraphKind {
   String get label => switch (this) {
-    _GraphKind.cartesian => 'ديكارتي',
-    _GraphKind.polar => 'قطبي',
-    _GraphKind.parametric => 'وسيطي',
-    _GraphKind.implicit => 'ضمني',
-  };
+        _GraphKind.cartesian => 'ديكارتي',
+        _GraphKind.polar => 'قطبي',
+        _GraphKind.parametric => 'وسيطي',
+        _GraphKind.implicit => 'ضمني',
+      };
 
   String get equation => switch (this) {
-    _GraphKind.cartesian => 'y = f(x)',
-    _GraphKind.polar => 'r = f(θ)',
-    _GraphKind.parametric => 'x(t), y(t)',
-    _GraphKind.implicit => 'F(x, y) = 0',
-  };
+        _GraphKind.cartesian => 'y = f(x)',
+        _GraphKind.polar => 'r = f(θ)',
+        _GraphKind.parametric => 'x(t), y(t)',
+        _GraphKind.implicit => 'F(x, y) = 0',
+      };
 }
 
 class _GraphEntry {
@@ -500,9 +500,7 @@ class _GraphModeState extends State<GraphMode> {
     }
   }
 
-  double _angleToRadians(double value) => switch (
-        _session.settings.angleUnit
-      ) {
+  double _angleToRadians(double value) => switch (_session.settings.angleUnit) {
         AngleUnit.degrees => value * math.pi / 180,
         AngleUnit.radians => value,
         AngleUnit.gradians => value * math.pi / 200,
@@ -529,10 +527,8 @@ class _GraphModeState extends State<GraphMode> {
     _gestureSpan = _spanX;
     final width = math.max(1.0, _plotSize.width);
     final height = math.max(1.0, _plotSize.height);
-    _gestureFocusX =
-        _xMin + (details.localFocalPoint.dx / width) * _spanX;
-    _gestureFocusY =
-        _yMax - (details.localFocalPoint.dy / height) * _spanY;
+    _gestureFocusX = _xMin + (details.localFocalPoint.dx / width) * _spanX;
+    _gestureFocusY = _yMax - (details.localFocalPoint.dy / height) * _spanY;
   }
 
   void _handleScaleUpdate(ScaleUpdateDetails details) {
@@ -575,8 +571,8 @@ class _GraphModeState extends State<GraphMode> {
     if (!_traceEnabled || !_canTrace) return;
     final width = math.max(1.0, _plotSize.width);
     setState(() {
-      _traceX = (_xMin + (localPosition.dx / width) * _spanX)
-          .clamp(_xMin, _xMax);
+      _traceX =
+          (_xMin + (localPosition.dx / width) * _spanX).clamp(_xMin, _xMax);
     });
   }
 
@@ -824,6 +820,7 @@ class _GraphModeState extends State<GraphMode> {
                   values: _GraphKind.values,
                   selected: _kind,
                   labelFor: (kind) => kind.label,
+                  haptics: widget.session.settings.haptics,
                   onChanged: _switchKind,
                 ),
                 const SizedBox(height: 10),
@@ -832,7 +829,8 @@ class _GraphModeState extends State<GraphMode> {
                     Expanded(
                       child: Text(
                         '${_kind.equation} · في القطبي والوسيطي يمثل المحور الأفقي نطاق θ أو t.',
-                        style: CalcTypography.label(palette, size: 9.5).copyWith(
+                        style:
+                            CalcTypography.label(palette, size: 9.5).copyWith(
                           color: palette.mathMuted,
                           fontWeight: FontWeight.w500,
                           height: 1.4,
@@ -852,7 +850,8 @@ class _GraphModeState extends State<GraphMode> {
                 const SizedBox(height: 4),
                 for (var i = 0; i < _entries.length; i++) ...[
                   if (i > 0) const SizedBox(height: 8),
-                  _entryEditor(palette, _entries[i], i, colors[i % colors.length]),
+                  _entryEditor(
+                      palette, _entries[i], i, colors[i % colors.length]),
                 ],
               ],
             ),
@@ -870,7 +869,8 @@ class _GraphModeState extends State<GraphMode> {
                         'y ∈ [${formatGraphLabel(_yMin)}, ${formatGraphLabel(_yMax)}]',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: CalcTypography.label(palette, size: 9.5).copyWith(
+                        style:
+                            CalcTypography.label(palette, size: 9.5).copyWith(
                           color: palette.mathMuted,
                         ),
                         textDirection: TextDirection.ltr,
@@ -1016,7 +1016,8 @@ class _GraphModeState extends State<GraphMode> {
                       padding: const EdgeInsets.only(bottom: 2),
                       child: Text(
                         error,
-                        style: CalcTypography.label(palette, size: 9.5).copyWith(
+                        style:
+                            CalcTypography.label(palette, size: 9.5).copyWith(
                           color: palette.danger,
                           height: 1.35,
                         ),
@@ -1077,8 +1078,7 @@ class _GraphModeState extends State<GraphMode> {
                   const Padding(
                     padding: EdgeInsets.only(top: 6),
                     child: CalcNote(
-                      text:
-                          'التتبع بيحتاج دالة صريحة أو قطبية أو وسيطية. '
+                      text: 'التتبع بيحتاج دالة صريحة أو قطبية أو وسيطية. '
                           'الرسم الضمني بيعرض المنحنى والتحليل الديكارتي مش متاح له.',
                     ),
                   ),
@@ -1145,8 +1145,7 @@ class _GraphModeState extends State<GraphMode> {
                 ),
                 const SizedBox(height: 8),
                 CalcNote(
-                  text:
-                      'الجذور بتستخدم bisection، القيم القصوى بحث ذهبي، '
+                  text: 'الجذور بتستخدم bisection، القيم القصوى بحث ذهبي، '
                       'والتقاطعات بتقارن الدالتين. كلها تقريبية، والمناطق غير المتصلة بتتفصل.',
                 ),
               ],
@@ -1280,7 +1279,8 @@ class _GraphModeState extends State<GraphMode> {
                       _GraphKind.cartesian => 'f${_subscript(index + 1)}(x) =',
                       _GraphKind.polar => 'r${_subscript(index + 1)}(θ) =',
                       _GraphKind.parametric => '',
-                      _GraphKind.implicit => 'F${_subscript(index + 1)}(x, y) = 0',
+                      _GraphKind.implicit =>
+                        'F${_subscript(index + 1)}(x, y) = 0',
                     },
                     controller: entry.x,
                     hint: switch (_kind) {
@@ -1371,7 +1371,8 @@ class _GraphPainter extends CustomPainter {
   double _niceStep(double range) {
     final raw = range.abs() / 8;
     if (!raw.isFinite || raw <= 0) return 1;
-    final magnitude = math.pow(10, (math.log(raw) / math.ln10).floor()).toDouble();
+    final magnitude =
+        math.pow(10, (math.log(raw) / math.ln10).floor()).toDouble();
     final normalized = raw / magnitude;
     final factor = normalized < 1.5
         ? 1
@@ -1557,7 +1558,8 @@ class _GraphPainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _drawDashedVertical(Canvas canvas, double x, double height, Paint paint) {
+  void _drawDashedVertical(
+      Canvas canvas, double x, double height, Paint paint) {
     const dash = 5.0;
     const gap = 4.0;
     var y = 0.0;

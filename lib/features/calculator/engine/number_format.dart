@@ -104,6 +104,54 @@ String formatScientific(double value, {int significant = 12}) {
   return '${_displayMinus(mantissa)}$exponent';
 }
 
+/// Formats an exact rational in decimal form without going through [double].
+///
+/// [formatReal] collapses when the value leaves the double range: `1e400`
+/// becomes `Math ERROR` and `1e-400` becomes `0`. This walks the numerator and
+/// denominator as [BigInt] so the exact value keeps a readable form.
+String formatRationalDecimal(Rational value, {int significant = 12}) {
+  if (value.isZero) return '0';
+  final negative = value.isNegative;
+  final numerator = value.numerator.abs();
+  final denominator = value.denominator;
+  final digits = significant.clamp(1, 17);
+
+  // floor(log10(value)) from the digit lengths, corrected by one comparison.
+  var exponent = numerator.toString().length - denominator.toString().length;
+  if (_compareScaled(numerator, denominator, exponent) < 0) exponent--;
+
+  // Scale so the mantissa has exactly [digits] digits, then round half-up.
+  final shift = digits - 1 - exponent;
+  final scaledNumerator = shift >= 0 ? numerator * _tenPow(shift) : numerator;
+  final scaledDenominator =
+      shift >= 0 ? denominator : denominator * _tenPow(-shift);
+  var mantissa = (scaledNumerator * BigInt.two + scaledDenominator) ~/
+      (scaledDenominator * BigInt.two);
+
+  var mantissaText = mantissa.toString();
+  if (mantissaText.length > digits) {
+    // Rounding carried into a new digit: 9.99… became 10.0….
+    mantissaText = mantissaText.substring(0, digits);
+    exponent++;
+  }
+  final padded = mantissaText.padRight(digits, '0');
+  var text = '${padded[0]}.${padded.substring(1)}';
+  text = text.replaceFirst(RegExp(r'0+$'), '');
+  text = text.replaceFirst(RegExp(r'\.$'), '');
+  final sign = negative ? '−' : '';
+  if (exponent == 0) return '$sign$text';
+  return '$sign${text}e$exponent';
+}
+
+int _compareScaled(BigInt numerator, BigInt denominator, int exponent) {
+  if (exponent >= 0) {
+    return numerator.compareTo(denominator * _tenPow(exponent));
+  }
+  return (numerator * _tenPow(-exponent)).compareTo(denominator);
+}
+
+BigInt _tenPow(int exponent) => BigInt.from(10).pow(exponent);
+
 /// The calculator displays a true minus sign, while the lexer accepts it too.
 String _displayMinus(String text) =>
     text.startsWith('-') ? '−${text.substring(1)}' : text;
@@ -150,11 +198,16 @@ ValueFormat formatCalcValue(
     );
   }
 
-  final decimal = formatReal(
-    value.exact?.toDouble() ?? value.realPart,
-    fix: fix,
-    significant: significant,
-  );
+  final exactValue = value.exact;
+  final approximate = exactValue?.toDouble() ?? value.realPart;
+  // A double cannot hold the value: `toDouble` gives infinity for huge
+  // rationals and 0 for tiny ones, which `formatReal` would print as
+  // `Math ERROR` and `0`. Format the exact rational instead.
+  final outOfDoubleRange =
+      exactValue != null && (!approximate.isFinite || approximate == 0);
+  final decimal = outOfDoubleRange
+      ? formatRationalDecimal(exactValue, significant: significant)
+      : formatReal(approximate, fix: fix, significant: significant);
   if (value.exact != null) {
     final exact = formatRational(value.exact!, mixed: mixed);
     final showExact = preferExact && fix == null;
@@ -162,7 +215,9 @@ ValueFormat formatCalcValue(
       display: showExact ? exact : decimal,
       decimal: decimal,
       exact: exact,
-      secondary: showExact && exact != decimal ? decimal : (fix == null ? exact : null),
+      secondary: showExact && exact != decimal
+          ? decimal
+          : (fix == null ? exact : null),
       isExact: true,
     );
   }
@@ -191,10 +246,10 @@ String formatComplex(
 }
 
 double _angleFromRadians(double radians, AngleUnit unit) => switch (unit) {
-  AngleUnit.degrees => radians * 180 / math.pi,
-  AngleUnit.radians => radians,
-  AngleUnit.gradians => radians * 200 / math.pi,
-};
+      AngleUnit.degrees => radians * 180 / math.pi,
+      AngleUnit.radians => radians,
+      AngleUnit.gradians => radians * 200 / math.pi,
+    };
 
 /// A very short approximation for chart labels.
 String formatGraphLabel(double value) {

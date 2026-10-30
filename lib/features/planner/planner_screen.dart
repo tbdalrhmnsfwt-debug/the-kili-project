@@ -156,7 +156,7 @@ class _TodayScoreCard extends ConsumerWidget {
       decoration: BoxDecoration(
         borderRadius: ZakerRadius.card,
         gradient: LinearGradient(
-          colors: [theme.colorScheme.primary, ZakerColors.primaryLight],
+          colors: ZakerColors.navyGradient,
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),

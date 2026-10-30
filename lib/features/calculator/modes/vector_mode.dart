@@ -13,11 +13,14 @@ import '../ui/calc_widgets.dart';
 import 'mode_scaffold.dart';
 
 class VectorMode extends StatefulWidget {
-  const VectorMode({super.key, required this.angleUnit});
+  const VectorMode({super.key, required this.angleUnit, this.haptics = true});
 
   /// Components may contain trigonometric functions, so they follow the
   /// selected angle unit.
   final AngleUnit angleUnit;
+
+  /// Mirrors the calculator's haptics setting for the toggles in this mode.
+  final bool haptics;
 
   @override
   State<VectorMode> createState() => _VectorModeState();
@@ -90,7 +93,8 @@ class _VectorModeState extends State<VectorMode> {
     ]);
   }
 
-  void _run(String label, String Function(VectorValue a, VectorValue b) action) {
+  void _run(
+      String label, String Function(VectorValue a, VectorValue b) action) {
     try {
       final a = _vector(_a, 'a');
       final b = _vector(_b, 'b');
@@ -161,6 +165,7 @@ class _VectorModeState extends State<VectorMode> {
                   values: const <int>[2, 3],
                   selected: _dimension,
                   labelFor: (value) => value == 2 ? '2D' : '3D',
+                  haptics: widget.haptics,
                   onChanged: _switchDimension,
                 ),
                 const SizedBox(height: 11),
@@ -169,8 +174,7 @@ class _VectorModeState extends State<VectorMode> {
                 _vectorEditor(palette, 'b', _b, palette.shift),
                 const SizedBox(height: 9),
                 const CalcNote(
-                  text:
-                      'الضرب الاتجاهي (a×b) متاح لـ 3D فقط. '
+                  text: 'الضرب الاتجاهي (a×b) متاح لـ 3D فقط. '
                       'الزاوية بين المتجهين بتتحسب بالدرجات دائمًا.',
                 ),
               ],
@@ -190,12 +194,14 @@ class _VectorModeState extends State<VectorMode> {
                     CalcSoftButton(
                       label: 'a + b',
                       expanded: true,
-                      onPressed: () => _run('a + b', (a, b) => (a + b).format()),
+                      onPressed: () =>
+                          _run('a + b', (a, b) => (a + b).format()),
                     ),
                     CalcSoftButton(
                       label: 'a − b',
                       expanded: true,
-                      onPressed: () => _run('a − b', (a, b) => (a - b).format()),
+                      onPressed: () =>
+                          _run('a − b', (a, b) => (a - b).format()),
                     ),
                     CalcSoftButton(
                       label: 'a · b',
@@ -211,8 +217,7 @@ class _VectorModeState extends State<VectorMode> {
                       expanded: true,
                       onPressed: () => _run(
                         'a × b',
-                        (a, b) =>
-                            'a × b = ${a.cross(b).format()}',
+                        (a, b) => 'a × b = ${a.cross(b).format()}',
                       ),
                     ),
                     CalcSoftButton(

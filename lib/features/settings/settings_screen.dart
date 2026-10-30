@@ -17,6 +17,7 @@ import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
+import '../batches/tutorial/batch_tutorial_overlay.dart';
 
 /// The settings screen.
 class SettingsScreen extends ConsumerWidget {
@@ -84,6 +85,12 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push(ZakerRoutes.account),
           ),
           _Tile(
+            icon: Icons.tour_rounded,
+            title: 'جولة في الدفعات',
+            subtitle: 'شرح الإنشاء والأقسام والدعوة',
+            onTap: () => openBatchListTutorial(context, ref),
+          ),
+          _Tile(
             icon: Icons.language_rounded,
             title: 'اللغة',
             subtitle: locale.languageCode == 'en' ? 'English' : 'العربية',
@@ -97,14 +104,14 @@ class SettingsScreen extends ConsumerWidget {
           ),
           _Tile(
             icon: Icons.info_outline_rounded,
-            title: 'عن ذاكرلي',
+            title: 'عن رفيق الطالب',
             subtitle: 'عن التطبيق',
             onTap: () => _showAbout(context),
           ),
           const SizedBox(height: ZakerSpacing.xl),
           Center(
             child: TrText(
-              'ذاكرلي — النسخة 1.1.0 (86)',
+              'رفيق الطالب — النسخة 1.1.0 (86)',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -215,6 +222,14 @@ class SettingsScreen extends ConsumerWidget {
                     Navigator.of(dialogContext).pop();
                   },
                 ),
+                const SizedBox(height: ZakerSpacing.sm),
+                TrText(
+                  'الإنجليزية متاحة لمعظم الشاشات، وبعض نصوص الدفعات لسه '
+                  'بتظهر بالعربي.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        height: 1.5,
+                      ),
+                ),
               ],
             ),
           );
@@ -267,7 +282,7 @@ class SettingsScreen extends ConsumerWidget {
   void _showAbout(BuildContext context) {
     showAboutDialog(
       context: context,
-      applicationName: 'ذاكرلي',
+      applicationName: 'رفيق الطالب',
       applicationVersion: '1.1.0 (86)',
       applicationLegalese:
           'نسخة عربية للطلاب — مناهج، اختبارات، تركيز، ومعلم AI.',

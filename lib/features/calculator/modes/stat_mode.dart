@@ -85,7 +85,8 @@ class _StatModeState extends State<StatMode> {
         if (xs.length != ys.length) {
           throw CalcError(
             CalcErrorKind.dimension,
-            detail: 'عدد قيم X (${xs.length}) لازم يساوي عدد قيم Y (${ys.length}).',
+            detail:
+                'عدد قيم X (${xs.length}) لازم يساوي عدد قيم Y (${ys.length}).',
           );
         }
         _xs.addAll(xs);
@@ -225,6 +226,7 @@ class _StatModeState extends State<StatMode> {
                   values: const <bool>[false, true],
                   selected: _twoVariable,
                   labelFor: (value) => value ? '2-VAR' : '1-VAR',
+                  haptics: widget.session.settings.haptics,
                   onChanged: _switchMode,
                 ),
                 const SizedBox(height: 11),
@@ -308,7 +310,9 @@ class _StatModeState extends State<StatMode> {
                               child: _DataRow(
                                 index: i + 1,
                                 x: _xs[i],
-                                y: _twoVariable && i < _ys.length ? _ys[i] : null,
+                                y: _twoVariable && i < _ys.length
+                                    ? _ys[i]
+                                    : null,
                                 onDelete: () => _removeAt(i),
                               ),
                             ),
@@ -384,6 +388,7 @@ class _StatModeState extends State<StatMode> {
                         selected: _quadratic,
                         labelFor: (value) => value ? 'تربيعي' : 'خطي',
                         compact: true,
+                        haptics: widget.session.settings.haptics,
                         onChanged: (value) {
                           setState(() {
                             _quadratic = value;
@@ -462,7 +467,12 @@ class _StatModeState extends State<StatMode> {
       ('Σx²', formatReal(summary.sumSquares)),
       ('x̄', formatReal(summary.mean)),
       ('الوسيط', formatReal(summary.median)),
-      ('المنوال', summary.modes.isEmpty ? 'لا يوجد' : summary.modes.map(formatReal).join(', ')),
+      (
+        'المنوال',
+        summary.modes.isEmpty
+            ? 'لا يوجد'
+            : summary.modes.map(formatReal).join(', ')
+      ),
       ('Q₁', formatReal(summary.q1)),
       ('Q₃', formatReal(summary.q3)),
       ('IQR', formatReal(summary.iqr)),
@@ -492,10 +502,10 @@ class _StatModeState extends State<StatMode> {
   }
 
   Widget _metric(String label, String value) => CalcMetric(
-    label: label,
-    value: value,
-    accent: true,
-  );
+        label: label,
+        value: value,
+        accent: true,
+      );
 }
 
 class _DataRow extends StatelessWidget {

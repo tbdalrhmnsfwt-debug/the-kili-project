@@ -254,7 +254,7 @@ class _DailyChallengeCard extends ConsumerWidget {
       decoration: BoxDecoration(
         borderRadius: ZakerRadius.card,
         gradient: LinearGradient(
-          colors: [theme.colorScheme.primary, ZakerColors.primaryLight],
+          colors: ZakerColors.navyGradient,
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
@@ -303,7 +303,7 @@ class _DailyChallengeCard extends ConsumerWidget {
             FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: theme.colorScheme.primary,
+                foregroundColor: ZakerColors.navy,
               ),
               onPressed: done ? null : () => _play(context, ref, daily!),
               icon: Icon(

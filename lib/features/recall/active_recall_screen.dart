@@ -344,7 +344,7 @@ class _GradingBar extends StatelessWidget {
                 },
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: lastGrade == ReviewGrade.knew
-                      ? ZakerColors.success
+                      ? cardAccentOf(ZakerColors.success, theme)
                       : theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
                 ),

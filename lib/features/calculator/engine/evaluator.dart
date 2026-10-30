@@ -41,11 +41,11 @@ class EvalContext {
     EvalValue? answer,
     this.allowComplex = false,
     math.Random? random,
-  }) : variables = variables == null
-           ? <String, EvalValue>{}
-           : Map<String, EvalValue>.of(variables),
-       answer = answer ?? EvalValue.integer(0),
-       random = random ?? math.Random(0x5eed);
+  })  : variables = variables == null
+            ? <String, EvalValue>{}
+            : Map<String, EvalValue>.of(variables),
+        answer = answer ?? EvalValue.integer(0),
+        random = random ?? math.Random(0x5eed);
 
   AngleUnit angleUnit;
   final Map<String, EvalValue> variables;
@@ -54,24 +54,24 @@ class EvalContext {
   final math.Random random;
 
   EvalContext copy() => EvalContext(
-    angleUnit: angleUnit,
-    variables: variables,
-    answer: answer,
-    allowComplex: allowComplex,
-    random: random,
-  );
+        angleUnit: angleUnit,
+        variables: variables,
+        answer: answer,
+        allowComplex: allowComplex,
+        random: random,
+      );
 
   double toRadians(double value) => switch (angleUnit) {
-    AngleUnit.degrees => value * math.pi / 180,
-    AngleUnit.radians => value,
-    AngleUnit.gradians => value * math.pi / 200,
-  };
+        AngleUnit.degrees => value * math.pi / 180,
+        AngleUnit.radians => value,
+        AngleUnit.gradians => value * math.pi / 200,
+      };
 
   double fromRadians(double value) => switch (angleUnit) {
-    AngleUnit.degrees => value * 180 / math.pi,
-    AngleUnit.radians => value,
-    AngleUnit.gradians => value * 200 / math.pi,
-  };
+        AngleUnit.degrees => value * 180 / math.pi,
+        AngleUnit.radians => value,
+        AngleUnit.gradians => value * 200 / math.pi,
+      };
 }
 
 class Evaluator {
@@ -158,7 +158,7 @@ class Evaluator {
       final left = _eval(expression.left, depth + 1);
       final ratio =
           _eval((expression.right as PostfixExpr).operand, depth + 1) /
-          EvalValue.integer(100);
+              EvalValue.integer(100);
       final adjustment = left * ratio;
       return expression.operator == '+' ? left + adjustment : left - adjustment;
     }
@@ -481,7 +481,8 @@ class Evaluator {
         }
         return _realFunction(first, math.log, 'ln');
       case 'log':
-        final base = arguments.length > 1 ? arguments[1] : EvalValue.integer(10);
+        final base =
+            arguments.length > 1 ? arguments[1] : EvalValue.integer(10);
         if (arguments.length > 1) {
           if (!base.isReal || base.realPart <= 0 || base.realPart == 1) {
             throw const CalcError(CalcErrorKind.math);
@@ -505,7 +506,7 @@ class Evaluator {
         final value = arguments.length > 1
             ? math.log(first.realPart) / math.log(base.realPart)
             : math.log(first.realPart) / math.ln10;
-        return EvalValue.real(_stabilize(value));
+        return EvalValue.real(_stabilizeTranscendental(value));
       case 'sqrt':
         return _sqrt(first);
       case 'cbrt':
@@ -536,9 +537,7 @@ class Evaluator {
       case 'conj':
         return first.conjugate;
       case 're':
-        return first.isComplex
-            ? EvalValue.real(first.realPart)
-            : first;
+        return first.isComplex ? EvalValue.real(first.realPart) : first;
       case 'im':
         return EvalValue.real(first.imaginaryPart);
       case 'gcd':
@@ -622,8 +621,9 @@ class Evaluator {
         225: Rational.one,
         315: Rational.fromInt(-1),
       });
-      if (result == null && (normalized == Rational.fromInt(90) ||
-          normalized == Rational.fromInt(270))) {
+      if (result == null &&
+          (normalized == Rational.fromInt(90) ||
+              normalized == Rational.fromInt(270))) {
         throw const CalcError(CalcErrorKind.math, detail: 'tan غير معرّف.');
       }
     }
@@ -644,14 +644,17 @@ class Evaluator {
   ) {
     if (value.isComplex) throw const CalcError(CalcErrorKind.math);
     final argument = value.realPart;
-    if ((label == 'asin' || label == 'acos') && (argument < -1 || argument > 1)) {
+    if ((label == 'asin' || label == 'acos') &&
+        (argument < -1 || argument > 1)) {
       throw const CalcError(CalcErrorKind.math);
     }
     if (label == 'atanh' && (argument <= -1 || argument >= 1)) {
       throw const CalcError(CalcErrorKind.math);
     }
     final result = context.fromRadians(function(argument));
-    return EvalValue.real(_stabilize(result));
+    // atan(1e-14) is legitimately tiny; the absolute floor in [_stabilize]
+    // would turn it into 0.
+    return EvalValue.real(_stabilizeTranscendental(result));
   }
 
   EvalValue _realFunction(
@@ -664,7 +667,7 @@ class Evaluator {
     if (result.isNaN || !result.isFinite) {
       throw CalcError(CalcErrorKind.math, detail: '$label خارج النطاق.');
     }
-    return EvalValue.real(_stabilize(result));
+    return EvalValue.real(_stabilizeTranscendental(result));
   }
 
   EvalValue _sqrt(EvalValue value) {
@@ -686,8 +689,7 @@ class Evaluator {
       final magnitude = math.sqrt(a * a + b * b);
       final real = math.sqrt(math.max(0, (magnitude + a) / 2));
       final imaginary =
-          (b < 0 ? -1.0 : 1.0) *
-          math.sqrt(math.max(0, (magnitude - a) / 2));
+          (b < 0 ? -1.0 : 1.0) * math.sqrt(math.max(0, (magnitude - a) / 2));
       return EvalValue.complex(real, imaginary);
     }
     if (value.realPart < 0) {
@@ -807,14 +809,16 @@ class Evaluator {
 
   double _requireReal(EvalValue value, String label) {
     if (!value.isReal) {
-      throw CalcError(CalcErrorKind.argument, detail: '$label تحتاج أعداد حقيقية.');
+      throw CalcError(CalcErrorKind.argument,
+          detail: '$label تحتاج أعداد حقيقية.');
     }
     return value.realPart;
   }
 
   int _requireInteger(EvalValue value, String label) {
     if (!value.isReal || value.exact == null || !value.exact!.isInteger) {
-      throw CalcError(CalcErrorKind.argument, detail: '$label تحتاج أعداد صحيحة.');
+      throw CalcError(CalcErrorKind.argument,
+          detail: '$label تحتاج أعداد صحيحة.');
     }
     final integer = value.exact!.toInt();
     if (integer == null) {
@@ -871,15 +875,13 @@ class Evaluator {
   }
 
   EvalValue _asComplex(EvalValue value) => EvalValue.complex(
-    value.realPart,
-    value.imaginaryPart,
-  );
+        value.realPart,
+        value.imaginaryPart,
+      );
 
-  static double _sinh(double value) =>
-      (math.exp(value) - math.exp(-value)) / 2;
+  static double _sinh(double value) => (math.exp(value) - math.exp(-value)) / 2;
 
-  static double _cosh(double value) =>
-      (math.exp(value) + math.exp(-value)) / 2;
+  static double _cosh(double value) => (math.exp(value) + math.exp(-value)) / 2;
 
   static double _tanh(double value) {
     final positive = math.exp(value);
@@ -910,6 +912,25 @@ class Evaluator {
     return value;
   }
 
+  /// Like [_stabilize], but keeps legitimately tiny results.
+  ///
+  /// `exp(-30)` is 9.36e-14 and `e^(-30)` shows exactly that, so the absolute
+  /// floor in [_stabilize] cannot apply here: it would turn one form into 0
+  /// and make `1/exp(-30)` a division by zero. Only near-integer noise is
+  /// snapped, measured against the value's own magnitude.
+  static double _stabilizeTranscendental(double value) {
+    if (value == 0) return 0;
+    final magnitude = value.abs();
+    final roundedInteger = value.roundToDouble();
+    if ((value - roundedInteger).abs() < 1e-13 * magnitude) {
+      return roundedInteger;
+    }
+    if (magnitude < 1e13) {
+      return double.parse(value.toStringAsPrecision(13));
+    }
+    return value;
+  }
+
   static double _adaptiveSimpson(
     double Function(double) function,
     double a,
@@ -919,7 +940,8 @@ class Evaluator {
     final sign = b < a ? -1.0 : 1.0;
     final lower = math.min(a, b);
     final upper = math.max(a, b);
-    double simpson(double left, double right, double fa, double fm, double fb) =>
+    double simpson(
+            double left, double right, double fa, double fm, double fb) =>
         (right - left) * (fa + 4 * fm + fb) / 6;
 
     double recurse(

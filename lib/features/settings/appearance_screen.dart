@@ -1,4 +1,7 @@
-/// "تغيير الشكل": the four palettes and the home-layout selector.
+/// "تغيير الشكل": the four palettes and a live preview.
+///
+/// The home-layout selector is not shown while only one layout exists in code
+/// — see `ZakerHomeLayout`; it returns with the second layout.
 library;
 
 import 'package:flutter/material.dart';
@@ -62,19 +65,6 @@ class AppearanceScreen extends ConsumerWidget {
               );
             },
           ),
-          const SizedBox(height: ZakerSpacing.xl),
-          const SectionHeader(
-            title: 'شكل الصفحة الرئيسية',
-            icon: Icons.dashboard_customize_outlined,
-          ),
-          for (final layout in ZakerHomeLayout.values)
-            _LayoutTile(
-              layout: layout,
-              selected: layout == settings.homeLayout,
-              onTap: layout.available
-                  ? () => controller.setHomeLayout(layout)
-                  : null,
-            ),
           const SizedBox(height: ZakerSpacing.xl),
           SectionHeader(
             title: 'معاينة مباشرة',
@@ -241,114 +231,6 @@ class _Swatch extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(6),
-      ),
-    );
-  }
-}
-
-class _LayoutTile extends StatelessWidget {
-  const _LayoutTile({
-    required this.layout,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final ZakerHomeLayout layout;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final enabled = layout.available;
-    return Opacity(
-      opacity: enabled ? 1 : 0.62,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: ZakerSpacing.sm),
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color,
-          borderRadius: ZakerRadius.card,
-          border: Border.all(
-            color: selected
-                ? theme.colorScheme.primary
-                : theme.dividerTheme.color ?? Colors.black12,
-            width: selected ? 1.6 : 1,
-          ),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: ZakerRadius.card,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: ZakerSpacing.md,
-                vertical: ZakerSpacing.md,
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    layout == ZakerHomeLayout.calm
-                        ? Icons.space_dashboard_outlined
-                        : Icons.dashboard_outlined,
-                    color: selected
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: ZakerSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TrText(
-                          layout.label,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        TrText(
-                          layout == ZakerHomeLayout.calm
-                              ? 'الشكل الحالي — هادي وواضح'
-                              : 'شكل إضافي — لسه مش موجود',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (!enabled)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.onSurfaceVariant.withValues(
-                          alpha: 0.14,
-                        ),
-                        borderRadius: BorderRadius.circular(ZakerRadius.pill),
-                      ),
-                      child: const TrText(
-                        'قريبًا',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    )
-                  else if (selected)
-                    Icon(
-                      Icons.check_circle_rounded,
-                      color: theme.colorScheme.primary,
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

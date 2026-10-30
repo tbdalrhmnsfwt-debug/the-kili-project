@@ -14,21 +14,62 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Brand colours recovered from the APK resources.
+/// Brand colours recovered from the APK resources, retuned to the
+/// «رفيق الطالب» identity.
 class ZakerColors {
   const ZakerColors._();
 
+  /// Deep navy: the light theme's brand fill and the ink on white cards.
+  static const Color navy = Color(0xFF121E36);
+
+  /// The darkest navy, used to end gradients and back dark surfaces.
+  static const Color navyDeep = Color(0xFF0B1426);
+
+  /// Raised navy: gradient middle stop and raised surfaces on navy.
+  static const Color navyLight = Color(0xFF1B2B4A);
+
+  /// The brand gold: icon fills, indicators and accents.
+  static const Color gold = Color(0xFFD4AF37);
+
+  /// Light gold for text and icons on navy.
+  static const Color goldLight = Color(0xFFE5C158);
+
+  /// Gold-family text on white (meets 4.5:1); plain [gold] does not.
+  static const Color goldDeep = Color(0xFF8A6A12);
+
+  /// The light scaffold behind white cards.
+  static const Color page = Color(0xFFF8F9FB);
+
+  /// Body text on white.
+  static const Color ink = Color(0xFF121E36);
+
+  /// Secondary text on light surfaces.
+  static const Color muted = Color(0xFF5B6678);
+
+  /// Card hairline.
+  static const Color border = Color(0xFFE6E9F0);
+
+  /// The red of the «شنطتي» backpack only.
+  static const Color backpack = Color(0xFFD32F2F);
+
   /// Primary brand colour.
-  static const Color primary = Color(0xFF0F766E);
+  static const Color primary = navy;
 
   /// Lighter primary used for gradients and highlights.
-  static const Color primaryLight = Color(0xFF14B8A6);
+  static const Color primaryLight = navyLight;
 
   /// Deep primary for text on light surfaces.
-  static const Color primaryDark = Color(0xFF115E59);
+  static const Color primaryDark = navyDeep;
 
   /// Accent used for streaks / achievements.
-  static const Color accent = Color(0xFFF59E0B);
+  static const Color accent = gold;
+
+  /// The navy surface used by banners and highlight cards.
+  ///
+  /// These cards keep white or light foregrounds in every appearance, so the
+  /// gradient must stay navy rather than follow `colorScheme.primary` (which
+  /// is gold in the three dark appearances).
+  static const List<Color> navyGradient = [navy, navyLight, navyDeep];
 
   /// Error colour.
   static const Color danger = Color(0xFFDC2626);
@@ -37,8 +78,8 @@ class ZakerColors {
   static const Color success = Color(0xFF16A34A);
 
   /// Neutral surfaces.
-  static const Color surface = Color(0xFFF8FAFC);
-  static const Color surfaceDark = Color(0xFF0F172A);
+  static const Color surface = page;
+  static const Color surfaceDark = Color(0xFF0B1220);
 }
 
 /// WCAG relative contrast ratio between two opaque colours.
@@ -60,13 +101,77 @@ Color readableTextColor(Color color, Color background) {
   if (contrastRatio(color, background) >= 4.5) return color;
   final darkBackground = background.computeLuminance() < 0.5;
   final toward = darkBackground ? Colors.white : Colors.black;
-  var adjusted = color;
+  final adjusted = _lerpUntilReadable(color, toward, background);
+  if (adjusted != null) return adjusted;
+  // A mid-tone backdrop leaves one direction unreachable: white cannot be
+  // lightened to 4.5:1 on gold (luminance 0.47 reads as "dark", but white on
+  // it is only 2.1:1). The opposite end always clears it.
+  final opposite = darkBackground ? Colors.black : Colors.white;
+  return _lerpUntilReadable(color, opposite, background) ?? opposite;
+}
+
+Color? _lerpUntilReadable(Color from, Color to, Color background) {
   for (var step = 1; step <= 10; step++) {
-    adjusted = Color.lerp(color, toward, step / 10)!;
+    final adjusted = Color.lerp(from, to, step / 10)!;
     if (contrastRatio(adjusted, background) >= 4.5) return adjusted;
   }
-  return toward;
+  return null;
 }
+
+/// The card surface the theme paints behind content.
+Color cardSurfaceOf(ThemeData theme) =>
+    theme.cardTheme.color ?? theme.colorScheme.surface;
+
+/// [accent] adapted for use as text or an indicator on the active card.
+///
+/// Static brand navy is invisible on the dark cards, and the light palette's
+/// gold is too light on a white card; both are lifted to a readable shade
+/// without losing the hue where it already passes.
+Color cardAccentOf(Color accent, ThemeData theme) =>
+    readableTextColor(accent, cardSurfaceOf(theme));
+
+/// [accent] adapted for text or an icon sitting on a pill tinted with the same
+/// accent at [alpha] over the active card.
+///
+/// The tint raises the surface's luminance, so a shade that just passes on the
+/// bare card (green, notably) can still come up short on its own pill.
+Color cardAccentOnTintOf(Color accent, ThemeData theme,
+        {double alpha = 0.12}) =>
+    readableTextColor(
+      accent,
+      Color.alphaBlend(
+        accent.withValues(alpha: alpha),
+        cardSurfaceOf(theme),
+      ),
+    );
+
+/// A hero colour darkened only as far as its white copy needs.
+///
+/// Subject colours are picked for their hue, not their luminance: amber and
+/// gold leave a white title at 3:1 and 2:1. Heroes keep white typography by
+/// darkening the banner instead, and the 85% subtitle is held to the same
+/// 4.5:1 on the gradient's darkest stop.
+Color heroBaseOf(Color color) {
+  Color faded(Color base) =>
+      Color.alphaBlend(Colors.white.withValues(alpha: 0.85), base);
+  bool fits(Color base) =>
+      contrastRatio(faded(base), base) >= 4.5 &&
+      contrastRatio(Colors.white, base) >= 4.5;
+  if (fits(color)) return color;
+  for (var step = 1; step <= 10; step++) {
+    final darkened = Color.lerp(color, Colors.black, step / 10)!;
+    if (fits(darkened)) return darkened;
+  }
+  return Colors.black;
+}
+
+final ZakerFeatureAccents _fallbackAccents =
+    ZakerTheme.light().extension<ZakerFeatureAccents>()!;
+
+/// [theme]'s feature accents, or the light palette's when a bare [ThemeData]
+/// (a test harness, a dialog outside the app theme) carries none.
+ZakerFeatureAccents featureAccentsOf(ThemeData theme) =>
+    theme.extension<ZakerFeatureAccents>() ?? _fallbackAccents;
 
 /// The app's spacing scale (4pt grid).
 class ZakerSpacing {
@@ -93,10 +198,27 @@ class ZakerRadius {
   static const double xl = 28;
   static const double pill = 999;
 
-  static const BorderRadius card = BorderRadius.all(Radius.circular(md));
+  /// The card corner of the brand system (16 dp).
+  static const double cardValue = 16;
+
+  static const BorderRadius card = BorderRadius.all(
+    Radius.circular(cardValue),
+  );
   static const BorderRadius sheet = BorderRadius.vertical(
     top: Radius.circular(26),
   );
+}
+
+/// Elevations used across the app.
+///
+/// Cards are flat white surfaces with a hairline border and this one soft
+/// shadow; Material elevation is never used for them.
+class ZakerShadows {
+  const ZakerShadows._();
+
+  static const List<BoxShadow> card = [
+    BoxShadow(color: Color(0x14203A5C), blurRadius: 10, offset: Offset(0, 4)),
+  ];
 }
 
 /// The four selectable appearances. The first two keep the app's original
@@ -189,6 +311,8 @@ class ZakerPalette {
     required this.seed,
     required this.primary,
     required this.onPrimary,
+    required this.secondary,
+    required this.onSecondary,
     required this.surface,
     required this.card,
     required this.border,
@@ -202,6 +326,12 @@ class ZakerPalette {
   final Color seed;
   final Color primary;
   final Color onPrimary;
+
+  /// The gold accent of the appearance: fills and indicators.
+  final Color secondary;
+
+  /// Text and icons drawn on [secondary].
+  final Color onSecondary;
   final Color surface;
   final Color card;
   final Color border;
@@ -231,26 +361,26 @@ class ZakerTheme {
   static ThemeData forStyle(ZakerThemeStyle style) => _build(paletteFor(style));
 
   static ZakerPalette paletteFor(ZakerThemeStyle style) => switch (style) {
-    ZakerThemeStyle.light => _lightPalette,
-    ZakerThemeStyle.dark => _darkPalette,
-    ZakerThemeStyle.blackGold => _blackGoldPalette,
-    ZakerThemeStyle.deepBlue => _deepBluePalette,
-  };
+        ZakerThemeStyle.light => _lightPalette,
+        ZakerThemeStyle.dark => _darkPalette,
+        ZakerThemeStyle.blackGold => _blackGoldPalette,
+        ZakerThemeStyle.deepBlue => _deepBluePalette,
+      };
 
   static ThemeData _build(ZakerPalette palette) {
-    final scheme =
-        ColorScheme.fromSeed(
-          seedColor: palette.seed,
-          brightness: palette.style.brightness,
-        ).copyWith(
-          primary: palette.primary,
-          onPrimary: palette.onPrimary,
-          secondary: palette.accents.azkar,
-          onSecondary: palette.isDark ? const Color(0xFF0B1220) : Colors.white,
-          surface: palette.surface,
-          onSurface: palette.onSurface,
-          outline: palette.border,
-        );
+    final scheme = ColorScheme.fromSeed(
+      seedColor: palette.seed,
+      brightness: palette.style.brightness,
+    ).copyWith(
+      primary: palette.primary,
+      onPrimary: palette.onPrimary,
+      secondary: palette.secondary,
+      onSecondary: palette.onSecondary,
+      surface: palette.surface,
+      surfaceTint: Colors.transparent,
+      onSurface: palette.onSurface,
+      outline: palette.border,
+    );
 
     final base = ThemeData(
       useMaterial3: true,
@@ -380,55 +510,69 @@ class ZakerTheme {
 
   static const ZakerPalette _lightPalette = ZakerPalette(
     style: ZakerThemeStyle.light,
-    seed: ZakerColors.primary,
-    primary: ZakerColors.primary,
+    seed: ZakerColors.navy,
+    primary: ZakerColors.navy,
     onPrimary: Colors.white,
-    surface: ZakerColors.surface,
+    secondary: ZakerColors.gold,
+    onSecondary: ZakerColors.navy,
+    surface: ZakerColors.page,
     card: Colors.white,
-    border: Color(0xFFE2E8F0),
-    onSurface: Color(0xFF0F172A),
-    muted: Color(0xFF64748B),
-    heroGradient: [Color(0xFF0F766E), Color(0xFF115E59), Color(0xFF0D4F4A)],
+    border: ZakerColors.border,
+    onSurface: ZakerColors.ink,
+    muted: ZakerColors.muted,
+    heroGradient: [
+      ZakerColors.navy,
+      ZakerColors.navyLight,
+      ZakerColors.navyDeep,
+    ],
     accents: ZakerFeatureAccents(
-      assistant: Color(0xFF6D28D9),
-      study: Color(0xFF1D4ED8),
-      tasks: Color(0xFF15803D),
-      islamic: Color(0xFF0F766E),
-      prayer: Color(0xFF0F766E),
-      qibla: Color(0xFF0369A1),
-      azkar: Color(0xFFB45309),
-      hifz: Color(0xFF15803D),
+      assistant: Color(0xFF5B4BC4),
+      study: Color(0xFF2F5EA8),
+      tasks: Color(0xFF4F7A4A),
+      islamic: ZakerColors.goldDeep,
+      prayer: ZakerColors.goldDeep,
+      qibla: Color(0xFF5B6678),
+      azkar: Color(0xFFA2603A),
+      hifz: Color(0xFF5C6B2A),
     ),
   );
 
   static const ZakerPalette _darkPalette = ZakerPalette(
     style: ZakerThemeStyle.dark,
-    seed: ZakerColors.primaryLight,
-    primary: ZakerColors.primaryLight,
-    onPrimary: Color(0xFF06121A),
-    surface: ZakerColors.surfaceDark,
-    card: Color(0xFF1E293B),
-    border: Color(0xFF334155),
-    onSurface: Color(0xFFF8FAFC),
-    muted: Color(0xFF94A3B8),
-    heroGradient: [Color(0xFF0F766E), Color(0xFF0B4F49), Color(0xFF062F2B)],
+    seed: ZakerColors.goldLight,
+    primary: ZakerColors.goldLight,
+    onPrimary: ZakerColors.navy,
+    secondary: ZakerColors.goldLight,
+    onSecondary: ZakerColors.navy,
+    surface: Color(0xFF0B1220),
+    card: Color(0xFF16233C),
+    border: Color(0xFF26344F),
+    onSurface: Color(0xFFF2F5FA),
+    muted: Color(0xFF9AA6BC),
+    heroGradient: [
+      ZakerColors.navyDeep,
+      ZakerColors.navy,
+      ZakerColors.navyLight,
+    ],
     accents: ZakerFeatureAccents(
-      assistant: Color(0xFFC4B5FD),
-      study: Color(0xFF93C5FD),
-      tasks: Color(0xFF5EEAD4),
-      islamic: Color(0xFF5EEAD4),
-      prayer: Color(0xFF5EEAD4),
-      qibla: Color(0xFF7DD3FC),
-      azkar: Color(0xFFFBBF24),
-      hifz: Color(0xFF86EFAC),
+      assistant: Color(0xFFB9AEF7),
+      study: Color(0xFF9CC3F2),
+      tasks: Color(0xFFA8CBA0),
+      islamic: ZakerColors.goldLight,
+      prayer: ZakerColors.goldLight,
+      qibla: Color(0xFFAEB8C8),
+      azkar: Color(0xFFE0A882),
+      hifz: Color(0xFFC3CE8A),
     ),
   );
 
   static const ZakerPalette _blackGoldPalette = ZakerPalette(
     style: ZakerThemeStyle.blackGold,
     seed: Color(0xFFD4AF37),
-    primary: Color(0xFFD4AF37),
+    primary: ZakerColors.gold,
     onPrimary: Color(0xFF0B0B0B),
+    secondary: ZakerColors.gold,
+    onSecondary: Color(0xFF0B0B0B),
     surface: Color(0xFF000000),
     card: Color(0xFF141414),
     border: Color(0xFF332C1C),
@@ -438,7 +582,7 @@ class ZakerTheme {
     accents: ZakerFeatureAccents(
       assistant: Color(0xFFE9D5FF),
       study: Color(0xFFE3C05B),
-      tasks: Color(0xFF9FE3D4),
+      tasks: Color(0xFFC3CE8A),
       islamic: Color(0xFFE3C05B),
       prayer: Color(0xFFE3C05B),
       qibla: Color(0xFFD6C08A),
@@ -449,24 +593,26 @@ class ZakerTheme {
 
   static const ZakerPalette _deepBluePalette = ZakerPalette(
     style: ZakerThemeStyle.deepBlue,
-    seed: Color(0xFF60A5FA),
-    primary: Color(0xFF60A5FA),
-    onPrimary: Color(0xFF04101F),
+    seed: ZakerColors.goldLight,
+    primary: ZakerColors.goldLight,
+    onPrimary: ZakerColors.navy,
+    secondary: ZakerColors.goldLight,
+    onSecondary: ZakerColors.navy,
     surface: Color(0xFF071426),
     card: Color(0xFF0E2038),
     border: Color(0xFF1E3A5F),
     onSurface: Color(0xFFE8F0FB),
     muted: Color(0xFF9DB2CE),
-    heroGradient: [Color(0xFF12345A), Color(0xFF0B2A52), Color(0xFF071426)],
+    heroGradient: [Color(0xFF071426), ZakerColors.navy, ZakerColors.navyDeep],
     accents: ZakerFeatureAccents(
       assistant: Color(0xFFA5B4FC),
-      study: Color(0xFF93C5FD),
-      tasks: Color(0xFF5EEAD4),
-      islamic: Color(0xFF60A5FA),
-      prayer: Color(0xFF60A5FA),
-      qibla: Color(0xFF7DD3FC),
-      azkar: Color(0xFFFBBF24),
-      hifz: Color(0xFF86EFAC),
+      study: Color(0xFF9CC3F2),
+      tasks: Color(0xFFA8CBA0),
+      islamic: ZakerColors.goldLight,
+      prayer: ZakerColors.goldLight,
+      qibla: Color(0xFFAEB8C8),
+      azkar: Color(0xFFE0A882),
+      hifz: Color(0xFFC3CE8A),
     ),
   );
 }

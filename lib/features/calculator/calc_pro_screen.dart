@@ -163,6 +163,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
   static const String _historyKey = 'calc_pro_history_v1';
   static const String _answerKey = 'calc_pro_answer_v1';
   static const String _memoryKey = 'calc_pro_memory_v1';
+  static const String _variablesKey = 'calc_pro_variables_v1';
 
   static const String _legacyHistoryKey = 'calc_history_v1';
   static const String _legacyRadiansKey = 'calc_radians';
@@ -192,6 +193,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
     List<CalcHistoryEntry> history = <CalcHistoryEntry>[];
     EvalValue answer = EvalValue.integer(0);
     EvalValue memory = EvalValue.integer(0);
+    Map<String, EvalValue> variables = <String, EvalValue>{};
     try {
       final prefs = await SharedPreferences.getInstance();
       final rawSettings = prefs.getString(_settingsKey);
@@ -227,6 +229,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
           memory = EvalValue.real(legacyMemory);
         }
       }
+      variables = CalcSession.decodeVariables(prefs.getString(_variablesKey));
     } catch (_) {
       // The calculator remains fully usable when storage is unavailable.
     }
@@ -237,6 +240,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
         history: history,
         answer: answer,
         memory: memory,
+        variables: variables,
       );
       _loaded = true;
     });
@@ -255,6 +259,10 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
       await prefs.setString(
         _memoryKey,
         CalcSession.encodeValue(_session.memory),
+      );
+      await prefs.setString(
+        _variablesKey,
+        CalcSession.encodeVariables(_session.variables),
       );
     } catch (_) {
       // Ignore persistence failures; calculations continue in memory.
@@ -325,15 +333,15 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
       brightness: brightness,
       scaffoldBackgroundColor:
           dark ? CalcPalette.dark.background : CalcPalette.light.background,
-      canvasColor: dark ? CalcPalette.dark.panelStrong : CalcPalette.light.panelStrong,
+      canvasColor:
+          dark ? CalcPalette.dark.panelStrong : CalcPalette.light.panelStrong,
       colorScheme: base.colorScheme.copyWith(brightness: brightness),
     );
   }
 
-  CalcPalette _sheetPalette() =>
-      _session.settings.finish == CalcFinish.midnight
-          ? CalcPalette.dark
-          : CalcPalette.light;
+  CalcPalette _sheetPalette() => _session.settings.finish == CalcFinish.midnight
+      ? CalcPalette.dark
+      : CalcPalette.light;
 
   @override
   Widget build(BuildContext context) {
@@ -442,8 +450,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
 
   Widget _header(BuildContext context, CalcPalette palette) {
     final mode = _modeCatalog[_modeIndex];
-    final subtitle =
-        '${mode.code} · ${_session.settings.angleUnit.label} · '
+    final subtitle = '${mode.code} · ${_session.settings.angleUnit.label} · '
         '${_session.settings.naturalInput ? 'MATH' : 'LINE'} · '
         '${_session.settings.finish == CalcFinish.midnight ? 'MIDNIGHT' : 'PAPER'}';
     return Container(
@@ -643,9 +650,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
     final children = <Widget>[];
     for (var i = 0; i < _modeCatalog.length; i++) {
       children.add(
-        _visitedModes.contains(i)
-            ? _buildMode(i)
-            : const SizedBox.shrink(),
+        _visitedModes.contains(i) ? _buildMode(i) : const SizedBox.shrink(),
       );
     }
     return IndexedStack(
@@ -677,10 +682,19 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
           session: _session,
           onChanged: _onSessionChanged,
         ),
-      4 => EqnMode(angleUnit: _session.settings.angleUnit),
-      5 => MatrixMode(angleUnit: _session.settings.angleUnit),
+      4 => EqnMode(
+          angleUnit: _session.settings.angleUnit,
+          haptics: _session.settings.haptics,
+        ),
+      5 => MatrixMode(
+          angleUnit: _session.settings.angleUnit,
+          haptics: _session.settings.haptics,
+        ),
       6 => TableMode(session: _session),
-      7 => VectorMode(angleUnit: _session.settings.angleUnit),
+      7 => VectorMode(
+          angleUnit: _session.settings.angleUnit,
+          haptics: _session.settings.haptics,
+        ),
       8 => GraphMode(session: _session),
       9 => CasMode(session: _session),
       10 => FormulasMode(session: _session),
@@ -844,9 +858,8 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                             child: Icon(
                               info.icon,
                               size: 18,
-                              color: selected
-                                  ? palette.accent
-                                  : palette.mathMuted,
+                              color:
+                                  selected ? palette.accent : palette.mathMuted,
                             ),
                           ),
                           const SizedBox(width: 9),
@@ -1018,8 +1031,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                     ),
                     actions: [
                       TextButton(
-                        onPressed: () =>
-                            Navigator.of(dialogContext).pop(false),
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
                         child: Text('إلغاء',
                             style: TextStyle(color: palette.mathMuted)),
                       ),
@@ -1210,7 +1222,8 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                                                               ? palette.alpha
                                                               : palette.accent,
                                                         ),
-                                                        const SizedBox(width: 6),
+                                                        const SizedBox(
+                                                            width: 6),
                                                         Expanded(
                                                           child: Text(
                                                             _historyTime(
@@ -1221,18 +1234,20 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                                                                 TextOverflow
                                                                     .ellipsis,
                                                             style:
-                                                                CalcTypography.label(
-                                                                  palette,
-                                                                  size: 8.5,
-                                                                ).copyWith(
-                                                                  color: palette
-                                                                      .mathMuted,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w500,
-                                                                ),
+                                                                CalcTypography
+                                                                    .label(
+                                                              palette,
+                                                              size: 8.5,
+                                                            ).copyWith(
+                                                              color: palette
+                                                                  .mathMuted,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                            ),
                                                             textDirection:
-                                                                TextDirection.rtl,
+                                                                TextDirection
+                                                                    .rtl,
                                                           ),
                                                         ),
                                                       ],
@@ -1245,12 +1260,12 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                                                           TextOverflow.ellipsis,
                                                       style:
                                                           CalcTypography.math(
-                                                            palette,
-                                                            size: 13,
-                                                          ).copyWith(
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                          ),
+                                                        palette,
+                                                        size: 13,
+                                                      ).copyWith(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
                                                       textDirection:
                                                           TextDirection.ltr,
                                                     ),
@@ -1265,12 +1280,13 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                                                                 TextOverflow
                                                                     .ellipsis,
                                                             style:
-                                                                CalcTypography.math(
-                                                                  palette,
-                                                                  size: 12,
-                                                                  color: palette
-                                                                      .accent,
-                                                                ),
+                                                                CalcTypography
+                                                                    .math(
+                                                              palette,
+                                                              size: 12,
+                                                              color: palette
+                                                                  .accent,
+                                                            ),
                                                             textDirection:
                                                                 TextDirection
                                                                     .ltr,
@@ -1285,13 +1301,14 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                                                                 TextOverflow
                                                                     .ellipsis,
                                                             style:
-                                                                CalcTypography.label(
-                                                                  palette,
-                                                                  size: 9,
-                                                                ).copyWith(
-                                                                  color: palette
-                                                                      .mathMuted,
-                                                                ),
+                                                                CalcTypography
+                                                                    .label(
+                                                              palette,
+                                                              size: 9,
+                                                            ).copyWith(
+                                                              color: palette
+                                                                  .mathMuted,
+                                                            ),
                                                             textDirection:
                                                                 TextDirection
                                                                     .ltr,
@@ -1391,12 +1408,18 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
             final settings = _session.settings;
 
             void apply(CalcSettings next) {
+              final hapticsChanged = next.haptics != _session.settings.haptics;
               setState(() {
                 _session.settings = next;
               });
               setSheetState(() {});
               _persist();
-              if (next.haptics) HapticFeedback.selectionClick();
+              // The segmented controls and the haptics switch gate their own
+              // feedback; this only confirms turning haptics on, which would
+              // otherwise be the one control that stays silent.
+              if (hapticsChanged && next.haptics) {
+                HapticFeedback.selectionClick();
+              }
             }
 
             Widget sectionTitle(String title, String subtitle) {
@@ -1428,7 +1451,8 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                           const SizedBox(height: 1),
                           Text(
                             description,
-                            style: CalcTypography.label(palette, size: 9).copyWith(
+                            style:
+                                CalcTypography.label(palette, size: 9).copyWith(
                               color: palette.mathMuted,
                               fontWeight: FontWeight.w500,
                               height: 1.3,
@@ -1446,6 +1470,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                         selected: value,
                         labelFor: (item) => item ? 'ON' : 'OFF',
                         compact: true,
+                        haptics: settings.haptics,
                         onChanged: onChanged,
                       ),
                     ),
@@ -1482,13 +1507,13 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                               values: AngleUnit.values,
                               selected: settings.angleUnit,
                               labelFor: (unit) => unit.label,
+                              haptics: settings.haptics,
                               onChanged: (unit) =>
                                   apply(settings.copyWith(angleUnit: unit)),
                             ),
                             const SizedBox(height: 8),
                             CalcNote(
-                              text:
-                                  'DEG درجات، RAD راديان، GRA جراديان. '
+                              text: 'DEG درجات، RAD راديان، GRA جراديان. '
                                   'التحويل داخلي ثابت ولا يعتمد على تقريب الواجهة.',
                             ),
                             sectionTitle(
@@ -1499,6 +1524,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                               values: const <bool>[true, false],
                               selected: settings.naturalInput,
                               labelFor: (value) => value ? 'MATH' : 'LINE',
+                              haptics: settings.haptics,
                               onChanged: (value) =>
                                   apply(settings.copyWith(naturalInput: value)),
                             ),
@@ -1584,6 +1610,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                                 CalcFinish.midnight => 'MIDNIGHT',
                                 CalcFinish.paper => 'PAPER',
                               },
+                              haptics: settings.haptics,
                               onChanged: (finish) =>
                                   apply(settings.copyWith(finish: finish)),
                             ),
@@ -1625,8 +1652,7 @@ class _CalculatorProScreenState extends State<CalculatorProScreen> {
                             ),
                             const SizedBox(height: 5),
                             TextButton.icon(
-                              onPressed: () =>
-                                  apply(const CalcSettings()),
+                              onPressed: () => apply(const CalcSettings()),
                               icon: Icon(
                                 Icons.restart_alt_rounded,
                                 size: 18,
@@ -1698,9 +1724,7 @@ class _ModeChip extends StatelessWidget {
                     : Colors.white.withValues(alpha: 0.5)),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected
-                  ? palette.accent
-                  : palette.border,
+              color: selected ? palette.accent : palette.border,
             ),
           ),
           child: Row(
@@ -1721,10 +1745,9 @@ class _ModeChip extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.2,
                 ),
-                textDirection:
-                    info.section == _ModeSection.tool
-                        ? TextDirection.rtl
-                        : TextDirection.ltr,
+                textDirection: info.section == _ModeSection.tool
+                    ? TextDirection.rtl
+                    : TextDirection.ltr,
               ),
             ],
           ),

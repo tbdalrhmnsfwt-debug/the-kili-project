@@ -70,6 +70,24 @@ jobs:
           --no-pub
           .
 
+      # The app's launch surface and label are committed resources. The
+      # generation step above must never replace them; fail loudly if it does.
+      - name: Verify brand resources survived project generation
+        run: |
+          grep -q '@drawable/launch_background' android/app/src/main/res/values/styles.xml
+          grep -q 'rafiq_navy' android/app/src/main/res/values/styles.xml
+          grep -q 'رفيق الطالب' android/app/src/main/AndroidManifest.xml
+          test -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          # API 21-30 prefer drawable-v21; if the template created it, the
+          # launch surface is white even though drawable/ is navy.
+          test -f android/app/src/main/res/drawable-v21/launch_background.xml
+          grep -q 'rafiq_navy' android/app/src/main/res/drawable-v21/launch_background.xml
+          if grep -q 'android:drawable="?android:colorBackground"' android/app/src/main/res/drawable-v21/launch_background.xml; then
+            echo "generated white launch drawable shadowed the brand" >&2
+            exit 1
+          fi
+          echo "brand resources intact"
+
       # flutter_local_notifications schedules with java.time, so the app module
       # must enable core-library desugaring (the plugin enables it for its own
       # module, but AGP also requires the consuming app to opt in). The Gradle
@@ -239,6 +257,12 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      # The calculator engine is covered by a Flutter-free assertion harness
+      # rather than widget tests; nothing else runs it, so without this step
+      # the engine checks would never gate a merge.
+      - name: Verify calculator logic
+        run: dart run tool/verify_calculator_logic.dart
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
@@ -246,6 +270,9 @@ jobs:
         run: flutter build apk --release
 
       - name: Upload APK
+        # Artifact storage is a finite GitHub quota; when it runs out the build
+        # and its tests are still good, so the upload must not fail the run.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: zaker-ai-release-apk

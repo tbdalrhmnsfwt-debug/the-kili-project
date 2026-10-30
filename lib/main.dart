@@ -1,4 +1,4 @@
-/// Zakerly — ذاكرلي
+/// رفيق الطالب
 ///
 /// A Flutter study companion for Egyptian students: the "manhaji" textbook
 /// library, exams and question banks, Quran and adhkar tools, a focus timer
@@ -12,12 +12,15 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
 
 import 'core/adhan_platform.dart';
+import 'core/brand/rafiq_brand.dart';
+import 'core/brand/rafiq_splash_gate.dart';
 import 'core/adhan_voices.dart';
 import 'core/appearance.dart';
 import 'core/local_store.dart';
 import 'core/localization.dart';
 import 'core/notification_service.dart';
 import 'core/pdf/pdf_library_store.dart';
+import 'core/prayer_status_bar.dart';
 import 'core/router.dart';
 import 'core/salat_audio.dart';
 import 'core/shad_theme.dart';
@@ -27,6 +30,8 @@ import 'features/hifz/hifz_sync_host.dart';
 import 'features/prayer/adhan_launch.dart';
 import 'features/prayer/adhan_sync_host.dart';
 import 'providers/app_providers.dart';
+import 'providers/batch_providers.dart';
+import 'providers/my_bag_providers.dart';
 import 'providers/pdf_providers.dart';
 
 Future<void> main() async {
@@ -64,20 +69,29 @@ Future<void> main() async {
   // A locked phone launches the app from the adhan's full-screen intent; the
   // payload has to be read before the router is built.
   final launchPayload = await NotificationService.instance.launchPayload();
+  // The prayer bar reports a tap through the same channel; the route opens
+  // after the router exists, so the handler is registered now and consumed
+  // after the first frame.
+  PrayerStatusBar.instance.onOpenRoute = (route) {
+    if (route == ZakerRoutes.prayer) appRouter.go(ZakerRoutes.prayer);
+  };
+  PrayerStatusBar.instance.attach();
   runApp(
     ProviderScope(
       overrides: [
         localStoreProvider.overrideWithValue(store),
         pdfLibraryStoreProvider.overrideWithValue(pdfStore),
+        batchRootDirProvider.overrideWithValue(support),
+        myBagRootDirProvider.overrideWithValue(support),
       ],
       child: const ZakerlyApp(),
     ),
   );
-  if (launchPayload != null) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      handleNotificationPayload(launchPayload);
-    });
-  }
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    if (launchPayload != null) handleNotificationPayload(launchPayload);
+    final route = await PrayerStatusBar.instance.takeLaunchRoute();
+    if (route == ZakerRoutes.prayer) appRouter.go(ZakerRoutes.prayer);
+  });
 }
 
 /// Root widget.
@@ -97,40 +111,42 @@ class ZakerlyApp extends ConsumerWidget {
     return AzkarSyncHost(
       child: AdhanSyncHost(
         child: HifzSyncHost(
-          child: MaterialApp.router(
-            onGenerateTitle: (context) =>
-                Localizations.of<AppLocalizations>(
-                  context,
-                  AppLocalizations,
-                )?.t('ذاكرلي') ??
-                'ذاكرلي',
-            debugShowCheckedModeBanner: false,
-            theme: ZakerTheme.forStyle(appearance.themeStyle),
-            themeMode: ThemeMode.light,
-            routerConfig: appRouter,
-            locale: ref.watch(localeProvider),
-            supportedLocales: const [Locale('ar'), Locale('en')],
-            localizationsDelegates: const [
-              AppLocalizationsDelegate(),
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            builder: (context, child) {
-              // The app is Arabic-first: force RTL for the Arabic locale.
-              final locale = Localizations.localeOf(context);
-              // shadcn_ui components read their colours and typography from a
-              // ShadTheme; provide one that mirrors the selected appearance.
-              return Directionality(
-                textDirection: locale.languageCode == 'ar'
-                    ? TextDirection.rtl
-                    : TextDirection.ltr,
-                child: ShadTheme(
-                  data: ZakerShadTheme.forStyle(appearance.themeStyle),
-                  child: child ?? const SizedBox.shrink(),
-                ),
-              );
-            },
+          child: RafiqSplashGate(
+            child: MaterialApp.router(
+              onGenerateTitle: (context) =>
+                  Localizations.of<AppLocalizations>(
+                    context,
+                    AppLocalizations,
+                  )?.t(RafiqBrand.appName) ??
+                  RafiqBrand.appName,
+              debugShowCheckedModeBanner: false,
+              theme: ZakerTheme.forStyle(appearance.themeStyle),
+              themeMode: ThemeMode.light,
+              routerConfig: appRouter,
+              locale: ref.watch(localeProvider),
+              supportedLocales: const [Locale('ar'), Locale('en')],
+              localizationsDelegates: const [
+                AppLocalizationsDelegate(),
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              builder: (context, child) {
+                // The app is Arabic-first: force RTL for the Arabic locale.
+                final locale = Localizations.localeOf(context);
+                // shadcn_ui components read their colours and typography from a
+                // ShadTheme; provide one that mirrors the selected appearance.
+                return Directionality(
+                  textDirection: locale.languageCode == 'ar'
+                      ? TextDirection.rtl
+                      : TextDirection.ltr,
+                  child: ShadTheme(
+                    data: ZakerShadTheme.forStyle(appearance.themeStyle),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),

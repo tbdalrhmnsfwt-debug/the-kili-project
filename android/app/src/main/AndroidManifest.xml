@@ -81,7 +81,7 @@
 
     <application
         android:name="${applicationName}"
-        android:label="ذاكرلي"
+        android:label="رفيق الطالب"
         android:icon="@mipmap/ic_launcher"
         android:largeHeap="true"
         android:networkSecurityConfig="@xml/network_security_config">
@@ -177,6 +177,19 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Ongoing prayer bar: boundary alarms plus reboot/update/clock changes. -->
+        <receiver
+            android:name="com.zaker.zaker_ai.PrayerStatusReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="com.zaker.zaker_ai.PRAYER_STATUS_BOUNDARY" />
             </intent-filter>
         </receiver>
 

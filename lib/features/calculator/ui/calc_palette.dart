@@ -8,6 +8,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/theme.dart';
+
 class CalcPalette {
   const CalcPalette({
     required this.isDark,
@@ -146,8 +148,8 @@ class CalcPalette {
     clearKey: Color(0xFFC4463F),
     equalsKey: Color(0xFFE6A100),
     equalsText: Color(0xFF1A1407),
-    accent: Color(0xFF0F766E),
-    accentSoft: Color(0x1A0F766E),
+    accent: ZakerColors.navy,
+    accentSoft: Color(0x1A121E36),
     danger: Color(0xFFB42318),
     dangerSoft: Color(0x14B42318),
     shadow: Color(0x2E1B2A3A),

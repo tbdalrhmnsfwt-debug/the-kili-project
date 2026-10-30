@@ -46,6 +46,9 @@ class PdfDocumentEntry {
     this.source = PdfDocumentSource.imported,
     this.encryption = PdfEncryptionState.unknown,
     this.exportedAt,
+    this.gradeId = '',
+    this.subjectKey = '',
+    this.sourceDocId = '',
   });
 
   /// Stable identifier used for filenames and routes.
@@ -78,6 +81,15 @@ class PdfDocumentEntry {
   final PdfEncryptionState encryption;
   final DateTime? exportedAt;
 
+  /// The grade a bag folder tagged this document with; empty when untagged.
+  final String gradeId;
+
+  /// The subject the bag folder tagged this document with; empty when untagged.
+  final String subjectKey;
+
+  /// The generated document this PDF came from, when a tool made it.
+  final String sourceDocId;
+
   PdfDocumentEntry copyWith({
     String? id,
     String? displayName,
@@ -94,6 +106,9 @@ class PdfDocumentEntry {
     PdfDocumentSource? source,
     PdfEncryptionState? encryption,
     Object? exportedAt = _unset,
+    String? gradeId,
+    String? subjectKey,
+    String? sourceDocId,
   }) {
     return PdfDocumentEntry(
       id: id ?? this.id,
@@ -103,9 +118,8 @@ class PdfDocumentEntry {
           ? this.originalName
           : originalName as String?,
       sizeBytes: sizeBytes ?? this.sizeBytes,
-      pageCount: identical(pageCount, _unset)
-          ? this.pageCount
-          : pageCount as int?,
+      pageCount:
+          identical(pageCount, _unset) ? this.pageCount : pageCount as int?,
       addedAt: addedAt ?? this.addedAt,
       lastOpenedAt: identical(lastOpenedAt, _unset)
           ? this.lastOpenedAt
@@ -121,27 +135,34 @@ class PdfDocumentEntry {
       exportedAt: identical(exportedAt, _unset)
           ? this.exportedAt
           : exportedAt as DateTime?,
+      gradeId: gradeId ?? this.gradeId,
+      subjectKey: subjectKey ?? this.subjectKey,
+      sourceDocId: sourceDocId ?? this.sourceDocId,
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': displayName,
-    'base': baseFileName,
-    if (originalName != null) 'originalName': originalName,
-    'size': sizeBytes,
-    if (pageCount != null) 'pages': pageCount,
-    'addedAt': addedAt.toUtc().toIso8601String(),
-    if (lastOpenedAt != null)
-      'lastOpenedAt': lastOpenedAt!.toUtc().toIso8601String(),
-    'lastPage': lastPage,
-    'favorite': favorite,
-    if (thumbnailFileName != null) 'thumb': thumbnailFileName,
-    'annotations': annotationCount,
-    'source': source.name,
-    'encryption': encryption.name,
-    if (exportedAt != null) 'exportedAt': exportedAt!.toUtc().toIso8601String(),
-  };
+        'id': id,
+        'name': displayName,
+        'base': baseFileName,
+        if (originalName != null) 'originalName': originalName,
+        'size': sizeBytes,
+        if (pageCount != null) 'pages': pageCount,
+        'addedAt': addedAt.toUtc().toIso8601String(),
+        if (lastOpenedAt != null)
+          'lastOpenedAt': lastOpenedAt!.toUtc().toIso8601String(),
+        'lastPage': lastPage,
+        'favorite': favorite,
+        if (thumbnailFileName != null) 'thumb': thumbnailFileName,
+        'annotations': annotationCount,
+        'source': source.name,
+        'encryption': encryption.name,
+        if (exportedAt != null)
+          'exportedAt': exportedAt!.toUtc().toIso8601String(),
+        if (gradeId.isNotEmpty) 'gradeId': gradeId,
+        if (subjectKey.isNotEmpty) 'subjectKey': subjectKey,
+        if (sourceDocId.isNotEmpty) 'sourceDocId': sourceDocId,
+      };
 
   factory PdfDocumentEntry.fromJson(Map<String, dynamic> json) {
     final id = json['id'];
@@ -175,6 +196,9 @@ class PdfDocumentEntry {
       source: _source(json['source']),
       encryption: _encryption(json['encryption']),
       exportedAt: _date(json['exportedAt']),
+      gradeId: json['gradeId'] as String? ?? '',
+      subjectKey: json['subjectKey'] as String? ?? '',
+      sourceDocId: json['sourceDocId'] as String? ?? '',
     );
   }
 

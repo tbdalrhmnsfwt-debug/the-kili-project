@@ -69,12 +69,12 @@ class PdfLibraryController extends StateNotifier<PdfLibraryIndex> {
     required PdfProbe probe,
     required PdfThumbnailer thumbnailer,
     String Function()? newId,
-  }) : _store = store,
-       _repository = repository,
-       _probe = probe,
-       _thumbnailer = thumbnailer,
-       _newId = newId ?? _defaultId,
-       super(repository.load());
+  })  : _store = store,
+        _repository = repository,
+        _probe = probe,
+        _thumbnailer = thumbnailer,
+        _newId = newId ?? _defaultId,
+        super(repository.load());
 
   final PdfLibraryStore _store;
   final PdfLibraryRepository _repository;
@@ -124,8 +124,8 @@ class PdfLibraryController extends StateNotifier<PdfLibraryIndex> {
             encryption: probe.encrypted
                 ? PdfEncryptionState.yes
                 : probe.pageCount != null
-                ? PdfEncryptionState.no
-                : PdfEncryptionState.unknown,
+                    ? PdfEncryptionState.no
+                    : PdfEncryptionState.unknown,
           );
           await _commit(state.upsert(entry));
           imported.add(entry);
@@ -156,6 +156,37 @@ class PdfLibraryController extends StateNotifier<PdfLibraryIndex> {
     final entry = _entry(id);
     if (entry == null) return;
     await _commit(state.upsert(entry.copyWith(favorite: value)));
+  }
+
+  /// Tags a document with the bag folder it was added from.
+  Future<void> setSubjectTag(
+    String id, {
+    required String gradeId,
+    required String subjectKey,
+    String sourceDocId = '',
+  }) async {
+    final entry = _entry(id);
+    if (entry == null) return;
+    await _commit(
+      state.upsert(
+        entry.copyWith(
+          gradeId: gradeId,
+          subjectKey: subjectKey,
+          sourceDocId: sourceDocId,
+        ),
+      ),
+    );
+  }
+
+  /// Removes the bag tag without touching the document itself.
+  Future<void> clearSubjectTag(String id) async {
+    final entry = _entry(id);
+    if (entry == null) return;
+    await _commit(
+      state.upsert(
+        entry.copyWith(gradeId: '', subjectKey: '', sourceDocId: ''),
+      ),
+    );
   }
 
   /// Records that the document was opened, optionally at [page].

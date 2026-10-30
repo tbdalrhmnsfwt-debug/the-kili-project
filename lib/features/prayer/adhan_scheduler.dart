@@ -21,9 +21,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/adhan_voices.dart';
 import '../../core/notification_service.dart';
 import '../../core/prayer_methods.dart';
+import '../../core/prayer_status_bar.dart';
 import 'adhan_providers.dart';
 import 'prayer_models.dart';
 import 'prayer_providers.dart';
+import 'prayer_status_schedule.dart';
 
 /// How many days ahead the scheduler keeps alarms.  Eight days covers a week
 /// away from the app plus one day of overlap.
@@ -98,24 +100,38 @@ class PrayerAdhanScheduler {
 
     await NotificationService.instance.cancelPrayerNotifications();
 
+    final notificationsAllowed =
+        await NotificationService.instance.areNotificationsEnabled();
+    final showStatusBar = shouldShowPrayerStatusBar(
+      adhanEnabled: settings.enabled,
+      statusBarEnabled: settings.statusBarEnabled,
+      hasLocation: location != null,
+      notificationsAllowed: notificationsAllowed,
+    );
+    if (!showStatusBar) {
+      await PrayerStatusBar.instance.cancel();
+    }
+
     if (!settings.enabled) {
       return const AdhanScheduleResult(enabled: false);
     }
     if (location == null) {
       return const AdhanScheduleResult(hadLocation: false);
     }
-    if (!await NotificationService.instance.areNotificationsEnabled()) {
+    if (!notificationsAllowed) {
       return const AdhanScheduleResult(notificationsAllowed: false);
     }
 
     await NotificationService.instance.ensureAdhanChannels();
 
     final now = DateTime.now();
-    var useExact = await NotificationService.instance
-        .canScheduleExactNotifications();
+    var useExact =
+        await NotificationService.instance.canScheduleExactNotifications();
     var scheduled = 0;
     var reminders = 0;
     var failed = 0;
+    // The successfully computed days feed the status bar's boundary list.
+    final days = <PrayerTimes>[];
 
     for (var dayOffset = 0; dayOffset < kAdhanHorizonDays; dayOffset++) {
       // Constructing from the calendar fields (instead of adding 24h) keeps
@@ -136,6 +152,8 @@ class PrayerAdhanScheduler {
         continue;
       }
 
+      days.add(times);
+
       for (final prayer in PrayerName.values) {
         if (!settings.isPrayerEnabled(prayer)) continue;
         final prayerTime = _timeFor(times, prayer).toLocal();
@@ -147,22 +165,22 @@ class PrayerAdhanScheduler {
             prayer.index,
             voiceSlot: NotificationService.adhanVoiceSlot(voice.id),
           );
-          final outcome = await NotificationService.instance
-              .schedulePrayerAdhan(
-                id: id,
-                title: 'حان وقت ${prayer.invocation}',
-                body: _adhanBody(prayer),
-                when: prayerTime,
-                voice: voice,
-                preferExact: useExact,
-                payload: _adhanPayload(
-                  id: id,
-                  prayer: prayer,
-                  when: prayerTime,
-                  location: location,
-                  voice: voice,
-                ),
-              );
+          final outcome =
+              await NotificationService.instance.schedulePrayerAdhan(
+            id: id,
+            title: 'حان وقت ${prayer.invocation}',
+            body: _adhanBody(prayer),
+            when: prayerTime,
+            voice: voice,
+            preferExact: useExact,
+            payload: _adhanPayload(
+              id: id,
+              prayer: prayer,
+              when: prayerTime,
+              location: location,
+              voice: voice,
+            ),
+          );
           switch (outcome) {
             case AdhanScheduleOutcome.exact:
               scheduled++;
@@ -179,19 +197,18 @@ class PrayerAdhanScheduler {
             Duration(minutes: settings.reminderMinutes),
           );
           if (remindAt.isAfter(now.add(const Duration(seconds: 5)))) {
-            final outcome = await NotificationService.instance
-                .schedulePrayerReminder(
-                  id: NotificationService.prayerReminderNotificationId(
-                    dayOffset,
-                    prayer.index,
-                  ),
-                  title: 'قبل ${prayer.invocation}',
-                  body:
-                      'فاضل ${settings.reminderMinutes} دقيقة على '
-                      '${prayer.invocation}. استعد للصلاة.',
-                  when: remindAt,
-                  preferExact: useExact,
-                );
+            final outcome =
+                await NotificationService.instance.schedulePrayerReminder(
+              id: NotificationService.prayerReminderNotificationId(
+                dayOffset,
+                prayer.index,
+              ),
+              title: 'قبل ${prayer.invocation}',
+              body: 'فاضل ${settings.reminderMinutes} دقيقة على '
+                  '${prayer.invocation}. استعد للصلاة.',
+              when: remindAt,
+              preferExact: useExact,
+            );
             switch (outcome) {
               case AdhanScheduleOutcome.exact:
                 reminders++;
@@ -203,6 +220,18 @@ class PrayerAdhanScheduler {
             }
           }
         }
+      }
+    }
+
+    if (showStatusBar) {
+      final boundaries = buildPrayerStatusBoundaries(days: days, now: now);
+      if (boundaries.isEmpty) {
+        await PrayerStatusBar.instance.cancel();
+      } else {
+        await PrayerStatusBar.instance.sync(
+          city: location.displayName,
+          boundaries: boundaries,
+        );
       }
     }
 

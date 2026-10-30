@@ -106,7 +106,8 @@ class _CasModeState extends State<CasMode> {
     _run(
       'المشتقة',
       (source, variable) => _engine.differentiate(source, variable).expression,
-      note: 'المشتقة رمزية دقيقة. القواعد المدعومة: + − × ÷ ^ √ والدوال الشائعة.',
+      note:
+          'المشتقة رمزية دقيقة. القواعد المدعومة: + − × ÷ ^ √ والدوال الشائعة.',
     );
   }
 
@@ -121,7 +122,8 @@ class _CasModeState extends State<CasMode> {
   void _factor() {
     _run(
       'التحليل إلى عوامل',
-      (source, variable) => _engine.factor(source, variable: variable).expression,
+      (source, variable) =>
+          _engine.factor(source, variable: variable).expression,
       note: 'تحليل على الأعداد النسبية فقط؛ العوامل غير النسبية مش هتظهر.',
     );
   }
@@ -149,13 +151,11 @@ class _CasModeState extends State<CasMode> {
       setState(() {
         _result = formatted;
         _resultLabel = 'التكامل المحدد (عددي)';
-        _note =
-            'تكامل عددي بطريقة Simpson التكيفية من $lower إلى $upper. '
+        _note = 'تكامل عددي بطريقة Simpson التكيفية من $lower إلى $upper. '
             'النتيجة تقريبية، وليست تعبيرًا رمزيًا.';
         _error = null;
         _exact = false;
       });
-      HapticFeedback.mediumImpact();
     } on CalcError catch (error) {
       setState(() {
         _error = '${error.label}: ${error.detail ?? error.hint}';
@@ -181,8 +181,7 @@ class _CasModeState extends State<CasMode> {
       setState(() {
         _result = formatCalcValue(value).display;
         _resultLabel = 'المشتقة عند نقطة (عددية)';
-        _note =
-            'فرق مركزي عددي عند $variable = $point. '
+        _note = 'فرق مركزي عددي عند $variable = $point. '
             'استخدم زر المشتقة للحصول على تعبير رمزي.';
         _error = null;
         _exact = false;

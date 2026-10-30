@@ -282,7 +282,7 @@ class OfficialLibraryStore {
         imported: 0,
         skipped: 0,
         conflicts: 0,
-        error: 'الملف مش نسخة مكتبة ذاكرلي.',
+        error: 'الملف مش نسخة مكتبة رفيق الطالب.',
       );
     }
 

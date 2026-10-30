@@ -60,6 +60,11 @@ class FeatureTile extends StatelessWidget {
     this.onTap,
     this.color,
     this.art,
+    this.gradient,
+    this.borderColor,
+    this.titleColor,
+    this.subtitleColor,
+    this.iconOnDark = false,
   });
 
   final String title;
@@ -71,10 +76,22 @@ class FeatureTile extends StatelessWidget {
   /// Replaces the glyph tile with a custom mark, such as the aurora icon.
   final Widget? art;
 
+  /// An optional dark-glass field. When omitted the tile keeps the classic
+  /// themed card, so other screens are untouched.
+  final LinearGradient? gradient;
+  final Color? borderColor;
+  final Color? titleColor;
+  final Color? subtitleColor;
+
+  /// Lifts the glyph so the accent stays readable on a dark glass field.
+  final bool iconOnDark;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = color ?? theme.colorScheme.primary;
+    final glyphAccent =
+        iconOnDark ? Color.lerp(accent, Colors.white, 0.35)! : accent;
 
     return ZakerPressScale(
       child: Material(
@@ -86,15 +103,18 @@ class FeatureTile extends StatelessWidget {
                   HapticFeedback.selectionClick();
                   onTap!();
                 },
-          borderRadius: BorderRadius.circular(ZakerRadius.md),
+          borderRadius: ZakerRadius.card,
           child: Container(
             padding: const EdgeInsets.all(ZakerSpacing.md),
             decoration: BoxDecoration(
-              color: theme.cardTheme.color,
+              color: gradient == null ? theme.cardTheme.color : null,
+              gradient: gradient,
               borderRadius: ZakerRadius.card,
               border: Border.all(
-                color: theme.dividerTheme.color ?? Colors.black12,
+                color:
+                    borderColor ?? theme.dividerTheme.color ?? Colors.black12,
               ),
+              boxShadow: ZakerShadows.card,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,7 +123,7 @@ class FeatureTile extends StatelessWidget {
                 art ??
                     ZakerGlassGlyph(
                       icon: icon,
-                      accent: accent,
+                      accent: glyphAccent,
                       size: 38,
                       iconSize: 22,
                       radius: ZakerRadius.sm,
@@ -115,6 +135,7 @@ class FeatureTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: titleColor,
                   ),
                 ),
                 if (subtitle != null) ...[
@@ -124,7 +145,8 @@ class FeatureTile extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color:
+                          subtitleColor ?? theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -145,6 +167,7 @@ class StatChip extends StatelessWidget {
     required this.label,
     this.icon,
     this.color,
+    this.labelColor,
   });
 
   final String value;
@@ -152,10 +175,30 @@ class StatChip extends StatelessWidget {
   final IconData? icon;
   final Color? color;
 
+  /// Overrides the label's colour; by default it follows the chip's surface.
+  final Color? labelColor;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = color ?? theme.colorScheme.primary;
+    // A near-white accent is how callers mark a chip painted on a coloured
+    // banner. The chip then sits on a dark backdrop, so its text has to stay
+    // light instead of being adapted to the light card — the theme's muted
+    // label colour used to disappear on navy.
+    final onBanner = accent.computeLuminance() > 0.8;
+    // Text has to clear the chip's own tint, not the bare card behind it.
+    final chipSurface = Color.alphaBlend(
+      accent.withValues(alpha: 0.10),
+      cardSurfaceOf(theme),
+    );
+    final foreground =
+        onBanner ? accent : readableTextColor(accent, chipSurface);
+    final mutedLabel = readableTextColor(
+      theme.colorScheme.onSurfaceVariant,
+      chipSurface,
+    );
+    final resolvedLabel = labelColor ?? (onBanner ? accent : mutedLabel);
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: ZakerSpacing.md,
@@ -169,13 +212,13 @@ class StatChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 16, color: accent),
+            Icon(icon, size: 16, color: foreground),
             const SizedBox(width: ZakerSpacing.xs),
           ],
           TrText(
             value,
             style: theme.textTheme.titleSmall?.copyWith(
-              color: accent,
+              color: foreground,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -186,7 +229,7 @@ class StatChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: resolvedLabel,
               ),
             ),
           ),

@@ -12,40 +12,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/pdf/pdf_library_controller.dart';
+import '../../../models/pdf_document.dart';
 import '../../../providers/pdf_providers.dart';
 import '../../../widgets/tr_text.dart';
 
-/// Opens the PDF picker and imports everything chosen.
-Future<void> importPdfFiles(BuildContext context, WidgetRef ref) async {
-  final messenger = ScaffoldMessenger.of(context);
-  final controller = ref.read(pdfLibraryControllerProvider.notifier);
-  if (controller.isBusy) return;
+/// Asks the system for PDF files and returns them as import sources.
+typedef PdfPicker = Future<List<PdfImportSource>> Function();
 
-  final FilePickerResult? picked;
-  try {
-    picked = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['pdf'],
-      allowMultiple: true,
-      withReadStream: true,
-    );
-  } on Object {
-    messenger.showSnackBar(
-      const SnackBar(content: TrText('مقدرناش نفتح اختيار الملفات.')),
-    );
-    return;
-  }
-  if (picked == null || picked.files.isEmpty) return;
+/// The real picker. Unreadable picks are skipped; a cancel returns an empty
+/// list, which is not an error.
+Future<List<PdfImportSource>> _pickWithSystemPicker() async {
+  final picked = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: const ['pdf'],
+    allowMultiple: true,
+    withReadStream: true,
+  );
+  if (picked == null || picked.files.isEmpty) return const [];
 
   final sources = <PdfImportSource>[];
-  var unreadable = 0;
   for (final file in picked.files) {
     final stream = file.readStream;
     final path = file.path;
-    if (stream == null && path == null) {
-      unreadable += 1;
-      continue;
-    }
+    if (stream == null && path == null) continue;
     sources.add(
       PdfImportSource(
         name: file.name,
@@ -54,20 +43,44 @@ Future<void> importPdfFiles(BuildContext context, WidgetRef ref) async {
       ),
     );
   }
-  if (sources.isEmpty) {
+  return sources;
+}
+
+/// The picker seam: tests replace it with a source that needs no platform
+/// channel.
+final pdfPickerProvider = Provider<PdfPicker>(
+  (ref) => _pickWithSystemPicker,
+);
+
+/// Opens the PDF picker, imports everything chosen and returns what landed in
+/// the library.
+Future<List<PdfDocumentEntry>> importPdfFiles(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final controller = ref.read(pdfLibraryControllerProvider.notifier);
+  if (controller.isBusy) return const [];
+
+  final List<PdfImportSource> sources;
+  try {
+    sources = await ref.read(pdfPickerProvider)();
+  } on Object {
     messenger.showSnackBar(
-      const SnackBar(content: TrText('مقدرناش نقرا الملفات المختارة.')),
+      const SnackBar(content: TrText('مقدرناش نفتح اختيار الملفات.')),
     );
-    return;
+    return const [];
   }
+  if (sources.isEmpty) return const [];
 
   final result = await controller.import(sources);
   final added = result.imported.length;
-  final rejected = result.failures.length + unreadable;
+  final rejected = result.failures.length;
   final message = switch ((added, rejected)) {
     (0, _) => 'مفيش ملفات اتضافت — اتأكد إنهم PDF.',
     (_, 0) => 'تمت إضافة $added ملف.',
     _ => 'تمت إضافة $added ملف، و$rejected ملف اتترفض.',
   };
   messenger.showSnackBar(SnackBar(content: TrText(message)));
+  return result.imported;
 }

@@ -161,7 +161,7 @@ class _OverviewCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: ZakerRadius.card,
         gradient: LinearGradient(
-          colors: [theme.colorScheme.primary, ZakerColors.primaryLight],
+          colors: ZakerColors.navyGradient,
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
@@ -571,7 +571,11 @@ class _WordReviewScreenState extends ConsumerState<WordReviewScreen> {
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: ZakerColors.success,
+                      color: cardAccentOnTintOf(
+                        ZakerColors.success,
+                        theme,
+                        alpha: 0.12,
+                      ),
                     ),
                   ),
                   const SizedBox(height: ZakerSpacing.xs),

@@ -163,32 +163,30 @@ class Parser {
 
     if (lower == 'ans') return const VariableExpr('Ans');
     if (lower == 'pi') return const ConstantExpr('pi');
-    if (lower == 'e') return const ConstantExpr('e');
+    // Only lowercase `e` is Euler's number. Uppercase `E` is one of the
+    // Casio session variables (STO/RCL E), so it must reach the evaluator.
+    if (raw == 'e') return const ConstantExpr('e');
     if (lower == 'i') return const ConstantExpr('i');
     if (lower == 'θ' || lower == 'theta') return const VariableExpr('θ');
 
     if (knownFunctionNames.contains(lower)) {
-      final arguments = <Expr>[];
-      if (_peek.kind == TokenKind.leftParen) {
-        _position++;
-        if (_peek.kind != TokenKind.rightParen) {
-          arguments.add(_additive());
-          while (_matchKind(TokenKind.comma)) {
-            arguments.add(_additive());
-          }
-        }
-        _expect(TokenKind.rightParen, 'قوس قافل )');
-      } else {
-        // Casio-style `sin 30` without parentheses.
-        arguments.add(_unary());
-      }
-      validateFunctionArity(lower, arguments.length);
-      return FunctionExpr(lower, arguments);
+      if (_peek.kind == TokenKind.leftParen) return _functionCall(lower);
+      // Casio-style `sin 30` without parentheses.
+      final argument = _unary();
+      validateFunctionArity(lower, 1);
+      return FunctionExpr(lower, [argument]);
     }
 
     if (raw.length == 1) {
       return VariableExpr(raw);
     }
+
+    // `Anse` (the Ans key followed by the e key) means Ans·e, `AnsAns` means
+    // Ans·Ans, and `Anssin(30)` means Ans·sin(30). The run has to be handled
+    // before the unknown-function check below, because `Anssin(` would
+    // otherwise throw.
+    final reserved = _reservedRun(raw);
+    if (reserved != null) return reserved;
 
     if (_peek.kind == TokenKind.leftParen) {
       throw CalcError(
@@ -204,11 +202,69 @@ class Parser {
         detail: 'اسم غير صالح «$raw».',
       );
     }
-    Expr product = VariableExpr(raw[0]);
+    Expr product = _simpleName(raw[0]);
     for (var i = 1; i < raw.length; i++) {
-      product = BinaryExpr('*', product, VariableExpr(raw[i]));
+      product = BinaryExpr('*', product, _simpleName(raw[i]));
     }
     return product;
+  }
+
+  /// Reads `name(...)` after the caller has seen the opening parenthesis.
+  Expr _functionCall(String lower) {
+    final arguments = <Expr>[];
+    _expect(TokenKind.leftParen, 'قوس فاتح (');
+    if (_peek.kind != TokenKind.rightParen) {
+      arguments.add(_additive());
+      while (_matchKind(TokenKind.comma)) {
+        arguments.add(_additive());
+      }
+    }
+    _expect(TokenKind.rightParen, 'قوس قافل )');
+    validateFunctionArity(lower, arguments.length);
+    return FunctionExpr(lower, arguments);
+  }
+
+  /// Splits a letter run that starts with the reserved `Ans` name.
+  ///
+  /// Returns `null` when the run does not start with `Ans`, so the caller
+  /// keeps the generic handling. A trailing function name followed by `(`
+  /// stays whole, so `Anssin(30)` calls `sin` instead of reading `s·i·n`.
+  Expr? _reservedRun(String raw) {
+    if (!RegExp(r'^[A-Za-z]+$').hasMatch(raw)) return null;
+    var rest = raw;
+    final parts = <Expr>[];
+    while (rest.length >= 3 && rest.substring(0, 3).toLowerCase() == 'ans') {
+      parts.add(const VariableExpr('Ans'));
+      rest = rest.substring(3);
+    }
+    if (parts.isEmpty) return null;
+    if (rest.isNotEmpty) {
+      final restLower = rest.toLowerCase();
+      if (_peek.kind == TokenKind.leftParen &&
+          knownFunctionNames.contains(restLower)) {
+        parts.add(_functionCall(restLower));
+      } else {
+        for (final part in rest.split('')) {
+          parts.add(_simpleName(part));
+        }
+      }
+    }
+    var product = parts.first;
+    for (final part in parts.skip(1)) {
+      product = BinaryExpr('*', product, part);
+    }
+    return product;
+  }
+
+  /// Resolves one part of a split run the same way a whole identifier is.
+  Expr _simpleName(String part) {
+    final lower = part.toLowerCase();
+    if (lower == 'ans') return const VariableExpr('Ans');
+    if (lower == 'pi') return const ConstantExpr('pi');
+    if (part == 'e') return const ConstantExpr('e');
+    if (lower == 'i') return const ConstantExpr('i');
+    if (part == 'θ' || lower == 'theta') return const VariableExpr('θ');
+    return VariableExpr(part);
   }
 
   bool _startsValue(Token token) {
@@ -247,7 +303,8 @@ class Parser {
     if (_peek.kind != kind) {
       throw CalcError(
         CalcErrorKind.syntax,
-        detail: '$description متوقع${_peek.kind == TokenKind.eof ? '' : ' عند «${_peek.text}»'}',
+        detail:
+            '$description متوقع${_peek.kind == TokenKind.eof ? '' : ' عند «${_peek.text}»'}',
       );
     }
     _position++;

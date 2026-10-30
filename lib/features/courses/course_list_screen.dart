@@ -181,7 +181,7 @@ class _CurriculumBanner extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [theme.colorScheme.primary, ZakerColors.primaryLight],
+                colors: ZakerColors.navyGradient,
               ),
               boxShadow: [
                 BoxShadow(

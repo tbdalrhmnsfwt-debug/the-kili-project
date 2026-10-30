@@ -30,6 +30,10 @@ class Rational implements Comparable<Rational> {
     return Rational._(n, d);
   }
 
+  /// Upper bound on a literal's exponent and decimal places, matching
+  /// `Evaluator._maxExactExponent`.
+  static const int maxLiteralExponent = 10000;
+
   factory Rational.fromInt(int value, [int denominator = 1]) =>
       Rational(BigInt.from(value), BigInt.from(denominator));
 
@@ -50,6 +54,11 @@ class Rational implements Comparable<Rational> {
     final eIndex = body.indexOf(RegExp('[eE]'));
     if (eIndex >= 0) {
       exponent = int.parse(body.substring(eIndex + 1));
+      // `1e999999999` would allocate a BigInt of ~400 MB during a keystroke
+      // preview. Reject anything past the evaluator's exact-exponent ceiling.
+      if (exponent.abs() > maxLiteralExponent) {
+        throw FormatException('exponent out of range', source);
+      }
       body = body.substring(0, eIndex);
     }
     final dot = body.indexOf('.');
@@ -66,6 +75,9 @@ class Rational implements Comparable<Rational> {
     }
     if (!RegExp(r'^\d+$').hasMatch(digits)) {
       throw FormatException('invalid rational', source);
+    }
+    if (scale > maxLiteralExponent) {
+      throw FormatException('too many decimal places', source);
     }
     var numerator = BigInt.parse(digits) * sign;
     var denominator = BigInt.one;
@@ -116,19 +128,19 @@ class Rational implements Comparable<Rational> {
   Rational operator -() => Rational._(-numerator, denominator);
 
   Rational operator +(Rational other) => Rational(
-    numerator * other.denominator + other.numerator * denominator,
-    denominator * other.denominator,
-  );
+        numerator * other.denominator + other.numerator * denominator,
+        denominator * other.denominator,
+      );
 
   Rational operator -(Rational other) => Rational(
-    numerator * other.denominator - other.numerator * denominator,
-    denominator * other.denominator,
-  );
+        numerator * other.denominator - other.numerator * denominator,
+        denominator * other.denominator,
+      );
 
   Rational operator *(Rational other) => Rational(
-    numerator * other.numerator,
-    denominator * other.denominator,
-  );
+        numerator * other.numerator,
+        denominator * other.denominator,
+      );
 
   Rational operator /(Rational other) {
     if (other.isZero) {
@@ -284,17 +296,20 @@ class EvalValue {
       throw const NonFiniteValue();
     }
     // Remove floating residue such as 1.2246467991473532e-16 i after
-    // evaluating sin(pi). The threshold is relative to the real magnitude.
-    if (imaginary.abs() < 1e-13 * math.max(1, real.abs())) {
-      imaginary = 0;
-    }
+    // evaluating sin(pi), and the mirror case: `(-1)^0.5` leaves a 6.1e-17
+    // real part next to `i`. Both parts are judged against the same scale so a
+    // complex result never shows one component of pure noise.
+    final scale = math.max(1.0, math.max(real.abs(), imaginary.abs()));
+    if (real.abs() < 1e-13 * scale) real = 0;
+    if (imaginary.abs() < 1e-13 * scale) imaginary = 0;
     if (imaginary == 0) {
       return EvalValue._(null, real, 0);
     }
     return EvalValue._(null, real, imaginary);
   }
 
-  factory EvalValue.integer(int value) => EvalValue.exact(Rational.fromInt(value));
+  factory EvalValue.integer(int value) =>
+      EvalValue.exact(Rational.fromInt(value));
 
   /// Exact real value, or `null` for an approximation/complex value.
   final Rational? exact;
@@ -304,12 +319,18 @@ class EvalValue {
   bool get isExact => exact != null;
   bool get isReal => imaginaryPart == 0;
   bool get isComplex => imaginaryPart != 0;
-  bool get isZero =>
-      (exact?.isZero ?? false) ||
-      (isReal && realPart.abs() < 1e-15);
 
-  double get magnitude =>
-      isReal ? realPart.abs() : math.sqrt(realPart * realPart + imaginaryPart * imaginaryPart);
+  /// The epsilon only applies to approximations. An exact rational knows
+  /// whether it is zero, and `1e-16` is a perfectly good divisor.
+  bool get isZero {
+    final value = exact;
+    if (value != null) return value.isZero;
+    return isReal && realPart.abs() < 1e-15;
+  }
+
+  double get magnitude => isReal
+      ? realPart.abs()
+      : math.sqrt(realPart * realPart + imaginaryPart * imaginaryPart);
 
   double get argument {
     if (isReal) {
@@ -319,9 +340,8 @@ class EvalValue {
     return math.atan2(imaginaryPart, realPart);
   }
 
-  EvalValue get conjugate => isComplex
-      ? EvalValue.complex(realPart, -imaginaryPart)
-      : this;
+  EvalValue get conjugate =>
+      isComplex ? EvalValue.complex(realPart, -imaginaryPart) : this;
 
   /// A close rational approximation, used only for display (never for maths).
   Rational? get rationalApproximation {
@@ -368,8 +388,7 @@ class EvalValue {
     if (exact != null && other.exact != null) {
       return EvalValue.exact(exact! / other.exact!);
     }
-    final denominator =
-        other.realPart * other.realPart +
+    final denominator = other.realPart * other.realPart +
         other.imaginaryPart * other.imaginaryPart;
     if (denominator == 0) throw const DivisionByZero();
     return EvalValue.complex(
@@ -409,13 +428,14 @@ class EvalValue {
     return exponent < 0 ? EvalValue.integer(1) / result : result;
   }
 
-  static EvalValue fromNum(num value) =>
-      value is int ? EvalValue.integer(value) : EvalValue.real(value.toDouble());
+  static EvalValue fromNum(num value) => value is int
+      ? EvalValue.integer(value)
+      : EvalValue.real(value.toDouble());
 
   @override
   String toString() => isComplex
       ? '${realPart.toString()}${imaginaryPart < 0 ? ' - ' : ' + '}'
-            '${imaginaryPart.abs()}i'
+          '${imaginaryPart.abs()}i'
       : (exact?.toString() ?? realPart.toString());
 }
 

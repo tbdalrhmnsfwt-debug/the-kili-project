@@ -1,0 +1,328 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
+import 'package:zaker_ai/core/auth_service.dart';
+import 'package:zaker_ai/core/brand/rafiq_brand.dart';
+import 'package:zaker_ai/core/local_store.dart';
+import 'package:zaker_ai/core/shad_theme.dart';
+import 'package:zaker_ai/core/theme.dart';
+import 'package:zaker_ai/features/home/home_screen.dart';
+import 'package:zaker_ai/features/home/widgets/home_style.dart';
+import 'package:zaker_ai/features/home/widgets/home_top_bar.dart';
+import 'package:zaker_ai/features/prayer/prayer_models.dart';
+import 'package:zaker_ai/features/prayer/prayer_providers.dart';
+import 'package:zaker_ai/models/schedule.dart';
+import 'package:zaker_ai/providers/app_providers.dart';
+
+/// The real controller reports the first run only through its stored state, so
+/// the test seeds the flag by subclassing instead of writing a file.
+class _OnboardedSettings extends PrayerSettingsController {
+  _OnboardedSettings() : super(LocalStore.memory()) {
+    state = const PrayerSettings(onboarded: true);
+  }
+}
+
+Widget _app({
+  ZakerThemeStyle style = ZakerThemeStyle.light,
+  double textScale = 1,
+  List<ScheduleEntry>? tasks,
+}) =>
+    ProviderScope(
+      overrides: [
+        localStoreProvider.overrideWithValue(LocalStore.memory()),
+        authUserProvider.overrideWith(
+          (ref) => const AuthUser(uid: 'u1', displayName: 'طالب'),
+        ),
+        prayerSettingsProvider.overrideWith((ref) => _OnboardedSettings()),
+        if (tasks != null)
+          taskScheduleProvider.overrideWith(
+            (ref) => TaskSchedule(title: 'قائمة المهام', entries: tasks),
+          ),
+      ],
+      child: MaterialApp(
+        theme: ZakerTheme.forStyle(style),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            // shadcn_ui reads its own theme; without this the ShadInput throws.
+            child: ShadTheme(
+              data: ZakerShadTheme.forStyle(style),
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
+        ),
+        home: const Scaffold(body: HomeScreen()),
+      ),
+    );
+
+Future<void> _pumpAt(
+  WidgetTester tester, {
+  double width = 400,
+  double height = 800,
+  double textScale = 1,
+  ZakerThemeStyle style = ZakerThemeStyle.light,
+  List<ScheduleEntry>? tasks,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = Size(width, height);
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  await tester.pumpWidget(
+    _app(textScale: textScale, style: style, tasks: tasks),
+  );
+  await tester.pump();
+}
+
+void main() {
+  // 1024 exercises the side-by-side banner and the four-column tools grid.
+  for (final width in [320.0, 360.0, 411.0, 800.0, 1024.0]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets('no overflow at $width dp and ${scale}x text',
+          (tester) async {
+        await _pumpAt(tester, width: width, textScale: scale);
+        expect(tester.takeException(), isNull);
+        expect(find.text('اسأل معلم AI عن أي حاجة…'), findsOneWidget);
+
+        // The list lays out only what fits in the viewport plus its cache
+        // extent, so the first screen cannot vouch for the daily tools or the
+        // tools section. Drag the keyed body to the bottom and check again.
+        await tester.dragUntilVisible(
+          find.text('قسم الأدوات'),
+          find.byKey(const Key('home-body')),
+          const Offset(0, -400),
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
+  for (final style in ZakerThemeStyle.values) {
+    testWidgets('no overflow in ${style.id} at 320 dp and 2.0x text', (
+      tester,
+    ) async {
+      await _pumpAt(tester, width: 320, textScale: 2, style: style);
+      expect(tester.takeException(), isNull);
+      await tester.dragUntilVisible(
+        find.text('قسم الأدوات'),
+        find.byKey(const Key('home-body')),
+        const Offset(0, -400),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('the top bar is the formula height at 800 dp', (tester) async {
+    await _pumpAt(tester);
+    expect(
+      tester.getSize(find.byKey(const Key('home-top-bar'))).height,
+      closeTo(homeTopBarHeightFor(800), 1e-9),
+    );
+  });
+
+  testWidgets('the old prayer block and the Islamic hub card are gone', (
+    tester,
+  ) async {
+    await _pumpAt(tester);
+    expect(find.text('الصلاة القادمة'), findsNothing);
+    expect(find.text('الأذان'), findsNothing);
+    expect(find.text('الإسلاميات'), findsNothing);
+    expect(find.byKey(const Key('home-prayer-pill')), findsOneWidget);
+  });
+
+  testWidgets('the top bar names the app and the header holds the badge', (
+    tester,
+  ) async {
+    await _pumpAt(tester);
+    expect(find.byKey(const Key('home-app-name')), findsOneWidget);
+    // The footer repeats the brand, so scope this to the bar itself.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('home-top-bar')),
+        matching: find.text(RafiqBrand.appName),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('home-header')), findsOneWidget);
+    expect(find.byKey(const Key('home-prayer-pill')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('home-header')),
+        matching: find.byKey(const Key('home-prayer-badge')),
+      ),
+      findsOneWidget,
+    );
+
+    final header = tester.widget<Container>(
+      find.byKey(const Key('home-header')),
+    );
+    final gradient = (header.decoration! as BoxDecoration).gradient!;
+    expect((gradient as LinearGradient).colors, HomePalette.headerGradient);
+  });
+
+  testWidgets('the six core feature cards make up the home grid', (
+    tester,
+  ) async {
+    await _pumpAt(tester, width: 400);
+    await tester.dragUntilVisible(
+      find.byKey(const Key('home-feature-grid')),
+      find.byKey(const Key('home-body')),
+      const Offset(0, -300),
+    );
+
+    for (final key in [
+      'home-feature-textbooks',
+      'home-feature-pdf-reader',
+      'home-feature-calculator',
+      'home-feature-notebooks',
+      'home-feature-mind-maps',
+      'home-feature-ai-explanations',
+    ]) {
+      expect(find.byKey(Key(key)), findsOneWidget, reason: key);
+    }
+
+    for (final title in [
+      'الكتب الدراسية الرقمية',
+      'قارئ PDF التفاعلي',
+      'الآلة الحاسبة العلمية',
+      'دفاتر الملاحظات',
+      'الخرائط الذهنية',
+      'الشروحات بمساعدة الذكاء الاصطناعي',
+    ]) {
+      expect(find.text(title), findsOneWidget, reason: title);
+    }
+  });
+
+  testWidgets('the AI feature title stays readable at 320 dp and 2.0x', (
+    tester,
+  ) async {
+    await _pumpAt(tester, width: 320, textScale: 2);
+    final card = find.byKey(const Key('home-feature-ai-explanations'));
+    await tester.dragUntilVisible(
+      card,
+      find.byKey(const Key('home-body')),
+      const Offset(0, -300),
+    );
+
+    // At this width and scale a two-column card is too narrow for the four
+    // Arabic words, so the grid must fall back to one full-width column.
+    expect(tester.getSize(card).width, greaterThan(250));
+    final title = find.descendant(
+      of: card,
+      matching: find.text('الشروحات بمساعدة الذكاء الاصطناعي'),
+    );
+    final paragraph = tester.renderObject<RenderParagraph>(title);
+    expect(paragraph.didExceedMaxLines, isFalse);
+  });
+
+  testWidgets('the footer credits the developer', (tester) async {
+    await _pumpAt(tester, width: 400);
+    await tester.dragUntilVisible(
+      find.byKey(const Key('home-footer-copyright')),
+      find.byKey(const Key('home-body')),
+      const Offset(0, -400),
+    );
+    expect(find.text(RafiqBrand.developer), findsOneWidget);
+    expect(find.textContaining('سوفت'), findsNothing);
+  });
+
+  testWidgets('the three primary actions sit side by side in navy glass', (
+    tester,
+  ) async {
+    await _pumpAt(tester, width: 400);
+    final assistant = find.byKey(const Key('home-card-assistant'));
+    final bag = find.byKey(const Key('home-card-bag'));
+    final tasks = find.byKey(const Key('home-card-tasks'));
+    for (final card in [assistant, bag, tasks]) {
+      expect(card, findsOneWidget);
+    }
+
+    // RTL: the first card is the rightmost one, and all three share a row.
+    final a = tester.getCenter(assistant);
+    final b = tester.getCenter(bag);
+    final c = tester.getCenter(tasks);
+    expect(a.dy, closeTo(b.dy, 1));
+    expect(b.dy, closeTo(c.dy, 1));
+    expect(a.dx, greaterThan(b.dx));
+    expect(b.dx, greaterThan(c.dx));
+
+    expect(find.text('المساعد الذكي'), findsOneWidget);
+    expect(find.text('ملفاتي بالمادة'), findsOneWidget);
+    expect(find.text('مهامي'), findsOneWidget);
+
+    final gradients = {
+      'home-card-assistant': HomePalette.assistantGradient,
+      'home-card-bag': HomePalette.bagGradient,
+      'home-card-tasks': HomePalette.tasksGradient,
+    };
+    for (final entry in gradients.entries) {
+      final card = tester.widget<Container>(find.byKey(Key(entry.key)));
+      final gradient =
+          (card.decoration! as BoxDecoration).gradient! as LinearGradient;
+      expect(gradient.colors, entry.value, reason: entry.key);
+    }
+  });
+
+  testWidgets('the old bag and library cards are gone from the body', (
+    tester,
+  ) async {
+    await _pumpAt(tester);
+    expect(find.byKey(const Key('home-bag-preview')), findsNothing);
+    expect(find.byKey(const Key('home-library-shortcut')), findsNothing);
+  });
+
+  testWidgets('the study library lives inside the tools section', (
+    tester,
+  ) async {
+    await _pumpAt(tester);
+    // Drag the keyed body, not `find.byType(Scrollable).first`: the search
+    // field owns a scrollable of its own.
+    await tester.dragUntilVisible(
+      find.text('المكتبة الدراسية'),
+      find.byKey(const Key('home-body')),
+      const Offset(0, -400),
+    );
+    expect(find.text('قسم الأدوات'), findsOneWidget);
+    expect(find.text('المكتبة الدراسية'), findsOneWidget);
+    expect(find.byKey(const Key('home-library-shortcut')), findsNothing);
+  });
+
+  testWidgets('the notifications sheet scrolls at 320 dp and 2.0x text', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    final tasks = [
+      for (var i = 0; i < 5; i++)
+        ScheduleEntry(
+          id: 'task-$i',
+          title: 'مهمة رقم $i',
+          dueAt: DateTime(now.year, now.month, now.day, 18, i),
+        ),
+    ];
+    await _pumpAt(
+      tester,
+      width: 320,
+      height: 600,
+      textScale: 2,
+      tasks: tasks,
+    );
+
+    await tester.tap(find.byKey(const Key('home-top-bar-bell')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(tester.takeException(), isNull);
+
+    final sheet = find.byKey(const Key('notifications-sheet-scroll'));
+    expect(sheet, findsOneWidget);
+    await tester.dragUntilVisible(
+      find.text('افتح أهداف اليوم'),
+      sheet,
+      const Offset(0, -200),
+    );
+    expect(tester.takeException(), isNull);
+  });
+}

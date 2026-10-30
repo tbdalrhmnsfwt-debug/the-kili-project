@@ -132,7 +132,7 @@ class _BadgeTile extends StatelessWidget {
           children: [
             CircleAvatar(
               backgroundColor: accent.withValues(alpha: 0.12),
-              child: Icon(icon, color: accent),
+              child: Icon(icon, color: cardAccentOf(accent, theme)),
             ),
             const SizedBox(width: ZakerSpacing.md),
             Expanded(
@@ -184,7 +184,7 @@ class _ReferralCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: ZakerRadius.card,
         gradient: LinearGradient(
-          colors: [theme.colorScheme.primary, ZakerColors.primaryLight],
+          colors: ZakerColors.navyGradient,
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
@@ -247,10 +247,10 @@ class _ReferralCard extends StatelessWidget {
           FilledButton.icon(
             style: FilledButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: theme.colorScheme.primary,
+              foregroundColor: ZakerColors.navy,
             ),
             onPressed: () => Share.share(
-              'جرّب «ذاكرلي» — تطبيق مذاكرة بالذكاء الاصطناعي 📚\n\n'
+              'جرّب «رفيق الطالب» — تطبيق مذاكرة بالذكاء الاصطناعي 📚\n\n'
               'استخدم كود الدعوة بتاعي وإنت بتعمل حساب:\n'
               '${referral.code}',
             ),
