@@ -77,6 +77,13 @@ class AudioPlaybackController extends ChangeNotifier {
       if (duration != null && duration > 0) {
         _durationMs = duration;
       }
+      if (_durationMs <= 0) {
+        // The open reply carries the duration, and no event supplied one
+        // while we waited: the file is not playable here, and sitting in
+        // "preparing" forever hides that from the student.
+        _fail('no_duration');
+        return;
+      }
       _state = AudioPlayerState.preparing;
       notifyListeners();
       await _applySavedPosition();

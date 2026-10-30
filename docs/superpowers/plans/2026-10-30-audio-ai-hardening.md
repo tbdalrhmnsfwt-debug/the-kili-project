@@ -51,10 +51,10 @@
 
 **Files:** `lib/core/batches/audio_playback_controller.dart:74-86`, `test/audio_playback_controller_test.dart:179-191`
 
-- [ ] Change the existing test that codifies the stall: after `initialize()` with a binding whose `open` returns `null`, expect `state == AudioPlayerState.failed` and `errorCode == 'no_duration'` (RED against today's code).
-- [ ] In `initialize()`, when the open reply carries no positive duration and no event has supplied one, call `_fail('no_duration')` instead of moving to `preparing`. The screen's existing `_retry` path is already wired to `hasError`.
-- [ ] Ruling: fail immediately rather than after a timeout — the channel's open reply is synchronous and carries the duration; live streams are not a resource type this screen accepts. Cost if wrong: a format whose duration arrives only later would show the retry button instead of playing.
-- [ ] Analyze clean; commit.
+- [x] Change the existing test that codifies the stall: after `initialize()` with a binding whose `open` returns `null`, expect `state == AudioPlayerState.failed` and `errorCode == 'no_duration'` (RED against today's code).
+- [x] In `initialize()`, when the open reply carries no positive duration and no event has supplied one, call `_fail('no_duration')` instead of moving to `preparing`. The screen's existing `_retry` path is already wired to `hasError`.
+- [x] Ruling: fail immediately rather than after a timeout — the channel's open reply is synchronous and carries the duration; live streams are not a resource type this screen accepts. Cost if wrong: a format whose duration arrives only later would show the retry button instead of playing.
+- [x] Analyze clean; commit.
 
 ## Task 5: Library explanations use the real AI
 

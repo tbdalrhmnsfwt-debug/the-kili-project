@@ -176,18 +176,41 @@ void main() {
     );
   });
 
-  test('an unknown duration is never saved and is not ready', () async {
+  test('a file with no duration fails instead of preparing forever', () async {
     final bindings = _FakeBindings();
     final player = build(bindings);
     addTearDown(player.dispose);
     await player.initialize();
     await settle();
 
-    expect(player.durationMs, 0);
+    expect(player.state, AudioPlayerState.failed);
+    expect(player.errorCode, 'no_duration');
     expect(player.isReady, isFalse);
+    // Nothing is saved for a file that never opened.
     await player.seekTo(4000);
     await player.saveNow();
     expect(memory.values, isEmpty);
+  });
+
+  test('a duration that arrives after the open reply still plays', () async {
+    final bindings = _FakeBindings();
+    final player = build(bindings);
+    addTearDown(player.dispose);
+    await player.initialize();
+    await settle();
+    expect(player.hasError, isTrue);
+
+    bindings.controller.add(
+      const AudioPlaybackEvent(
+        state: AudioPlayerState.preparing,
+        durationMs: 10000,
+      ),
+    );
+    await settle();
+
+    expect(player.durationMs, 10000);
+    expect(player.hasError, isFalse);
+    expect(player.isReady, isTrue);
   });
 
   test('reports a native failure instead of pretending to play', () async {
