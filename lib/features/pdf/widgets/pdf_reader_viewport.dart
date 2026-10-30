@@ -94,6 +94,9 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
   final Map<int, Uint8List> _tiles = {};
   final Map<int, NormalizedRect> _tileSources = {};
   final Map<int, PdfTileKey> _requestedKeys = {};
+  final Map<int, PdfTileKey> _inFlight = {};
+  final Map<int, PdfTileKey> _pending = {};
+  final Map<int, NormalizedRect> _pendingSources = {};
   final Map<int, int> _requestGenerations = {};
   final Map<int, Offset> _pointerPositions = {};
   final Map<int, int> _tileAttempts = {};
@@ -155,6 +158,8 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
     _tiles.clear();
     _tileSources.clear();
     _requestedKeys.clear();
+    _pending.clear();
+    _pendingSources.clear();
     _failedTiles.clear();
     _tileAttempts.clear();
     PaintingBinding.instance.imageCache
@@ -424,6 +429,11 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
     _tiles.removeWhere((index, _) => !keep.contains(index));
     _tileSources.removeWhere((index, _) => !keep.contains(index));
     _requestedKeys.removeWhere((index, _) => !keep.contains(index));
+    // The in-flight render is not cancelled — the native executor already
+    // accepted it — but a page that scrolled away no longer holds a pending
+    // slot.
+    _pending.removeWhere((index, _) => !keep.contains(index));
+    _pendingSources.removeWhere((index, _) => !keep.contains(index));
     // A page that scrolled away gets a fresh chance when it comes back.
     _tileAttempts.removeWhere((index, _) => !keep.contains(index));
     _failedTiles.removeWhere((index) => !keep.contains(index));
@@ -490,39 +500,81 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
       source: source,
     );
     if (_requestedKeys[index] == key) return;
-    _requestedKeys[index] = key;
+
+    if (_inFlight.containsKey(index)) {
+      // One render per page at a time: the newest request waits here and is
+      // issued when the current one returns or fails, so a pinch cannot push
+      // a queue of renders onto the native executor.
+      _pending[index] = key;
+      _pendingSources[index] = source;
+      return;
+    }
 
     final cached = _cache.get(key);
     if (cached != null) {
+      _requestedKeys[index] = key;
       _paint(index, cached, source);
       return;
     }
 
+    _requestedKeys[index] = key;
+    _dispatch(index, key, source);
+  }
+
+  void _dispatch(int index, PdfTileKey key, NormalizedRect source) {
     final generation = ++_generation;
     _requestGenerations[index] = generation;
+    _inFlight[index] = key;
     unawaited(
       ref
           .read(pdfRenderChannelProvider)
           .render(
             handle: widget.handle.id,
             pageIndex: index,
-            scale: scale,
+            // From the key, so the native call and the cache entry agree.
+            scale: key.scaleBucket / 100,
             source: source,
             maxPixels: _maxTilePixels,
           )
           .then((bytes) {
-            if (!mounted || _requestGenerations[index] != generation) return;
-            _tileAttempts.remove(index);
-            _cache.put(key, bytes);
-            _paint(index, bytes, source);
-          })
-          .catchError((Object _) {
-            // One failed tile is not a reader failure, but leaving its key
-            // reserved would keep the page blank for the session.
-            if (!mounted || _requestGenerations[index] != generation) return;
-            _retryTile(index);
-          }),
+        _inFlight.remove(index);
+        if (!mounted || _requestGenerations[index] != generation) {
+          _drainPending(index);
+          return;
+        }
+        _tileAttempts.remove(index);
+        _cache.put(key, bytes);
+        _paint(index, bytes, source);
+        _drainPending(index);
+      }).catchError((Object _) {
+        _inFlight.remove(index);
+        if (!mounted || _requestGenerations[index] != generation) {
+          _drainPending(index);
+          return;
+        }
+        // One failed tile is not a reader failure, but leaving its key
+        // reserved would keep the page blank for the session.
+        _retryTile(index);
+        _drainPending(index);
+      }),
     );
+  }
+
+  /// Issues the newest request that arrived while a page was rendering.
+  void _drainPending(int index) {
+    final key = _pending.remove(index);
+    if (key == null) return;
+    final source =
+        _pendingSources.remove(index) ?? const NormalizedRect(0, 0, 1, 1);
+    if (!mounted) return;
+    final cached = _cache.get(key);
+    if (cached != null) {
+      _requestedKeys[index] = key;
+      _paint(index, cached, source);
+      return;
+    }
+    _requestedKeys[index] = key;
+    _dispatch(index, key, source);
   }
 
   /// Retries a tile that failed to render, a bounded number of times.

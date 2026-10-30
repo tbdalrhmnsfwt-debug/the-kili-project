@@ -683,4 +683,33 @@ void main() {
 
     expect(controller.state.entryById('doc')!.lastOpenedAt, isNotNull);
   });
+
+  testWidgets('zooming while a tile renders does not queue a second one', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 1)..hangRenders = true;
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: _portraitViewport(),
+    );
+    expect(channel.renders, hasLength(1));
+
+    final center = tester.getCenter(find.byType(PdfReaderViewport));
+    final first = await tester.startGesture(center - const Offset(30, 0));
+    final second = await tester.startGesture(center + const Offset(30, 0));
+    await tester.pump();
+    await first.moveBy(const Offset(-60, 0));
+    await second.moveBy(const Offset(60, 0));
+    await tester.pump();
+    await first.up();
+    await second.up();
+    await tester.pump();
+
+    expect(
+      channel.renders,
+      hasLength(1),
+      reason: 'the in-flight tile is the only request until it returns',
+    );
+  });
 }
