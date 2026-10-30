@@ -467,4 +467,19 @@ void main() {
 
     expect(state.retainedTilePages, isNot(contains(0)));
   });
+
+  testWidgets('a document with no pages fails without leaking its handle', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 0);
+    await pump(tester, channel, const PdfReaderScreen(path: '/tmp/empty.pdf'));
+
+    expect(find.text('تعذّر فتح الملف'), findsOneWidget);
+    expect(channel.closes, 1);
+
+    await tester.tap(find.text('جرّب تاني'));
+    await tester.pumpAndSettle();
+
+    expect(channel.closes, 2, reason: 'each retry must release its own handle');
+  });
 }

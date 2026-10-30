@@ -135,6 +135,17 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
         unawaited(_channel.close(handle.id));
         return;
       }
+      if (handle.pageCount <= 0) {
+        // A zero-page file cannot be shown, and clamping against it throws
+        // inside setState; the handle must not outlive the attempt either.
+        unawaited(_channel.close(handle.id));
+        setState(() {
+          _handle = null;
+          _loading = false;
+          _failure = PdfRenderFailure.corrupt;
+        });
+        return;
+      }
       final entry = _entry;
       final lastPage = entry?.lastPage ?? 1;
       setState(() {
