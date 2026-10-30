@@ -51,6 +51,9 @@ enum PdfRenderFailure {
 
   /// Rendering the requested tile failed.
   renderFailed,
+
+  /// The document could not be read from or written to disk.
+  storage,
 }
 
 /// A typed render failure.
@@ -137,6 +140,7 @@ class PdfRenderChannel {
       'passwordUnsupported' => PdfRenderFailure.passwordUnsupported,
       'corrupt' => PdfRenderFailure.corrupt,
       'unavailable' => PdfRenderFailure.unavailable,
+      'storage' => PdfRenderFailure.storage,
       _ => PdfRenderFailure.renderFailed,
     };
   }

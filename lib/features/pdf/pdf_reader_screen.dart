@@ -120,7 +120,17 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
       _loading = true;
       _failure = null;
     });
-    final path = _resolvePath();
+    final String? path;
+    try {
+      path = _resolvePath();
+    } on FileSystemException {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _failure = PdfRenderFailure.storage;
+      });
+      return;
+    }
     if (path == null) {
       setState(() {
         _loading = false;
@@ -550,6 +560,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
       PdfRenderFailure.passwordUnsupported =>
         'الملف محمي بكلمة سر، وفتحه محتاج أندرويد 15 أو أحدث.',
       PdfRenderFailure.unavailable => 'قارئ PDF مش متاح على الجهاز ده.',
+      PdfRenderFailure.storage => 'مفيش مساحة كافية على الجهاز.',
       _ => 'الملف تالف أو مش مقروء.',
     };
   }

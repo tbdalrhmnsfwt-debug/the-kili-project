@@ -131,6 +131,23 @@ void main() {
       throw PlatformException(code: 'renderFailed');
     });
 
-    await const PdfRenderChannel().close(9);
+    const PdfRenderChannel().close(9);
+  });
+
+  test('a storage platform error becomes a typed failure', () async {
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      throw PlatformException(code: 'storage');
+    });
+
+    await expectLater(
+      const PdfRenderChannel().open('/docs/a.pdf'),
+      throwsA(
+        isA<PdfRenderException>().having(
+          (error) => error.failure,
+          'failure',
+          PdfRenderFailure.storage,
+        ),
+      ),
+    );
   });
 }

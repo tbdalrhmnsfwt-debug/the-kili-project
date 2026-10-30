@@ -482,4 +482,31 @@ void main() {
 
     expect(channel.closes, 2, reason: 'each retry must release its own handle');
   });
+
+  testWidgets('a reader that cannot write session bytes reports storage', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 3);
+    final brokenStore = PdfLibraryStore(
+      rootDir: root,
+      cacheDir: Directory('/proc/zaker_no_such_cache'),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          pdfRenderChannelProvider.overrideWithValue(channel),
+          pdfLibraryStoreProvider.overrideWithValue(brokenStore),
+          pdfLibraryControllerProvider.overrideWith((ref) => controller),
+        ],
+        child: MaterialApp(
+          theme: ZakerTheme.light(),
+          home: PdfReaderScreen(bytes: Uint8List.fromList([1, 2, 3])),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('مفيش مساحة كافية على الجهاز.'), findsOneWidget);
+    expect(channel.opens, 0);
+  });
 }
