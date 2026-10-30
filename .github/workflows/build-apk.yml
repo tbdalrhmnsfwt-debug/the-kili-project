@@ -263,6 +263,11 @@ jobs:
       - name: Verify calculator logic
         run: dart run tool/verify_calculator_logic.dart
 
+      # The PDF library layer is Flutter-free and has no widget coverage;
+      # without this step its checks would never gate a merge.
+      - name: Verify PDF library
+        run: dart run tool/verify_pdf_library.dart
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
