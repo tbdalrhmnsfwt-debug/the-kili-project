@@ -72,16 +72,6 @@ class PdfLibraryIndex {
     ]);
   }
 
-  /// Drops entries whose backing file is gone.
-  PdfLibraryIndex pruneMissing(
-    bool Function(PdfDocumentEntry entry) fileExists,
-  ) {
-    return PdfLibraryIndex([
-      for (final entry in entries)
-        if (fileExists(entry)) entry,
-    ]);
-  }
-
   /// Filters, orders and optionally truncates the catalog.
   List<PdfDocumentEntry> query({
     String search = '',

@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/core/key_value_store.dart';
 import '../lib/core/pdf/pdf_library_controller.dart';
+import '../lib/core/pdf/pdf_library_index.dart';
 import '../lib/core/pdf/pdf_library_repository.dart';
 import '../lib/core/pdf/pdf_library_store.dart';
 import '../lib/core/pdf/pdf_page_geometry.dart';
@@ -17,6 +18,7 @@ import '../lib/features/pdf/pdf_reader_screen.dart';
 import '../lib/features/pdf/widgets/pdf_page_view.dart';
 import '../lib/features/pdf/widgets/pdf_reader_viewport.dart';
 import '../lib/features/tools/pdf_viewer_screen.dart';
+import '../lib/models/pdf_document.dart';
 import '../lib/providers/pdf_providers.dart';
 
 import 'dart:io';
@@ -208,8 +210,9 @@ void main() {
   Future<void> pump(
     WidgetTester tester,
     FakeChannel channel,
-    Widget home,
-  ) async {
+    Widget home, {
+    bool settle = true,
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -221,7 +224,15 @@ void main() {
         child: MaterialApp(theme: ZakerTheme.light(), home: home),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+      return;
+    }
+    // Three zero-duration pumps let the open finish without letting the
+    // 500 ms mark-opened debounce fire.
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
   }
 
   testWidgets('a ten-page document shows the page counter', (tester) async {
@@ -595,5 +606,81 @@ void main() {
 
     expect(state.retainedTilePages, isEmpty);
     expect(state.cachedTileBytes, 0);
+  });
+
+  testWidgets('reopening restores the page, zoom and rotation', (tester) async {
+    final index = PdfLibraryIndex([
+      PdfDocumentEntry(
+        id: 'doc',
+        displayName: 'ملف',
+        baseFileName: 'doc.pdf',
+        sizeBytes: 10,
+        pageCount: 10,
+        addedAt: DateTime(2026),
+        lastPage: 4,
+        lastZoom: 2,
+        lastQuarterTurns: 1,
+      ),
+    ]);
+    controller = PdfLibraryController(
+      store: store,
+      repository: PdfLibraryRepository(
+        MemoryStore()
+          ..values[PdfLibraryRepository.storeKey] = jsonEncode(index.toJson()),
+      ),
+      probe: (file) async => const PdfProbeResult(pageCount: 10),
+      thumbnailer: (base, thumb) async {},
+      newId: () => 'doc',
+    );
+    store.baseFile('doc').writeAsBytesSync('%PDF-1.7'.codeUnits);
+
+    final channel = FakeChannel(pageCount: 10);
+    await pump(tester, channel, const PdfReaderScreen(docId: 'doc'));
+
+    expect(find.text('صفحة 4 من 10'), findsOneWidget);
+    final viewport = tester.widget<PdfReaderViewport>(
+      find.byType(PdfReaderViewport),
+    );
+    expect(viewport.initialZoom, 2);
+    expect(viewport.quarterTurns, 1);
+  });
+
+  testWidgets('leaving immediately still saves the page', (tester) async {
+    controller = PdfLibraryController(
+      store: store,
+      repository: PdfLibraryRepository(
+        MemoryStore()
+          ..values[PdfLibraryRepository.storeKey] = jsonEncode(
+            PdfLibraryIndex([
+              PdfDocumentEntry(
+                id: 'doc',
+                displayName: 'ملف',
+                baseFileName: 'doc.pdf',
+                sizeBytes: 10,
+                pageCount: 10,
+                addedAt: DateTime(2026),
+              ),
+            ]).toJson(),
+          ),
+      ),
+      probe: (file) async => const PdfProbeResult(pageCount: 10),
+      thumbnailer: (base, thumb) async {},
+      newId: () => 'doc',
+    );
+    store.baseFile('doc').writeAsBytesSync('%PDF-1.7'.codeUnits);
+    final channel = FakeChannel(pageCount: 10);
+    await pump(
+      tester,
+      channel,
+      const PdfReaderScreen(docId: 'doc'),
+      settle: false,
+    );
+    expect(find.text('صفحة 1 من 10'), findsOneWidget);
+    expect(controller.state.entryById('doc')!.lastOpenedAt, isNull);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+
+    expect(controller.state.entryById('doc')!.lastOpenedAt, isNotNull);
   });
 }

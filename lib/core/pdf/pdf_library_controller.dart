@@ -189,8 +189,14 @@ class PdfLibraryController extends StateNotifier<PdfLibraryIndex> {
     );
   }
 
-  /// Records that the document was opened, optionally at [page].
-  Future<void> markOpened(String id, {int? page}) async {
+  /// Records that the document was opened, optionally at [page], with the
+  /// reader's current [zoom] and [quarterTurns].
+  Future<void> markOpened(
+    String id, {
+    int? page,
+    double? zoom,
+    int? quarterTurns,
+  }) async {
     final entry = _entry(id);
     if (entry == null) return;
     await _commit(
@@ -198,6 +204,8 @@ class PdfLibraryController extends StateNotifier<PdfLibraryIndex> {
         entry.copyWith(
           lastOpenedAt: DateTime.now(),
           lastPage: page == null || page < 1 ? entry.lastPage : page,
+          lastZoom: zoom?.clamp(1.0, 5.0).toDouble(),
+          lastQuarterTurns: quarterTurns == null ? null : quarterTurns % 4,
         ),
       ),
     );

@@ -47,6 +47,7 @@ class PdfReaderViewport extends ConsumerStatefulWidget {
     this.nightMode = false,
     this.quarterTurns = 0,
     this.initialZoom = 1,
+    this.onZoomChanged,
     this.highlights = const [],
     this.highlightPage,
   });
@@ -73,6 +74,9 @@ class PdfReaderViewport extends ConsumerStatefulWidget {
 
   /// Starting zoom; 1 is fit-width, 5 is five times fit-width.
   final double initialZoom;
+
+  /// Called when pinch zoom changes the scale.
+  final ValueChanged<double>? onZoomChanged;
 
   /// Search hits to paint over the page in [highlightPage].
   final List<NormalizedRect> highlights;
@@ -175,6 +179,7 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialZoom != widget.initialZoom) {
       _zoom = widget.initialZoom.clamp(_minZoom, _maxZoom);
+      widget.onZoomChanged?.call(_zoom);
     }
     if (oldWidget.quarterTurns != widget.quarterTurns ||
         oldWidget.vertical != widget.vertical ||
@@ -570,6 +575,7 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
     );
     if ((next - _zoom).abs() < 0.005) return;
     setState(() => _zoom = next);
+    widget.onZoomChanged?.call(next);
   }
 
   void _onPointerEnd(PointerEvent event) {

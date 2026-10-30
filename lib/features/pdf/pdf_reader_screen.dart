@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/pdf/pdf_library_controller.dart';
 import '../../core/pdf/pdf_page_geometry.dart';
 import '../../core/pdf/pdf_render_channel.dart';
 import '../../core/pdf/pdf_text_map.dart';
@@ -73,6 +74,10 @@ class PdfReaderScreen extends ConsumerStatefulWidget {
 
 class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   late final PdfRenderChannel _channel;
+
+  /// Captured in [initState] so [dispose] can flush the reading position
+  /// without touching `ref` after the widget is gone.
+  late final PdfLibraryController _library;
   PdfRendererHandle? _handle;
   String? _resolvedPath;
   File? _sessionFile;
@@ -85,6 +90,9 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   bool _loading = true;
   bool _chromeVisible = true;
   int _quarterTurns = 0;
+
+  /// Fit-width is 1; the viewport reports every pinch that changes it.
+  double _zoom = 1;
   int _page = 0;
   int _attempts = 0;
   int _materialised = 0;
@@ -97,6 +105,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     super.initState();
     _channel = ref.read(pdfRenderChannelProvider);
     _unlocker = ref.read(pdfUnlockerProvider);
+    _library = ref.read(pdfLibraryControllerProvider.notifier);
     // The first frame shows the loading state; the open starts right after.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _open();
@@ -106,6 +115,19 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   @override
   void dispose() {
     _markTimer?.cancel();
+    // The debounce loses the position when the reader closes within 500 ms;
+    // flush whatever the reader is showing right now.
+    final id = widget.docId;
+    if (id != null && _handle != null) {
+      unawaited(
+        _library.markOpened(
+          id,
+          page: _page + 1,
+          zoom: _zoom,
+          quarterTurns: _quarterTurns,
+        ),
+      );
+    }
     final handle = _handle;
     if (handle != null) unawaited(_channel.close(handle.id));
     _deleteQuietly(_sessionFile);
@@ -174,6 +196,8 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
         _loading = false;
         _failure = null;
         _page = lastPage.clamp(1, handle.pageCount) - 1;
+        _quarterTurns = entry?.lastQuarterTurns ?? 0;
+        _zoom = entry?.lastZoom ?? 1;
         _geometry = [
           for (final page in handle.pages)
             PdfPageGeometry(
@@ -379,9 +403,14 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     _markTimer?.cancel();
     _markTimer = Timer(const Duration(milliseconds: 500), () {
       if (!mounted) return;
-      ref
-          .read(pdfLibraryControllerProvider.notifier)
-          .markOpened(id, page: _page + 1);
+      unawaited(
+        _library.markOpened(
+          id,
+          page: _page + 1,
+          zoom: _zoom,
+          quarterTurns: _quarterTurns,
+        ),
+      );
     });
   }
 
@@ -533,8 +562,10 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
                           ? PdfScrollMode.horizontal
                           : PdfScrollMode.vertical,
                     ),
-                onRotate: () =>
-                    setState(() => _quarterTurns = (_quarterTurns + 1) % 4),
+                onRotate: () {
+                  setState(() => _quarterTurns = (_quarterTurns + 1) % 4);
+                  _scheduleMarkOpened();
+                },
                 onNight: () => ref
                     .read(pdfSettingsProvider.notifier)
                     .setNightMode(!settings.nightMode),
@@ -615,6 +646,11 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
           vertical: settings.scrollMode == PdfScrollMode.vertical,
           nightMode: settings.nightMode,
           quarterTurns: _quarterTurns,
+          initialZoom: _zoom,
+          onZoomChanged: (value) {
+            _zoom = value;
+            _scheduleMarkOpened();
+          },
           highlights: _highlights,
           highlightPage: _highlightPage,
         ),

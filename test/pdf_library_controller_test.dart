@@ -191,4 +191,49 @@ void main() {
     expect(entry.gradeId, isEmpty);
     expect(entry.sourceDocId, isEmpty);
   });
+
+  test('markOpened keeps the zoom and rotation the reader restored', () async {
+    final lib = controller();
+    await lib.import([source('a.pdf', '%PDF-1.7 body')]);
+    final id = lib.state.entries.single.id;
+
+    await lib.markOpened(id, page: 4, zoom: 2.5, quarterTurns: 1);
+
+    final entry = lib.state.entryById(id)!;
+    expect(entry.lastPage, 4);
+    expect(entry.lastZoom, 2.5);
+    expect(entry.lastQuarterTurns, 1);
+  });
+
+  test('an entry round-trips its reading position through JSON', () {
+    final entry = PdfDocumentEntry(
+      id: 'a',
+      displayName: 'ملف',
+      baseFileName: 'a.pdf',
+      sizeBytes: 10,
+      addedAt: DateTime.utc(2026, 1, 1),
+    ).copyWith(lastZoom: 3, lastQuarterTurns: 2);
+
+    final restored = PdfDocumentEntry.fromJson(entry.toJson());
+
+    expect(restored.lastZoom, 3);
+    expect(restored.lastQuarterTurns, 2);
+  });
+
+  test('a stored zoom outside 1..5 is clamped on load', () {
+    final json = PdfDocumentEntry(
+      id: 'a',
+      displayName: 'ملف',
+      baseFileName: 'a.pdf',
+      sizeBytes: 10,
+      addedAt: DateTime.utc(2026, 1, 1),
+    ).toJson()
+      ..['lastZoom'] = 9.0
+      ..['lastQuarterTurns'] = 6;
+
+    final restored = PdfDocumentEntry.fromJson(json);
+
+    expect(restored.lastZoom, 5);
+    expect(restored.lastQuarterTurns, 2);
+  });
 }

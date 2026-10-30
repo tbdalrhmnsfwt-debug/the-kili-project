@@ -40,6 +40,8 @@ class PdfDocumentEntry {
     required this.addedAt,
     this.lastOpenedAt,
     this.lastPage = 1,
+    this.lastZoom = 1,
+    this.lastQuarterTurns = 0,
     this.favorite = false,
     this.thumbnailFileName,
     this.annotationCount = 0,
@@ -74,6 +76,12 @@ class PdfDocumentEntry {
   /// One-based page to restore when the document is reopened.
   final int lastPage;
 
+  /// Pinch-zoom scale to restore when the document is reopened, 1–5.
+  final double lastZoom;
+
+  /// Clockwise quarter turns to restore when the document is reopened, 0–3.
+  final int lastQuarterTurns;
+
   final bool favorite;
   final String? thumbnailFileName;
   final int annotationCount;
@@ -100,6 +108,8 @@ class PdfDocumentEntry {
     DateTime? addedAt,
     Object? lastOpenedAt = _unset,
     int? lastPage,
+    double? lastZoom,
+    int? lastQuarterTurns,
     bool? favorite,
     Object? thumbnailFileName = _unset,
     int? annotationCount,
@@ -125,6 +135,8 @@ class PdfDocumentEntry {
           ? this.lastOpenedAt
           : lastOpenedAt as DateTime?,
       lastPage: lastPage ?? this.lastPage,
+      lastZoom: lastZoom ?? this.lastZoom,
+      lastQuarterTurns: lastQuarterTurns ?? this.lastQuarterTurns,
       favorite: favorite ?? this.favorite,
       thumbnailFileName: identical(thumbnailFileName, _unset)
           ? this.thumbnailFileName
@@ -152,6 +164,8 @@ class PdfDocumentEntry {
         if (lastOpenedAt != null)
           'lastOpenedAt': lastOpenedAt!.toUtc().toIso8601String(),
         'lastPage': lastPage,
+        'lastZoom': lastZoom,
+        'lastQuarterTurns': lastQuarterTurns,
         'favorite': favorite,
         if (thumbnailFileName != null) 'thumb': thumbnailFileName,
         'annotations': annotationCount,
@@ -190,6 +204,11 @@ class PdfDocumentEntry {
       addedAt: addedAt,
       lastOpenedAt: _date(json['lastOpenedAt']),
       lastPage: (json['lastPage'] as num?)?.toInt() ?? 1,
+      lastZoom: ((json['lastZoom'] as num?)?.toDouble() ?? 1)
+          .clamp(1.0, 5.0)
+          .toDouble(),
+      // `%` on a negative int also lands in 0–3, so corrupt data is harmless.
+      lastQuarterTurns: ((json['lastQuarterTurns'] as num?)?.toInt() ?? 0) % 4,
       favorite: json['favorite'] as bool? ?? false,
       thumbnailFileName: json['thumb'] as String?,
       annotationCount: (json['annotations'] as num?)?.toInt() ?? 0,
