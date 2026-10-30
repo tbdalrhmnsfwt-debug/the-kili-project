@@ -559,4 +559,26 @@ void main() {
     expect(call.source.width, lessThan(0.5));
     expect(call.source.height, lessThan(0.6));
   });
+
+  testWidgets('memory pressure drops the tiles this reader holds', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 1);
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: _portraitViewport(),
+    );
+    final state = tester.state<PdfReaderViewportState>(
+      find.byType(PdfReaderViewport),
+    );
+    expect(state.retainedTilePages, contains(0));
+    expect(state.cachedTileBytes, greaterThan(0));
+
+    state.handleMemoryPressure();
+    await tester.pump();
+
+    expect(state.retainedTilePages, isEmpty);
+    expect(state.cachedTileBytes, 0);
+  });
 }

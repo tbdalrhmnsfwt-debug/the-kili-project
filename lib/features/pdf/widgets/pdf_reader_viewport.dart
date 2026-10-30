@@ -84,7 +84,8 @@ class PdfReaderViewport extends ConsumerStatefulWidget {
   PdfReaderViewportState createState() => PdfReaderViewportState();
 }
 
-class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
+class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
+    with WidgetsBindingObserver {
   final PdfTileCache _cache = PdfTileCache();
   final Map<int, Uint8List> _tiles = {};
   final Map<int, NormalizedRect> _tileSources = {};
@@ -130,9 +131,38 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   @visibleForTesting
   Set<int> get failedTilePages => Set.unmodifiable(_failedTiles);
 
+  /// Bytes held by the tile cache. Test hook.
+  @visibleForTesting
+  int get cachedTileBytes => _cache.bytes;
+
+  @override
+  void didHaveMemoryPressure() {
+    handleMemoryPressure();
+  }
+
+  /// Drops everything this reader can rebuild from the native renderer.
+  ///
+  /// The tiles already in flight are not cancelled — the native executor has
+  /// accepted them — so a visible page is repainted as soon as its render
+  /// returns rather than staying blank.
+  @visibleForTesting
+  void handleMemoryPressure() {
+    _cache.clear();
+    _tiles.clear();
+    _tileSources.clear();
+    _requestedKeys.clear();
+    _failedTiles.clear();
+    _tileAttempts.clear();
+    PaintingBinding.instance.imageCache
+      ..clear()
+      ..clearLiveImages();
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _verticalScroll.addListener(_onVerticalScroll);
     // Opening at a saved page should show that page, not the first one.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -163,6 +193,7 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   @override
   void dispose() {
     _generation += 1;
+    WidgetsBinding.instance.removeObserver(this);
     for (final timer in _retryTimers) {
       timer.cancel();
     }
