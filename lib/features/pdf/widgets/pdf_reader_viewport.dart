@@ -32,6 +32,9 @@ const double _maxZoom = 5;
 /// Longest-edge cap passed to the native renderer.
 const int _maxTilePixels = 2048;
 
+/// How many times a tile render may be retried before it is marked failed.
+const int _maxTileAttempts = 2;
+
 /// Renders one document: continuous by default, one page at a time otherwise.
 class PdfReaderViewport extends ConsumerStatefulWidget {
   const PdfReaderViewport({
@@ -88,6 +91,9 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   final Map<int, PdfTileKey> _requestedKeys = {};
   final Map<int, int> _requestGenerations = {};
   final Map<int, Offset> _pointerPositions = {};
+  final Map<int, int> _tileAttempts = {};
+  final Set<int> _failedTiles = {};
+  final Set<Timer> _retryTimers = {};
 
   final ScrollController _verticalScroll = ScrollController();
   final ScrollController _horizontalScroll = ScrollController();
@@ -114,6 +120,10 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   /// Pages whose decoded tile is still held in memory. Test hook.
   @visibleForTesting
   Set<int> get retainedTilePages => _tiles.keys.toSet();
+
+  /// Pages whose tile could not be rendered at all. Test hook.
+  @visibleForTesting
+  Set<int> get failedTilePages => Set.unmodifiable(_failedTiles);
 
   @override
   void initState() {
@@ -148,6 +158,10 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
   @override
   void dispose() {
     _generation += 1;
+    for (final timer in _retryTimers) {
+      timer.cancel();
+    }
+    _retryTimers.clear();
     _cache.clear();
     _verticalScroll.removeListener(_onVerticalScroll);
     _verticalScroll.dispose();
@@ -351,6 +365,9 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
     _tiles.removeWhere((index, _) => !keep.contains(index));
     _tileSources.removeWhere((index, _) => !keep.contains(index));
     _requestedKeys.removeWhere((index, _) => !keep.contains(index));
+    // A page that scrolled away gets a fresh chance when it comes back.
+    _tileAttempts.removeWhere((index, _) => !keep.contains(index));
+    _failedTiles.removeWhere((index) => !keep.contains(index));
   }
 
   /// The visible pages plus one neighbour on each side, for prefetching.
@@ -433,13 +450,40 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport> {
           )
           .then((bytes) {
             if (!mounted || _requestGenerations[index] != generation) return;
+            _tileAttempts.remove(index);
             _cache.put(key, bytes);
             _paint(index, bytes, source);
           })
           .catchError((Object _) {
-            // Keep the placeholder: one failed tile is not a reader failure.
+            // One failed tile is not a reader failure, but leaving its key
+            // reserved would keep the page blank for the session.
+            if (!mounted || _requestGenerations[index] != generation) return;
+            _retryTile(index);
           }),
     );
+  }
+
+  /// Retries a tile that failed to render, a bounded number of times.
+  ///
+  /// Clearing the reserved key is what lets the next attempt through; after
+  /// [_maxTileAttempts] the page is marked failed and keeps its placeholder.
+  void _retryTile(int index) {
+    _requestedKeys.remove(index);
+    final attempts = (_tileAttempts[index] ?? 0) + 1;
+    _tileAttempts[index] = attempts;
+    if (attempts > _maxTileAttempts) {
+      setState(() => _failedTiles.add(index));
+      return;
+    }
+    late final Timer timer;
+    timer = Timer(const Duration(milliseconds: 400), () {
+      _retryTimers.remove(timer);
+      if (!mounted) return;
+      final viewport = _lastViewport;
+      if (viewport == null) return;
+      _requestTile(index, viewport);
+    });
+    _retryTimers.add(timer);
   }
 
   void _paint(int index, Uint8List bytes, NormalizedRect source) {

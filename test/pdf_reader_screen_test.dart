@@ -70,6 +70,9 @@ class FakeChannel extends PdfRenderChannel {
   /// When true, `render` never completes.
   bool hangRenders = false;
 
+  /// How many upcoming `render` calls throw before one succeeds.
+  int failRenders = 0;
+
   @override
   Future<PdfRendererHandle> open(String path, {String? password}) async {
     opens += 1;
@@ -103,6 +106,10 @@ class FakeChannel extends PdfRenderChannel {
   }) async {
     renders.add(RenderCall(pageIndex: pageIndex, scale: scale, source: source));
     if (hangRenders) return Completer<Uint8List>().future;
+    if (failRenders > 0) {
+      failRenders -= 1;
+      throw const PdfRenderException(PdfRenderFailure.renderFailed);
+    }
     return _onePixelPng;
   }
 
@@ -508,5 +515,23 @@ void main() {
 
     expect(find.text('مفيش مساحة كافية على الجهاز.'), findsOneWidget);
     expect(channel.opens, 0);
+  });
+
+  testWidgets('a tile that fails renders is retried and then shown', (
+    tester,
+  ) async {
+    final channel = FakeChannel(pageCount: 1)..failRenders = 1;
+    await _pumpViewport(
+      tester,
+      channel: channel,
+      viewport: _portraitViewport(),
+    );
+    expect(find.byType(Image), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
+
+    expect(channel.renders, hasLength(2));
+    expect(find.byType(Image), findsWidgets);
   });
 }
