@@ -85,8 +85,8 @@
 
 **Files:** `LectureRecordService.kt:30-45`, `AiJobService.kt:36-54`
 
-- [ ] Return `START_NOT_STICKY`; when `intent == null`, `stopSelf()` and return before building any notification.
-- [ ] Commit; note the Kotlin is unbuilt.
+- [x] Return `START_NOT_STICKY`; when `intent == null`, `stopSelf()` and return before building any notification.
+- [x] Commit; note the Kotlin is unbuilt.
 
 ## Task 9: Adhan start reports the truth
 

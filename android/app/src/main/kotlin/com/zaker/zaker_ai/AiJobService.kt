@@ -36,8 +36,17 @@ class AiJobService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // `Service.onStartCommand` is the platform method; there is no
         // superclass behaviour to delegate to here.
-        val title = intent?.getStringExtra(EXTRA_TITLE) ?: getString(R.string.ai_job_default_title)
-        val progress = intent?.getIntExtra(EXTRA_PROGRESS, 0) ?: 0
+        //
+        // A restart with no intent means the process came back after the
+        // system killed it. The Dart job that owned this notification is
+        // gone with it, so a sticky restart would show a job stuck at some
+        // old percentage forever.
+        if (intent == null) {
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+        val title = intent.getStringExtra(EXTRA_TITLE) ?: getString(R.string.ai_job_default_title)
+        val progress = intent.getIntExtra(EXTRA_PROGRESS, 0)
 
         val notification = buildNotification(title, progress)
         ServiceCompat.startForeground(
@@ -50,7 +59,7 @@ class AiJobService : Service() {
                 0
             },
         )
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     /** Started-only service: nothing binds to it. */

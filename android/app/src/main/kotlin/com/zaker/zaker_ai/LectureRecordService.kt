@@ -28,7 +28,15 @@ import androidx.core.app.ServiceCompat
 class LectureRecordService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val elapsed = intent?.getLongExtra(EXTRA_ELAPSED_MS, 0L) ?: 0L
+        // A restart with no intent means the process came back after the
+        // system killed it. There is no recording to describe and no Dart
+        // side waiting for this notification: posting a phantom "recording"
+        // bar and staying sticky is worse than stopping.
+        if (intent == null) {
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+        val elapsed = intent.getLongExtra(EXTRA_ELAPSED_MS, 0L)
         val notification = buildNotification(elapsed)
 
         ServiceCompat.startForeground(
@@ -41,7 +49,7 @@ class LectureRecordService : Service() {
                 0
             },
         )
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     /** Started-only service: nothing binds to it. */
