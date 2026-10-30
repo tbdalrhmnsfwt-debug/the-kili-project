@@ -368,9 +368,8 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     if (handle == null || path == null) return;
     final file = File(path);
     if (!file.existsSync()) return;
-    final bytes = await file.readAsBytes();
+    final textMap = PdfTextMap.fromFile(file, pageCount: handle.pageCount);
     if (!mounted) return;
-    final textMap = PdfTextMap.fromBytes(bytes, pageCount: handle.pageCount);
     await showPdfSearchSheet(
       context,
       textMap: textMap,
