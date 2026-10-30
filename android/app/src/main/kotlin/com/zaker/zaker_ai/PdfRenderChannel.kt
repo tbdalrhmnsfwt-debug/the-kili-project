@@ -77,6 +77,9 @@ class PdfRenderChannel(messenger: BinaryMessenger) {
         }
         executor.execute {
             var descriptor: ParcelFileDescriptor? = null
+            // Hoisted out of the try so the catch below can release a renderer
+            // that was built before the page list or the handle map failed.
+            var renderer: PdfRenderer? = null
             try {
                 descriptor =
                     ParcelFileDescriptor.open(File(path), ParcelFileDescriptor.MODE_READ_ONLY)
@@ -91,7 +94,7 @@ class PdfRenderChannel(messenger: BinaryMessenger) {
                     main.post { result.error("passwordUnsupported", null, null) }
                     return@execute
                 }
-                val renderer =
+                val opened =
                     try {
                         openRenderer(descriptor, password)
                     } catch (error: SecurityException) {
@@ -103,10 +106,27 @@ class PdfRenderChannel(messenger: BinaryMessenger) {
                         main.post { result.error(code, null, null) }
                         return@execute
                     }
+                renderer = opened
 
-                val pages = ArrayList<Map<String, Double>>(renderer.pageCount)
-                for (index in 0 until renderer.pageCount) {
-                    val page = renderer.openPage(index)
+                val pageCount = opened.pageCount
+                if (pageCount <= 0) {
+                    // A document with no pages cannot be read; answering with an
+                    // empty handle would make the reader clamp against zero.
+                    try {
+                        opened.close()
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        descriptor?.close()
+                    } catch (_: Exception) {
+                    }
+                    main.post { result.error("corrupt", null, null) }
+                    return@execute
+                }
+
+                val pages = ArrayList<Map<String, Double>>(pageCount)
+                for (index in 0 until pageCount) {
+                    val page = opened.openPage(index)
                     try {
                         pages.add(
                             mapOf(
@@ -120,16 +140,20 @@ class PdfRenderChannel(messenger: BinaryMessenger) {
                 }
 
                 val payload = HashMap<String, Any>()
-                payload["pageCount"] = renderer.pageCount
+                payload["pageCount"] = pageCount
                 payload["pages"] = pages
                 synchronized(lock) {
                     val handle = nextHandle++
-                    renderers.put(handle, renderer)
+                    renderers.put(handle, opened)
                     descriptors.put(handle, descriptor)
                     payload["handle"] = handle
                 }
                 main.post { result.success(payload) }
             } catch (error: Exception) {
+                try {
+                    renderer?.close()
+                } catch (_: Exception) {
+                }
                 try {
                     descriptor?.close()
                 } catch (_: Exception) {
@@ -209,7 +233,10 @@ class PdfRenderChannel(messenger: BinaryMessenger) {
                         page.close()
                     }
                 }
-            } catch (error: Exception) {
+            } catch (error: Throwable) {
+                // Throwable, not Exception: an OutOfMemoryError while
+                // allocating the tile would otherwise never answer the
+                // awaiting Dart future, and that page would stay blank.
                 main.post { result.error("renderFailed", null, null) }
             }
         }
