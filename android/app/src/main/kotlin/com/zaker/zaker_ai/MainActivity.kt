@@ -269,10 +269,25 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    /** Adds or clears `FLAG_KEEP_SCREEN_ON` for the current screen. */
+    /**
+     * How many screens are asking for the display to stay awake.
+     *
+     * The flag belongs to the activity, not to a screen: the qibla aim is
+     * pushed from a full-screen adhan, so clearing the flag when the qibla
+     * closes would let the adhan dim under it. Counting keeps it on until the
+     * last screen that asked has left.
+     */
+    private var keepScreenOnCount = 0
+
+    /** Adds or clears `FLAG_KEEP_SCREEN_ON` for the screens that asked. */
     private fun setKeepScreenOn(on: Boolean) {
         runOnUiThread {
-            if (on) {
+            keepScreenOnCount = if (on) {
+                keepScreenOnCount + 1
+            } else {
+                (keepScreenOnCount - 1).coerceAtLeast(0)
+            }
+            if (keepScreenOnCount > 0) {
                 window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             } else {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
