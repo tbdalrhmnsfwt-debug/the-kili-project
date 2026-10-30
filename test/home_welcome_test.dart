@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
-import 'package:zaker_ai/core/shad_theme.dart';
 import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/features/home/widgets/stats_strip.dart';
 import 'package:zaker_ai/features/home/widgets/welcome_search.dart';
@@ -13,7 +11,7 @@ Widget _searchApp(List<String> visited) {
     routes: [
       GoRoute(
         path: '/',
-        builder: (_, __) => Scaffold(body: WelcomeSearch(name: 'طالب')),
+        builder: (_, __) => const Scaffold(body: WelcomeSearch()),
       ),
       GoRoute(
         path: '/chat',
@@ -29,11 +27,7 @@ Widget _searchApp(List<String> visited) {
     routerConfig: router,
     builder: (context, child) => Directionality(
       textDirection: TextDirection.rtl,
-      // shadcn_ui reads its own theme; without this the ShadInput throws.
-      child: ShadTheme(
-        data: ZakerShadTheme.light(),
-        child: child ?? const SizedBox.shrink(),
-      ),
+      child: child ?? const SizedBox.shrink(),
     ),
   );
 }
@@ -46,12 +40,8 @@ void main() {
     expect(greetingFor(23), 'مساء الخير');
   });
 
-  testWidgets('shows the greeting, the gold subline and the AI hint', (
-    tester,
-  ) async {
+  testWidgets('shows the AI hint and a 40 dp submit target', (tester) async {
     await tester.pumpWidget(_searchApp([]));
-    expect(find.textContaining('، طالب'), findsOneWidget);
-    expect(find.text('عايز تعمل إيه النهاردة؟'), findsOneWidget);
     expect(find.text('اسأل معلم AI عن أي حاجة…'), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('home-search-submit'))),

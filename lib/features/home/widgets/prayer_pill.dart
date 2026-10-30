@@ -13,6 +13,7 @@ import '../../prayer/location_flow.dart';
 import '../../prayer/prayer_models.dart';
 import '../../prayer/prayer_onboarding.dart';
 import '../../prayer/prayer_providers.dart';
+import 'home_light_style.dart';
 
 /// The live prayer pill: watches the clock, the location and the Hijri day.
 ///
@@ -21,7 +22,7 @@ import '../../prayer/prayer_providers.dart';
 class PrayerPill extends ConsumerStatefulWidget {
   const PrayerPill({super.key, this.compact = false});
 
-  /// When true the pill is the tiny badge that lives inside the navy header.
+  /// When true the pill is the tiny badge that lives inside the welcome card.
   final bool compact;
 
   @override
@@ -88,7 +89,7 @@ class PrayerPillView extends StatelessWidget {
   final HijriDate hijri;
   final VoidCallback onTap;
 
-  /// True for the single-line badge in the navy header.
+  /// True for the single-line badge in the welcome card.
   final bool compact;
 
   @override
@@ -137,11 +138,11 @@ class PrayerPillView extends StatelessWidget {
   }
 }
 
-/// The single-line prayer badge embedded in the navy header.
+/// The single-line prayer badge embedded in the welcome card.
 ///
 /// It is deliberately height-capped and wrapped in a [FittedBox]: however long
 /// the location or large the reader's text setting, the badge shrinks to fit
-/// its strip instead of pushing the header taller.
+/// its strip instead of pushing the card taller.
 class _CompactPrayerBadge extends StatelessWidget {
   const _CompactPrayerBadge({required this.day, required this.onTap});
 
@@ -149,21 +150,21 @@ class _CompactPrayerBadge extends StatelessWidget {
   final VoidCallback onTap;
 
   static const TextStyle _nameStyle = TextStyle(
-    color: Colors.white,
+    color: HomeLight.ink,
     fontSize: 10.5,
     height: 1.15,
     fontWeight: FontWeight.w700,
   );
 
   static const TextStyle _metaStyle = TextStyle(
-    color: Color(0xCCFFFFFF),
+    color: HomeLight.muted,
     fontSize: 9.5,
     height: 1.15,
     fontWeight: FontWeight.w600,
   );
 
   static const TextStyle _countdownStyle = TextStyle(
-    color: ZakerColors.goldLight,
+    color: HomeLight.blue,
     fontSize: 10,
     height: 1.15,
     fontWeight: FontWeight.w800,
@@ -183,7 +184,7 @@ class _CompactPrayerBadge extends StatelessWidget {
               const HugeIcon(
                 icon: HugeIcons.strokeRoundedMoon02,
                 size: 13,
-                color: ZakerColors.goldLight,
+                color: HomeLight.blue,
               ),
               const SizedBox(width: 5),
               TrText(day!.next.name.invocation, style: _nameStyle),
@@ -202,7 +203,7 @@ class _CompactPrayerBadge extends StatelessWidget {
               const HugeIcon(
                 icon: HugeIcons.strokeRoundedLocation01,
                 size: 13,
-                color: ZakerColors.goldLight,
+                color: HomeLight.blue,
               ),
               const SizedBox(width: 5),
               const TrText('حدد موقعك لمواقيت الصلاة', style: _metaStyle),
@@ -233,10 +234,10 @@ class _CompactPrayerBadge extends StatelessWidget {
                 height: 30,
                 padding: const EdgeInsets.symmetric(horizontal: 9),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.10),
+                  color: Colors.white.withValues(alpha: 0.72),
                   borderRadius: BorderRadius.circular(ZakerRadius.pill),
                   border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.20)),
+                      Border.all(color: Colors.white.withValues(alpha: 0.90)),
                 ),
                 child: Center(
                   widthFactor: 1,
@@ -244,10 +245,9 @@ class _CompactPrayerBadge extends StatelessWidget {
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: AlignmentDirectional.center,
-                    child: Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: row,
-                    ),
+                    // The labels are localised, so the badge follows the
+                    // ambient direction instead of forcing RTL.
+                    child: row,
                   ),
                 ),
               ),

@@ -38,16 +38,25 @@ class ZakerColors {
   static const Color goldDeep = Color(0xFF8A6A12);
 
   /// The light scaffold behind white cards.
-  static const Color page = Color(0xFFF8F9FB);
+  static const Color page = Color(0xFFF4F7FC);
+
+  /// The slightly deeper page stop used by the dashboard's background wash.
+  static const Color pageSoft = Color(0xFFEEF2F9);
 
   /// Body text on white.
-  static const Color ink = Color(0xFF121E36);
+  static const Color ink = Color(0xFF1E293B);
 
   /// Secondary text on light surfaces.
-  static const Color muted = Color(0xFF5B6678);
+  static const Color muted = Color(0xFF64748B);
 
   /// Card hairline.
   static const Color border = Color(0xFFE6E9F0);
+
+  /// The dashboard's primary action blue.
+  static const Color blue = Color(0xFF2563EB);
+
+  /// The pressed/deeper end of the action blue.
+  static const Color blueDeep = Color(0xFF1D4ED8);
 
   /// The red of the «شنطتي» backpack only.
   static const Color backpack = Color(0xFFD32F2F);
@@ -198,8 +207,8 @@ class ZakerRadius {
   static const double xl = 28;
   static const double pill = 999;
 
-  /// The card corner of the brand system (16 dp).
-  static const double cardValue = 16;
+  /// The card corner of the light design system (24 dp).
+  static const double cardValue = 24;
 
   static const BorderRadius card = BorderRadius.all(
     Radius.circular(cardValue),
@@ -217,7 +226,11 @@ class ZakerShadows {
   const ZakerShadows._();
 
   static const List<BoxShadow> card = [
-    BoxShadow(color: Color(0x14203A5C), blurRadius: 10, offset: Offset(0, 4)),
+    BoxShadow(
+      color: Color(0x0A000000),
+      blurRadius: 16,
+      offset: Offset(0, 8),
+    ),
   ];
 }
 

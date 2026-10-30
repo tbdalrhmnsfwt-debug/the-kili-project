@@ -16,6 +16,7 @@ import '../../core/brand/rafiq_mark.dart';
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/app_providers.dart';
+import '../../widgets/bottom_nav_bar.dart';
 import '../../widgets/tr_text.dart';
 import '../bag/my_bag_screen.dart';
 import '../batches/batches_screen.dart';
@@ -23,21 +24,7 @@ import '../exam/exam_home_screen.dart';
 import '../quran/quran_home_screen.dart';
 import 'home_screen.dart';
 
-/// One bottom-nav / sidebar destination.
-class _Tab {
-  const _Tab({required this.icon, required this.label});
-
-  final List<List<dynamic>> icon;
-  final String label;
-}
-
-const List<_Tab> _tabs = [
-  _Tab(icon: HugeIcons.strokeRoundedHome01, label: 'الرئيسية'),
-  _Tab(icon: HugeIcons.strokeRoundedBackpack01, label: 'شنطتي'),
-  _Tab(icon: HugeIcons.strokeRoundedTaskDone01, label: 'الاختبار'),
-  _Tab(icon: HugeIcons.strokeRoundedBook02, label: 'القرآن'),
-  _Tab(icon: HugeIcons.strokeRoundedUserGroup, label: 'الدفعات'),
-];
+export '../../widgets/bottom_nav_bar.dart' show ShellBottomNav;
 
 /// Makes the shell's drawer reachable from any tab screen.
 ///
@@ -84,7 +71,7 @@ VoidCallback? shellDrawerOpener(BuildContext context) {
   return scope.openDrawer;
 }
 
-/// The shell hosting the four tabs.
+/// The shell hosting the five tabs.
 class ShellScreen extends ConsumerStatefulWidget {
   const ShellScreen({super.key, this.initialIndex = 0, this.child});
 
@@ -130,7 +117,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     final userName = (ref.watch(authUserProvider)?.displayName ?? 'ضيف').trim();
     final body = IndexedStack(
       index: _index,
-      children: [for (var i = 0; i < _tabs.length; i++) _bodyFor(i)],
+      children: [for (var i = 0; i < shellTabs.length; i++) _bodyFor(i)],
     );
 
     return LayoutBuilder(
@@ -160,8 +147,10 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
           drawer: Drawer(
             width: (constraints.maxWidth * 0.86).clamp(280.0, 340.0),
             backgroundColor: theme.cardTheme.color,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.horizontal(left: Radius.circular(26)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadiusDirectional.horizontal(
+                end: const Radius.circular(26),
+              ),
             ),
             child: SafeArea(
               child: ShellSidebar(
@@ -220,7 +209,7 @@ class ShellSidebar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 16, 18),
+            padding: const EdgeInsetsDirectional.fromSTEB(20, 24, 16, 18),
             child: Row(
               children: [
                 Container(
@@ -282,10 +271,10 @@ class ShellSidebar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (!drawer) const _SidebarLabel('القائمة'),
-                  for (var i = 0; i < _tabs.length; i++)
+                  for (var i = 0; i < shellTabs.length; i++)
                     _SidebarItem(
-                      icon: _tabs[i].icon,
-                      label: _tabs[i].label,
+                      icon: shellTabs[i].icon,
+                      label: shellTabs[i].label,
                       selected: selected == i,
                       onTap: () => onSelect(i),
                     ),
@@ -483,145 +472,6 @@ class _SidebarItem extends StatelessWidget {
                   ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------- bottom bar
-
-/// The mockup's floating rounded bottom bar for phones.
-class ShellBottomNav extends StatelessWidget {
-  const ShellBottomNav({
-    super.key,
-    required this.selected,
-    required this.onSelect,
-  });
-
-  final int selected;
-  final ValueChanged<int> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          decoration: BoxDecoration(
-            color: theme.cardTheme.color,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: theme.dividerTheme.color ?? Colors.black12,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 28,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              for (var i = 0; i < _tabs.length; i++)
-                Expanded(
-                  child: _NavItem(
-                    icon: _tabs[i].icon,
-                    label: _tabs[i].label,
-                    selected: selected == i,
-                    onTap: () => onSelect(i),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final List<List<dynamic>> icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          decoration: BoxDecoration(
-            color: selected ? theme.colorScheme.primary : null,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.28),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              HugeIcon(
-                icon: icon,
-                size: 22,
-                color: selected
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(height: 4),
-              TrText(
-                label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: ZakerTheme.fontBody,
-                  fontSize: 9.5,
-                  height: 1.2,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  color: selected
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              if (selected)
-                Container(
-                  key: const Key('nav-selected-dot'),
-                  width: 4,
-                  height: 4,
-                  margin: const EdgeInsets.only(top: 3),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.onPrimary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-            ],
           ),
         ),
       ),

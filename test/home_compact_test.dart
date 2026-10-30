@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_ui/shadcn_ui.dart' show ShadTheme;
@@ -9,7 +8,7 @@ import 'package:zaker_ai/core/local_store.dart';
 import 'package:zaker_ai/core/shad_theme.dart';
 import 'package:zaker_ai/core/theme.dart';
 import 'package:zaker_ai/features/home/home_screen.dart';
-import 'package:zaker_ai/features/home/widgets/home_style.dart';
+import 'package:zaker_ai/features/home/widgets/home_light_style.dart';
 import 'package:zaker_ai/features/home/widgets/home_top_bar.dart';
 import 'package:zaker_ai/features/prayer/prayer_models.dart';
 import 'package:zaker_ai/features/prayer/prayer_providers.dart';
@@ -161,7 +160,7 @@ void main() {
       find.byKey(const Key('home-header')),
     );
     final gradient = (header.decoration! as BoxDecoration).gradient!;
-    expect((gradient as LinearGradient).colors, HomePalette.headerGradient);
+    expect((gradient as LinearGradient).colors, HomeLight.headerGradient);
   });
 
   testWidgets('the six core feature cards make up the home grid', (
@@ -179,8 +178,8 @@ void main() {
       'home-feature-pdf-reader',
       'home-feature-calculator',
       'home-feature-notebooks',
-      'home-feature-mind-maps',
-      'home-feature-ai-explanations',
+      'home-feature-ai',
+      'home-feature-more-tools',
     ]) {
       expect(find.byKey(Key(key)), findsOneWidget, reason: key);
     }
@@ -190,33 +189,28 @@ void main() {
       'قارئ PDF التفاعلي',
       'الآلة الحاسبة العلمية',
       'دفاتر الملاحظات',
-      'الخرائط الذهنية',
-      'الشروحات بمساعدة الذكاء الاصطناعي',
+      'الذكاء الاصطناعي',
+      'المزيد من الأدوات',
     ]) {
       expect(find.text(title), findsOneWidget, reason: title);
     }
   });
 
-  testWidgets('the AI feature title stays readable at 320 dp and 2.0x', (
+  testWidgets('the feature grid keeps two columns at 320 dp and 2.0x', (
     tester,
   ) async {
     await _pumpAt(tester, width: 320, textScale: 2);
-    final card = find.byKey(const Key('home-feature-ai-explanations'));
+    final card = find.byKey(const Key('home-feature-ai'));
     await tester.dragUntilVisible(
       card,
       find.byKey(const Key('home-body')),
       const Offset(0, -300),
     );
 
-    // At this width and scale a two-column card is too narrow for the four
-    // Arabic words, so the grid must fall back to one full-width column.
-    expect(tester.getSize(card).width, greaterThan(250));
-    final title = find.descendant(
-      of: card,
-      matching: find.text('الشروحات بمساعدة الذكاء الاصطناعي'),
-    );
-    final paragraph = tester.renderObject<RenderParagraph>(title);
-    expect(paragraph.didExceedMaxLines, isFalse);
+    // The brief pins the grid to two columns; at this width each card gets
+    // half of the 288 dp content width minus the 16 dp gap.
+    expect(tester.getSize(card).width, closeTo(136, 0.5));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('the footer credits the developer', (tester) async {
@@ -230,7 +224,7 @@ void main() {
     expect(find.textContaining('سوفت'), findsNothing);
   });
 
-  testWidgets('the three primary actions sit side by side in navy glass', (
+  testWidgets('the three primary actions sit side by side in pastel cards', (
     tester,
   ) async {
     await _pumpAt(tester, width: 400);
@@ -255,9 +249,9 @@ void main() {
     expect(find.text('مهامي'), findsOneWidget);
 
     final gradients = {
-      'home-card-assistant': HomePalette.assistantGradient,
-      'home-card-bag': HomePalette.bagGradient,
-      'home-card-tasks': HomePalette.tasksGradient,
+      'home-card-assistant': HomeLight.assistantGradient,
+      'home-card-bag': HomeLight.bagGradient,
+      'home-card-tasks': HomeLight.tasksGradient,
     };
     for (final entry in gradients.entries) {
       final card = tester.widget<Container>(find.byKey(Key(entry.key)));
