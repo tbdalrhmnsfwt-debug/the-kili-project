@@ -232,6 +232,21 @@ void main() {
     expect(bindings.playCalls, 0);
   });
 
+  test('a file that failed to open still releases its binding once', () async {
+    final bindings = _FakeBindings();
+    final player = build(bindings);
+    addTearDown(player.dispose);
+    await player.initialize();
+    await settle();
+    expect(player.errorCode, 'no_duration');
+
+    await player.close();
+    await player.close();
+    await settle();
+
+    expect(bindings.closeCalls, 1);
+  });
+
   test('saves on close and releases the native player', () async {
     final bindings = _FakeBindings(durationMs: 10000);
     final player = build(bindings);

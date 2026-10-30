@@ -69,9 +69,9 @@
 
 **Files:** `test/ai_service_test.dart`, `test/audio_playback_controller_test.dart`
 
-- [ ] Extend the AiService test with `askGrounded` returning `null` on a network throw (no canned fallback for grounded calls).
-- [ ] Cover the no-duration path's `close()` still releasing the binding exactly once.
-- [ ] Analyze clean; commit.
+- [x] Extend the AiService test with `askGrounded` returning `null` on a network throw (no canned fallback for grounded calls).
+- [x] Cover the no-duration path's `close()` still releasing the binding exactly once.
+- [x] Analyze clean; commit.
 
 ## Task 7: Keep-screen-on becomes opt-in
 

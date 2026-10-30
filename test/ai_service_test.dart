@@ -93,4 +93,28 @@ void main() {
       expect(service.history.last.text, '42');
     });
   });
+
+  group('AiService.askGrounded', () {
+    test('returns null instead of a canned answer when offline', () async {
+      final service = AiService(api: _api(null));
+
+      final answer = await service.askGrounded(
+        question: 'اشرح الدرس',
+        context: 'نص الصفحة',
+      );
+
+      expect(answer, isNull);
+    });
+
+    test('returns the trimmed answer when the backend answers', () async {
+      final service = AiService(api: _api({'answer': '  شرح مختصر  '}));
+
+      final answer = await service.askGrounded(
+        question: 'اشرح الدرس',
+        context: 'نص الصفحة',
+      );
+
+      expect(answer, 'شرح مختصر');
+    });
+  });
 }
