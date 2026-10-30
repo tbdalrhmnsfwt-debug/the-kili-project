@@ -41,6 +41,14 @@ Future<bool> unlockPdfTo({
     return false;
   }
   try {
+    // Saving a loaded document keeps its security dictionary, which would
+    // leave the copy locked with the same password. Clearing both passwords
+    // and the permissions makes the encryptor report "no encryption", so the
+    // copy opens without a prompt and without permission flags.
+    final security = document.security;
+    security.userPassword = '';
+    security.ownerPassword = '';
+    security.permissions.clear();
     final unlocked = await document.save();
     await output.parent.create(recursive: true);
     await output.writeAsBytes(unlocked, flush: true);

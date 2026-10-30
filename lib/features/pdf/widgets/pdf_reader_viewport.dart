@@ -496,14 +496,20 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
     // Continuous mode scrolls a page inside a shared list; single-page mode
     // scrolls it inside its own two scroll views. Both end up as "how far into
     // the page is the viewport", which is what visibleSource expects.
+    //
+    // Only the page on screen contributes offsets in single-page mode: the
+    // PageView keeps its neighbours built, but their scroll positions are
+    // stale, so prefetching them with the current page's offset would request
+    // a wrong tile for every pan.
+    final currentPage = widget.vertical || index == _page;
     final scrollX = widget.vertical
         ? (_horizontalScroll.hasClients ? _horizontalScroll.offset : 0.0) -
               _pageLeft(index)
-        : _pageScrollX;
+        : (currentPage ? _pageScrollX : 0.0);
     final scrollY = widget.vertical
         ? (_verticalScroll.hasClients ? _verticalScroll.offset : 0.0) -
               _pageTop(index)
-        : _pageScrollY;
+        : (currentPage ? _pageScrollY : 0.0);
     final source = PdfPageGeometry.unrotateSource(
       display.visibleSource(
         scrollX: scrollX,

@@ -117,8 +117,14 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     _markTimer?.cancel();
     // The debounce loses the position when the reader closes within 500 ms;
     // flush whatever the reader is showing right now.
+    //
+    // The library notifies its listeners synchronously, and by now this
+    // element is defunct, so [build] must not watch the whole index: it
+    // watches only the entry's title and favourite flag, which this flush
+    // does not change, so the notification cannot mark this element dirty.
     final id = widget.docId;
-    if (id != null && _handle != null) {
+    final handle = _handle;
+    if (id != null && handle != null) {
       unawaited(
         _library.markOpened(
           id,
@@ -128,7 +134,6 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
         ),
       );
     }
-    final handle = _handle;
     if (handle != null) unawaited(_channel.close(handle.id));
     _deleteQuietly(_sessionFile);
     _deleteQuietly(_unlockedFile);
@@ -521,8 +526,17 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Favourite state lives in the library index; rebuild when it changes.
-    ref.watch(pdfLibraryControllerProvider);
+    // The bar shows the entry's title and favourite flag, and whether the
+    // document is still catalogued. Watch only those: watching the whole
+    // index would also rebuild when [dispose] flushes the reading position,
+    // and by then this element is already defunct.
+    ref.watch(
+      pdfLibraryControllerProvider.select((library) {
+        final id = widget.docId;
+        final entry = id == null ? null : library.entryById(id);
+        return (entry?.displayName, entry?.favorite ?? false, entry != null);
+      }),
+    );
     final settings = ref.watch(pdfSettingsProvider);
     final entry = _entry;
     final handle = _handle;

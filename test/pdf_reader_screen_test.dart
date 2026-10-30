@@ -55,7 +55,9 @@ class MemoryStore implements KeyValueStore {
 
 class FakeChannel extends PdfRenderChannel {
   FakeChannel({this.pageCount = 10, List<PdfRenderFailure?>? failures})
-      : _failures = failures ?? [];
+      // Tests hand in fixed-length lists; the fake consumes them with
+      // `removeAt`, so keep its own growable copy.
+      : _failures = [...?failures];
 
   final int pageCount;
   final List<PdfRenderFailure?> _failures;
@@ -198,13 +200,17 @@ void main() {
 
   /// A stand-in for Syncfusion: only «secret» unlocks, and the copy is a
   /// byte-for-byte duplicate so the renderer path stays real.
+  ///
+  /// The copies use synchronous file I/O: under `testWidgets` the fake async
+  /// zone never runs real async I/O, so the unlock future would never complete
+  /// and the reader would stay on the password prompt.
   Future<bool> unlock({
     required File input,
     required String password,
     required File output,
   }) async {
     if (password != 'secret') return false;
-    await output.writeAsBytes(await input.readAsBytes());
+    output.writeAsBytesSync(input.readAsBytesSync());
     return true;
   }
 
@@ -604,10 +610,13 @@ void main() {
     expect(state.cachedTileBytes, greaterThan(0));
 
     state.handleMemoryPressure();
-    await tester.pump();
-
+    // Assert before the next frame: the rebuild immediately re-requests the
+    // page that is on screen, which is the intended behaviour after a drop.
     expect(state.retainedTilePages, isEmpty);
     expect(state.cachedTileBytes, 0);
+
+    await tester.pump();
+    expect(state.retainedTilePages, contains(0));
   });
 
   testWidgets('reopening restores the page, zoom and rotation', (tester) async {
@@ -648,23 +657,22 @@ void main() {
   });
 
   testWidgets('leaving immediately still saves the page', (tester) async {
+    final memory = MemoryStore()
+      ..values[PdfLibraryRepository.storeKey] = jsonEncode(
+        PdfLibraryIndex([
+          PdfDocumentEntry(
+            id: 'doc',
+            displayName: 'ملف',
+            baseFileName: 'doc.pdf',
+            sizeBytes: 10,
+            pageCount: 10,
+            addedAt: DateTime(2026),
+          ),
+        ]).toJson(),
+      );
     controller = PdfLibraryController(
       store: store,
-      repository: PdfLibraryRepository(
-        MemoryStore()
-          ..values[PdfLibraryRepository.storeKey] = jsonEncode(
-            PdfLibraryIndex([
-              PdfDocumentEntry(
-                id: 'doc',
-                displayName: 'ملف',
-                baseFileName: 'doc.pdf',
-                sizeBytes: 10,
-                pageCount: 10,
-                addedAt: DateTime(2026),
-              ),
-            ]).toJson(),
-          ),
-      ),
+      repository: PdfLibraryRepository(memory),
       probe: (file) async => const PdfProbeResult(pageCount: 10),
       thumbnailer: (base, thumb) async {},
       newId: () => 'doc',
@@ -683,7 +691,10 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
 
-    expect(controller.state.entryById('doc')!.lastOpenedAt, isNotNull);
+    // The scope disposed the controller with the reader, so read what it
+    // persisted instead of asking the notifier for its state.
+    final saved = PdfLibraryRepository(memory).load();
+    expect(saved.entryById('doc')!.lastOpenedAt, isNotNull);
   });
 
   testWidgets('zooming while a tile renders does not queue a second one', (
@@ -780,7 +791,14 @@ void main() {
       reason: 'the revealed column needs a tile without waiting for a rebuild',
     );
     expect(added.every((call) => call.pageIndex == 0), isTrue);
-    expect(added.last.source.left, greaterThan(0));
+    // The prefetch margin (15% of the page) hides a 100 px pan at 5× fit-width
+    // from `left`, so the revealed column shows up as a wider source instead.
+    final firstSource = channel.renders.first.source;
+    expect(
+      added.any((call) => call.source.right > firstSource.right),
+      isTrue,
+      reason: 'the revealed column needs its own tile',
+    );
   });
 
   testWidgets('a decryptor that throws reports the file, not a password', (
@@ -800,8 +818,9 @@ void main() {
           {required File input,
           required String password,
           required File output}) async {
-        // A partial copy, which the failure must clean up.
-        await output.writeAsBytes(const [1, 2, 3]);
+        // A partial copy, which the failure must clean up. Synchronous I/O:
+        // the test's fake async zone never completes real async file calls.
+        output.writeAsBytesSync(const [1, 2, 3]);
         throw const FormatException('not a readable document');
       },
     );
@@ -832,7 +851,7 @@ void main() {
           {required File input,
           required String password,
           required File output}) async {
-        await output.writeAsBytes(const [1, 2, 3]);
+        output.writeAsBytesSync(const [1, 2, 3]);
         throw const FileSystemException('no space left on device');
       },
     );
