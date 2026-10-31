@@ -16,6 +16,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/pdf/pdf_annotations.dart';
 import '../../../core/pdf/pdf_page_geometry.dart';
 import '../../../core/pdf/pdf_render_channel.dart';
 import '../../../core/pdf/pdf_tile_cache.dart';
@@ -50,6 +51,9 @@ class PdfReaderViewport extends ConsumerStatefulWidget {
     this.onZoomChanged,
     this.highlights = const [],
     this.highlightPage,
+    this.annotations = const [],
+    this.onPageLongPress,
+    this.onAnnotationTap,
   });
 
   final PdfRendererHandle handle;
@@ -83,6 +87,16 @@ class PdfReaderViewport extends ConsumerStatefulWidget {
 
   /// The page [highlights] belong to.
   final int? highlightPage;
+
+  /// Every studio annotation for the document; the viewport shows the ones
+  /// whose [PdfAnnotation.pageIndex] matches the page it is building.
+  final List<PdfAnnotation> annotations;
+
+  /// A long press on a page, with the point in unrotated page coordinates.
+  final void Function(int pageIndex, NormalizedRect point)? onPageLongPress;
+
+  /// A tap on a sticky note, media card or image.
+  final ValueChanged<PdfAnnotation>? onAnnotationTap;
 
   @override
   PdfReaderViewportState createState() => PdfReaderViewportState();
@@ -228,9 +242,8 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
     _pixelRatio = MediaQuery.devicePixelRatioOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.hasBoundedWidth
-            ? constraints.maxWidth
-            : screen.width;
+        final width =
+            constraints.hasBoundedWidth ? constraints.maxWidth : screen.width;
         final height = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : screen.height;
@@ -240,9 +253,8 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
         _fitScale = widget.geometry.first.fitScale(width);
         _contentWidth = widget.geometry
             .map(
-              (geometry) =>
-                  _displayGeometry(geometry)
-                      .displayWidth(fitScale: _fitScale, zoom: _zoom),
+              (geometry) => _displayGeometry(geometry)
+                  .displayWidth(fitScale: _fitScale, zoom: _zoom),
             )
             .fold<double>(0, (widest, page) => math.max(widest, page));
         _contentWidth = math.max(_contentWidth, viewport.width);
@@ -335,9 +347,16 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
         nightMode: widget.nightMode,
         tile: _tiles[index],
         source: _tileSources[index],
-        highlights: widget.highlightPage == index
-            ? widget.highlights
-            : const [],
+        highlights:
+            widget.highlightPage == index ? widget.highlights : const [],
+        annotations: [
+          for (final annotation in widget.annotations)
+            if (annotation.pageIndex == index) annotation,
+        ],
+        onLongPress: widget.onPageLongPress == null
+            ? null
+            : (point) => widget.onPageLongPress!(index, point),
+        onAnnotationTap: widget.onAnnotationTap,
       ),
     );
   }
@@ -504,11 +523,11 @@ class PdfReaderViewportState extends ConsumerState<PdfReaderViewport>
     final currentPage = widget.vertical || index == _page;
     final scrollX = widget.vertical
         ? (_horizontalScroll.hasClients ? _horizontalScroll.offset : 0.0) -
-              _pageLeft(index)
+            _pageLeft(index)
         : (currentPage ? _pageScrollX : 0.0);
     final scrollY = widget.vertical
         ? (_verticalScroll.hasClients ? _verticalScroll.offset : 0.0) -
-              _pageTop(index)
+            _pageTop(index)
         : (currentPage ? _pageScrollY : 0.0);
     final source = PdfPageGeometry.unrotateSource(
       display.visibleSource(

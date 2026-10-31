@@ -33,15 +33,42 @@ class PdfLibraryStore {
   Directory get thumbsDir => Directory('${cacheDir.path}/pdf_thumbs');
   Directory get sessionTempDir => Directory('${cacheDir.path}/pdf_session_tmp');
 
+  /// Media the studio copied in: audio notes, video explanations and images.
+  Directory get annotationsDir => Directory('${rootDir.path}/pdf_annotations');
+
+  /// Flattened PDFs and project packages the user exported.
+  Directory get exportsDir => Directory('${rootDir.path}/pdf_exports');
+
   File baseFile(String id) => File('${documentsDir.path}/$id.pdf');
   File thumbFile(String id) => File('${thumbsDir.path}/$id.png');
   File sessionTempFile(String id) => File('${sessionTempDir.path}/$id.pdf');
+
+  /// The folder holding one document's annotation media.
+  Directory annotationDir(String docKey) =>
+      Directory('${annotationsDir.path}/${_safeSegment(docKey)}');
+
+  /// A file inside [annotationDir], never outside it.
+  File annotationAsset(String docKey, String fileName) =>
+      File('${annotationDir(docKey).path}/${_safeSegment(fileName)}');
+
+  /// A destination for an export, never outside the exports folder.
+  File exportFile(String fileName) =>
+      File('${exportsDir.path}/${_safeSegment(fileName)}');
 
   /// Creates the directories the library writes to.
   Future<void> ensureReady() async {
     await documentsDir.create(recursive: true);
     await thumbsDir.create(recursive: true);
     await sessionTempDir.create(recursive: true);
+    await annotationsDir.create(recursive: true);
+    await exportsDir.create(recursive: true);
+  }
+
+  /// A single path segment with no separators or traversal.
+  static String _safeSegment(String raw) {
+    final value = raw.trim().replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final cleaned = value.replaceAll('..', '_');
+    return cleaned.isEmpty ? 'item' : cleaned;
   }
 
   /// Whether [header] starts with `%PDF-`.
@@ -119,9 +146,8 @@ class PdfLibraryStore {
     final files = <File>[baseFile(id), thumbFile(id)];
     if (await thumbsDir.exists()) {
       await for (final entity in thumbsDir.list()) {
-        final name = entity.uri.pathSegments.isEmpty
-            ? ''
-            : entity.uri.pathSegments.last;
+        final name =
+            entity.uri.pathSegments.isEmpty ? '' : entity.uri.pathSegments.last;
         if (name.startsWith('$id.') && entity is File) files.add(entity);
       }
     }

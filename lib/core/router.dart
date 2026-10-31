@@ -93,7 +93,8 @@ import '../features/subjects/subject_screen.dart';
 import '../features/subjects/subjects_screen.dart';
 import '../features/tasks/tasks_screen.dart';
 import '../features/tools/irab_screen.dart';
-import '../features/pdf/pdf_library_screen.dart';
+import '../features/pdf/screens/pdf_library_screen.dart'
+    show PdfStudioLibraryScreen;
 import '../features/tools/pdf_tools_screen.dart';
 import '../features/tools/pdf_viewer_screen.dart';
 import '../features/tools/scan_screen.dart';
@@ -760,7 +761,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: ZakerRoutes.pdfLibrary,
-      builder: (context, state) => const PdfLibraryScreen(),
+      builder: (context, state) => const PdfStudioLibraryScreen(),
     ),
     GoRoute(
       path: ZakerRoutes.pdfViewer,

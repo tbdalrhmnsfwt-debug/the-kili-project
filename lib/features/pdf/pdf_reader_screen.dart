@@ -16,25 +16,36 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/local_store.dart';
+import '../../core/pdf/pdf_annotations.dart';
+import '../../core/pdf/pdf_export_manager.dart';
 import '../../core/pdf/pdf_library_controller.dart';
+import '../../core/pdf/pdf_library_store.dart';
 import '../../core/pdf/pdf_page_geometry.dart';
 import '../../core/pdf/pdf_render_channel.dart';
 import '../../core/pdf/pdf_text_map.dart';
 import '../../core/pdf/pdf_unlock.dart';
+import '../../core/router.dart';
 import '../../core/theme.dart';
+import '../../core/theme/pdf_studio_theme.dart';
 import '../../models/pdf_document.dart';
 import '../../models/pdf_settings.dart';
+import '../../providers/app_providers.dart';
 import '../../providers/pdf_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/tr_text.dart';
 import 'widgets/pdf_reader_viewport.dart';
 import 'widgets/pdf_search_sheet.dart';
 import 'widgets/pdf_settings_sheet.dart';
+import 'widgets/pdf_studio_chrome.dart';
+import 'widgets/pdf_tools_sheet.dart';
 
 /// What the reader is allowed to do. Annotate and sign arrive with Plan 2.
 enum PdfReaderMode { read }
@@ -100,12 +111,34 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   List<NormalizedRect> _highlights = const [];
   int? _highlightPage;
 
+  late final PdfLibraryStore _store;
+  late final LocalStore _localStore;
+  late final String _scratchKey;
+
+  /// Live zoom for the top bar; pinching updates it without a full rebuild.
+  final ValueNotifier<double> _zoomLabel = ValueNotifier<double>(1);
+
+  List<PdfAnnotation> _annotations = const [];
+  final List<List<PdfAnnotation>> _undoStack = [];
+  final List<List<PdfAnnotation>> _redoStack = [];
+  PdfAnnotationKind? _activeKind;
+  int _highlightColor = 0xFFFFD84D;
+  double _highlightOpacity = 0.55;
+  bool _exporting = false;
+
+  static const int _undoLimit = 50;
+
   @override
   void initState() {
     super.initState();
     _channel = ref.read(pdfRenderChannelProvider);
     _unlocker = ref.read(pdfUnlockerProvider);
     _library = ref.read(pdfLibraryControllerProvider.notifier);
+    _store = ref.read(pdfLibraryStoreProvider);
+    _localStore = ref.read(localStoreProvider);
+    _scratchKey =
+        'local-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+    _loadAnnotations();
     // The first frame shows the loading state; the open starts right after.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _open();
@@ -115,6 +148,12 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   @override
   void dispose() {
     _markTimer?.cancel();
+    _zoomLabel.dispose();
+    if (widget.docId == null) {
+      // Media belongs to annotations that are only in memory here; nothing
+      // outside this screen can restore them, so they leave with it.
+      _cleanupScratchMedia();
+    }
     // The debounce loses the position when the reader closes within 500 ms;
     // flush whatever the reader is showing right now.
     //
@@ -211,6 +250,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
             ),
         ];
       });
+      _zoomLabel.value = _zoom;
       _scheduleMarkOpened();
     } on PdfRenderException catch (error) {
       if (!mounted) return;
@@ -516,12 +556,707 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     final entry = _entry;
     await Share.shareXFiles(
       [XFile(path)],
-      subject:
-          entry?.displayName ??
+      subject: entry?.displayName ??
           widget.title ??
           widget.fileName ??
           'zaker-document.pdf',
     );
+  }
+
+  // ------------------------------------------------------------------ studio
+
+  /// The folder that owns this document's copied media. Library documents use
+  /// their catalog id; an unsaved document gets a session folder that leaves
+  /// with the screen.
+  String get _docKey => widget.docId ?? _scratchKey;
+
+  void _loadAnnotations() {
+    final id = widget.docId;
+    if (id == null) return;
+    final raw = _localStore.getString(pdfAnnotationsStoreKey(id));
+    if (raw == null) return;
+    try {
+      _annotations = decodePdfAnnotations(raw);
+    } on Object {
+      // Corrupt annotations must never stop the document from opening.
+      _annotations = const [];
+    }
+  }
+
+  void _persistAnnotations() {
+    final id = widget.docId;
+    if (id == null) return;
+    unawaited(
+      _localStore
+          .setString(
+            pdfAnnotationsStoreKey(id),
+            encodePdfAnnotations(_annotations),
+          )
+          .catchError((Object _) {}),
+    );
+  }
+
+  void _setAnnotations(List<PdfAnnotation> next) {
+    _undoStack.add(_annotations);
+    if (_undoStack.length > _undoLimit) _undoStack.removeAt(0);
+    _redoStack.clear();
+    setState(() => _annotations = next);
+    _persistAnnotations();
+  }
+
+  void _undoAnnotation() {
+    if (_undoStack.isEmpty) return;
+    final previous = _undoStack.removeLast();
+    _redoStack.add(_annotations);
+    setState(() => _annotations = previous);
+    _persistAnnotations();
+  }
+
+  void _redoAnnotation() {
+    if (_redoStack.isEmpty) return;
+    final next = _redoStack.removeLast();
+    _undoStack.add(_annotations);
+    setState(() => _annotations = next);
+    _persistAnnotations();
+  }
+
+  void _addAnnotation({
+    required int pageIndex,
+    required PdfAnnotationKind kind,
+    required NormalizedRect rect,
+    String? id,
+    String text = '',
+    String? mediaPath,
+    String mediaName = '',
+    int mediaBytes = 0,
+  }) {
+    final annotation = PdfAnnotation(
+      id: id ?? _newAnnotationId(),
+      pageIndex: pageIndex,
+      kind: kind,
+      rect: rect.clampToPage(),
+      color: kind == PdfAnnotationKind.highlight ? _highlightColor : 0,
+      opacity: kind == PdfAnnotationKind.highlight ? _highlightOpacity : 1,
+      text: text,
+      mediaPath: mediaPath,
+      mediaName: mediaName,
+      mediaBytes: mediaBytes,
+      createdAt: DateTime.now(),
+    );
+    _setAnnotations([..._annotations, annotation]);
+  }
+
+  String _newAnnotationId() {
+    final stamp = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+    final noise = Random().nextInt(1 << 20).toRadixString(36);
+    return 'a$stamp$noise';
+  }
+
+  /// A default-sized rectangle for [kind], anchored at the long-pressed point.
+  NormalizedRect _rectFor(PdfAnnotationKind kind, NormalizedRect point) {
+    final (width, height) = switch (kind) {
+      PdfAnnotationKind.highlight ||
+      PdfAnnotationKind.underline ||
+      PdfAnnotationKind.strike =>
+        (0.42, 0.035),
+      PdfAnnotationKind.ink => (0.34, 0.08),
+      PdfAnnotationKind.note => (0.32, 0.10),
+      PdfAnnotationKind.text => (0.36, 0.09),
+      PdfAnnotationKind.image => (0.36, 0.22),
+      PdfAnnotationKind.stamp => (0.22, 0.055),
+      PdfAnnotationKind.arrow => (0.28, 0.12),
+      PdfAnnotationKind.audio => (0.42, 0.075),
+      PdfAnnotationKind.video => (0.46, 0.11),
+    };
+    final left = point.left.clamp(0.0, 1.0 - width).toDouble();
+    final top = (point.top - height / 2).clamp(0.0, 1.0 - height).toDouble();
+    return NormalizedRect(left, top, width, height);
+  }
+
+  Future<void> _onPageLongPress(
+    int pageIndex,
+    NormalizedRect point,
+  ) async {
+    final kind = _activeKind;
+    if (kind == null) {
+      await _openTools();
+      return;
+    }
+    final rect = _rectFor(kind, point);
+    switch (kind) {
+      case PdfAnnotationKind.text:
+        final text = await _askText(
+          title: 'إضافة نص',
+          hint: 'اكتب النص اللي عايز يظهر على الصفحة',
+        );
+        if (text == null || !mounted || text.trim().isEmpty) return;
+        _addAnnotation(
+          pageIndex: pageIndex,
+          kind: kind,
+          rect: rect,
+          text: text.trim(),
+        );
+      case PdfAnnotationKind.note:
+        final text = await _askText(
+          title: 'ملاحظة لاصقة',
+          hint: 'اكتب الملاحظة',
+        );
+        if (text == null || !mounted || text.trim().isEmpty) return;
+        _addAnnotation(
+          pageIndex: pageIndex,
+          kind: kind,
+          rect: rect,
+          text: text.trim(),
+        );
+      case PdfAnnotationKind.stamp:
+        final text = await _askText(
+          title: 'نص الختم',
+          initial: 'تم',
+          hint: 'تم',
+        );
+        if (text == null || !mounted) return;
+        _addAnnotation(
+          pageIndex: pageIndex,
+          kind: kind,
+          rect: rect,
+          text: text.trim().isEmpty ? 'تم' : text.trim(),
+        );
+      case PdfAnnotationKind.image:
+      case PdfAnnotationKind.audio:
+      case PdfAnnotationKind.video:
+        await _insertMedia(kind, pageIndex, rect);
+      case PdfAnnotationKind.highlight:
+      case PdfAnnotationKind.underline:
+      case PdfAnnotationKind.strike:
+      case PdfAnnotationKind.ink:
+      case PdfAnnotationKind.arrow:
+        _addAnnotation(pageIndex: pageIndex, kind: kind, rect: rect);
+    }
+  }
+
+  Future<String?> _askText({
+    required String title,
+    String initial = '',
+    String hint = '',
+  }) {
+    var typed = initial;
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: TrText(title),
+        content: TextFormField(
+          initialValue: initial,
+          autofocus: true,
+          minLines: 1,
+          maxLines: 4,
+          textDirection: TextDirection.rtl,
+          onChanged: (value) => typed = value,
+          decoration: InputDecoration(hintText: hint),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const TrText('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(typed),
+            child: const TrText('إضافة'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _insertMedia(
+    PdfAnnotationKind kind,
+    int pageIndex,
+    NormalizedRect rect,
+  ) async {
+    final type = switch (kind) {
+      PdfAnnotationKind.image => FileType.image,
+      PdfAnnotationKind.audio => FileType.audio,
+      _ => FileType.video,
+    };
+    PlatformFile? file;
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: type,
+        withData: true,
+      );
+      file = picked?.files.single;
+    } on Object {
+      if (mounted) _toast('مقدرناش نفتح اختيار الملفات.');
+      return;
+    }
+    if (file == null) return;
+    Uint8List? bytes = file.bytes;
+    if (bytes == null && file.path != null) {
+      try {
+        bytes = await File(file.path!).readAsBytes();
+      } on Object {
+        bytes = null;
+      }
+    }
+    if (bytes == null || bytes.isEmpty) {
+      if (mounted) _toast('مقدرناش نقرأ الملف.');
+      return;
+    }
+    final id = _newAnnotationId();
+    final target = _store.annotationAsset(
+      _docKey,
+      '$id.${_extensionOf(file.name)}',
+    );
+    try {
+      await target.parent.create(recursive: true);
+      await target.writeAsBytes(bytes, flush: true);
+    } on Object {
+      if (mounted) _toast('مقدرناش نحفظ الملف.');
+      return;
+    }
+    if (!mounted) return;
+    _addAnnotation(
+      id: id,
+      pageIndex: pageIndex,
+      kind: kind,
+      rect: rect,
+      mediaPath: target.path,
+      mediaName: file.name,
+      mediaBytes: bytes.length,
+    );
+  }
+
+  static String _extensionOf(String name) {
+    final dot = name.lastIndexOf('.');
+    if (dot < 0 || dot == name.length - 1) return 'bin';
+    final value = name.substring(dot + 1).toLowerCase();
+    return RegExp(r'^[a-z0-9]{1,8}$').hasMatch(value) ? value : 'bin';
+  }
+
+  Future<void> _editAnnotation(PdfAnnotation annotation) async {
+    if (annotation.kind.hasMedia) {
+      final path = annotation.mediaPath;
+      if (path == null || !File(path).existsSync()) {
+        _toast('الملف المرفق مش موجود.');
+        return;
+      }
+      await Share.shareXFiles(
+        [XFile(path)],
+        subject: annotation.mediaName,
+      );
+      return;
+    }
+    final canEditText = annotation.kind == PdfAnnotationKind.note ||
+        annotation.kind == PdfAnnotationKind.text ||
+        annotation.kind == PdfAnnotationKind.stamp;
+    final action = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: TrText(canEditText ? 'تعديل المحتوى' : 'التعليق'),
+        content: Text(
+          canEditText
+              ? (annotation.text.isEmpty ? 'مفيش نص.' : annotation.text)
+              : '${_annotationKindLabel(annotation.kind)} — يمكنك حذفه.',
+          textDirection: TextDirection.rtl,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const TrText('إغلاق'),
+          ),
+          if (canEditText)
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop('edit'),
+              child: const TrText('تعديل'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('delete'),
+            style: TextButton.styleFrom(
+              foregroundColor: PdfStudioColors.pdfRed,
+            ),
+            child: const TrText('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (action == 'delete') {
+      _removeAnnotation(annotation);
+      return;
+    }
+    if (action == 'edit') {
+      final text = await _askText(
+        title: 'تعديل النص',
+        initial: annotation.text,
+        hint: 'اكتب النص',
+      );
+      if (text == null || !mounted) return;
+      _setAnnotations([
+        for (final item in _annotations)
+          item.id == annotation.id ? item.copyWith(text: text.trim()) : item,
+      ]);
+    }
+  }
+
+  void _removeAnnotation(PdfAnnotation annotation) {
+    _setAnnotations([
+      for (final item in _annotations)
+        if (item.id != annotation.id) item,
+    ]);
+  }
+
+  Future<void> _openTools() async {
+    PdfStudioAction? pending;
+    await showPdfToolsSheet(
+      context,
+      activeKind: _activeKind,
+      onKind: (kind) => setState(() => _activeKind = kind),
+      onAction: (action) {
+        pending = action;
+        Navigator.of(context).maybePop();
+      },
+      canUndo: _undoStack.isNotEmpty,
+      canRedo: _redoStack.isNotEmpty,
+      onUndo: _undoAnnotation,
+      onRedo: _redoAnnotation,
+      highlightColor: _highlightColor,
+      highlightOpacity: _highlightOpacity,
+      onHighlightColor: (value) => setState(() => _highlightColor = value),
+      onHighlightOpacity: (value) => setState(() => _highlightOpacity = value),
+    );
+    if (!mounted || pending == null) return;
+    await _runToolAction(pending!);
+  }
+
+  Future<void> _runToolAction(PdfStudioAction action) async {
+    switch (action) {
+      case PdfStudioAction.text:
+        _activateTool(PdfAnnotationKind.text);
+      case PdfStudioAction.image:
+        _activateTool(PdfAnnotationKind.image);
+      case PdfStudioAction.stamp:
+        _activateTool(PdfAnnotationKind.stamp);
+      case PdfStudioAction.note:
+        _activateTool(PdfAnnotationKind.note);
+      case PdfStudioAction.arrow:
+        _activateTool(PdfAnnotationKind.arrow);
+      case PdfStudioAction.audio:
+        _activateTool(PdfAnnotationKind.audio);
+      case PdfStudioAction.video:
+        _activateTool(PdfAnnotationKind.video);
+      case PdfStudioAction.pages:
+        _openPageGrid();
+      case PdfStudioAction.search:
+        await _openSearch();
+      case PdfStudioAction.compress:
+        unawaited(context.push(ZakerRoutes.pdfTools));
+      case PdfStudioAction.ocr:
+        unawaited(context.push(ZakerRoutes.scan));
+      case PdfStudioAction.merge:
+      case PdfStudioAction.split:
+        _toast('الدمج والتقسيم محتاجين أكتر من مستند، ولسه مش متاحين هنا.');
+      case PdfStudioAction.exportPdf:
+        await _exportPdf();
+      case PdfStudioAction.exportProject:
+        await _exportProject();
+    }
+  }
+
+  void _activateTool(PdfAnnotationKind kind) {
+    setState(() => _activeKind = kind);
+    _toast('اضغط مطوّل على مكان ${_kindNoun(kind)} في الصفحة.');
+  }
+
+  void _openPageGrid() {
+    final handle = _handle;
+    if (handle == null) return;
+    unawaited(
+      showPdfPageGrid(
+        context,
+        pageCount: handle.pageCount,
+        current: _page,
+        onPick: _goToPage,
+      ),
+    );
+  }
+
+  void _goToPage(int raw) {
+    final count = _handle?.pageCount;
+    if (count == null || count <= 0) return;
+    final index = raw.clamp(0, count - 1);
+    if (index == _page) return;
+    setState(() => _page = index);
+    _scheduleMarkOpened();
+  }
+
+  void _applyZoom(double value) {
+    final next = value.clamp(1.0, 5.0).toDouble();
+    if ((next - _zoom).abs() < 0.005) return;
+    setState(() => _zoom = next);
+    _zoomLabel.value = next;
+    _scheduleMarkOpened();
+  }
+
+  void _zoomBy(double delta) => _applyZoom(_zoom + delta);
+
+  void _fitPage() => _applyZoom(1);
+
+  Future<void> _openDocumentMenu() async {
+    final isProtected = _unlockedFile != null;
+    await PdfStudioTheme.showSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const TrText(
+                'المستند',
+                style: TextStyle(
+                  color: PdfStudioColors.text,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              TrText(
+                isProtected
+                    ? 'المستند محمي؛ بعض الإجراءات مش متاحة.'
+                    : 'إجراءات سريعة على الملف الحالي.',
+                style: const TextStyle(
+                  color: PdfStudioColors.muted,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 14),
+              _StudioMenuTile(
+                icon: Icons.ios_share_rounded,
+                label: 'مشاركة الملف',
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  unawaited(_shareFile());
+                },
+              ),
+              _StudioMenuTile(
+                icon: Icons.picture_as_pdf_outlined,
+                label: 'تصدير PDF مع الملاحظات',
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  unawaited(_exportPdf());
+                },
+              ),
+              _StudioMenuTile(
+                icon: Icons.inventory_2_outlined,
+                label: 'حزمة المشروع',
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  unawaited(_exportProject());
+                },
+              ),
+              _StudioMenuTile(
+                icon: Icons.grid_view_rounded,
+                label: 'تنظيم الصفحات',
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _openPageGrid();
+                },
+              ),
+              _StudioMenuTile(
+                icon: Icons.build_circle_outlined,
+                label: 'أدوات PDF',
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  unawaited(context.push(ZakerRoutes.pdfTools));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportPdf() async {
+    if (_exporting) {
+      _toast('استنى التصدير الحالي يخلص.');
+      return;
+    }
+    final source = _sourcePath();
+    if (source == null) {
+      _toast('الملف الأصلي مش موجود.');
+      return;
+    }
+    if (_unlockedFile != null) {
+      _toast('المستند محمي؛ التصدير متاح بعد إزالة الحماية.');
+      return;
+    }
+    setState(() => _exporting = true);
+    _toast('بنصدّر نسخة PDF بالملاحظات…');
+    try {
+      final sourceBytes = await File(source).readAsBytes();
+      final media = await _readMediaBytes();
+      final font = await _loadCairoFont();
+      final flattened = const PdfExportManager().flattenPdf(
+        sourceBytes: sourceBytes,
+        annotations: _annotations,
+        fontBytes: font,
+        mediaById: media,
+      );
+      final file = await _writeExport(
+        '${_exportBaseName()}-annotated.pdf',
+        flattened,
+      );
+      await _shareExport(file, 'نسخة PDF مع الملاحظات');
+    } on Object {
+      if (mounted) _toast('مقدرناش نصدّر الملف.');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _exportProject() async {
+    if (_exporting) {
+      _toast('استنى التصدير الحالي يخلص.');
+      return;
+    }
+    final source = _sourcePath();
+    if (source == null) {
+      _toast('الملف الأصلي مش موجود.');
+      return;
+    }
+    setState(() => _exporting = true);
+    _toast('بنجهّز حزمة المشروع…');
+    try {
+      final sourceBytes = await File(source).readAsBytes();
+      final media = await _readMediaBytes();
+      final package = const PdfExportManager().buildProjectPackage(
+        documentId: widget.docId ?? _scratchKey,
+        documentName: _entry?.displayName ??
+            widget.title ??
+            widget.fileName ??
+            'مشروع PDF',
+        sourceBytes: sourceBytes,
+        annotations: _annotations,
+        mediaById: media,
+        pageCount: _handle?.pageCount,
+        lastPage: _page + 1,
+        lastZoom: _zoom,
+        quarterTurns: _quarterTurns,
+      );
+      final file = await _writeExport(
+        '${_exportBaseName()}.zakerpdf',
+        package,
+      );
+      await _shareExport(file, 'حزمة مشروع PDF');
+    } on Object {
+      if (mounted) _toast('مقدرناش نجهّز حزمة المشروع.');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<Map<String, List<int>>> _readMediaBytes() async {
+    final media = <String, List<int>>{};
+    for (final annotation in _annotations) {
+      final path = annotation.mediaPath;
+      if (path == null) continue;
+      try {
+        final file = File(path);
+        if (await file.exists()) {
+          media[annotation.id] = await file.readAsBytes();
+        }
+      } on Object {
+        // A missing attachment still exports its card without the media.
+        continue;
+      }
+    }
+    return media;
+  }
+
+  Future<Uint8List?> _loadCairoFont() async {
+    try {
+      final data = await rootBundle.load('assets/fonts/CairoPdf-Regular.ttf');
+      return data.buffer.asUint8List(
+        data.offsetInBytes,
+        data.lengthInBytes,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<File> _writeExport(String name, Uint8List bytes) async {
+    await _store.ensureReady();
+    final file = _store.exportFile(name);
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
+  Future<void> _shareExport(File file, String subject) {
+    return Share.shareXFiles([XFile(file.path)], subject: subject);
+  }
+
+  String _exportBaseName() {
+    final raw = _entry?.displayName ??
+        widget.title ??
+        widget.fileName ??
+        'zaker-document';
+    final cleaned = raw
+        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
+        .replaceFirst(RegExp(r'\.pdf$', caseSensitive: false), '')
+        .trim();
+    return cleaned.isEmpty ? 'zaker-document' : cleaned;
+  }
+
+  void _cleanupScratchMedia() {
+    // Synchronous on purpose: [dispose] runs while the widget tree is going
+    // away, and a pending asynchronous delete is not guaranteed to finish.
+    try {
+      final directory = _store.annotationDir(_scratchKey);
+      if (directory.existsSync()) directory.deleteSync(recursive: true);
+    } on Object {
+      // Best effort: a leftover scratch folder is harmless.
+    }
+  }
+
+  String _hintFor(PdfAnnotationKind kind) =>
+      'اضغط مطوّل على مكان ${_kindNoun(kind)} في الصفحة.';
+
+  static String _kindNoun(PdfAnnotationKind kind) => switch (kind) {
+        PdfAnnotationKind.highlight => 'التظليل',
+        PdfAnnotationKind.underline => 'التسطير',
+        PdfAnnotationKind.strike => 'الشطب',
+        PdfAnnotationKind.ink => 'الرسم',
+        PdfAnnotationKind.note => 'الملاحظة',
+        PdfAnnotationKind.text => 'النص',
+        PdfAnnotationKind.image => 'الصورة',
+        PdfAnnotationKind.stamp => 'الختم',
+        PdfAnnotationKind.arrow => 'السهم',
+        PdfAnnotationKind.audio => 'المقطع الصوتي',
+        PdfAnnotationKind.video => 'الفيديو',
+      };
+
+  static String _annotationKindLabel(PdfAnnotationKind kind) => switch (kind) {
+        PdfAnnotationKind.highlight => 'تظليل',
+        PdfAnnotationKind.underline => 'تسطير',
+        PdfAnnotationKind.strike => 'شطب',
+        PdfAnnotationKind.ink => 'رسم حر',
+        PdfAnnotationKind.note => 'ملاحظة لاصقة',
+        PdfAnnotationKind.text => 'نص',
+        PdfAnnotationKind.image => 'صورة',
+        PdfAnnotationKind.stamp => 'ختم',
+        PdfAnnotationKind.arrow => 'سهم',
+        PdfAnnotationKind.audio => 'مقطع صوتي',
+        PdfAnnotationKind.video => 'فيديو',
+      };
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: TrText(message)));
   }
 
   @override
@@ -543,70 +1278,107 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
     final vertical = settings.scrollMode == PdfScrollMode.vertical;
     final title =
         entry?.displayName ?? widget.title ?? widget.fileName ?? 'قارئ PDF';
-    return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(child: _body(context, settings)),
-          if (_chromeVisible && handle != null)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: _TopBar(
-                title: title,
-                favorite: entry?.favorite ?? false,
-                canFavorite: entry != null,
-                onBack: () => Navigator.of(context).maybePop(),
-                onSearch: _openSearch,
-                onFavorite: entry == null ? null : () => _toggleFavorite(entry),
-              ),
-            ),
-          if (_chromeVisible && handle != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _BottomBar(
-                page: _page + 1,
-                pageCount: handle.pageCount,
-                onJump: () => _jumpToPage(handle.pageCount),
-                onScrub: (page) {
-                  setState(() => _page = page - 1);
-                  _scheduleMarkOpened();
-                },
-              ),
-            ),
-          if (_chromeVisible && handle != null)
-            Positioned(
-              right: ZakerSpacing.md,
-              bottom: 88,
-              child: _ReaderControls(
-                vertical: vertical,
-                nightMode: settings.nightMode,
-                onMode: () => ref
-                    .read(pdfSettingsProvider.notifier)
-                    .setScrollMode(
-                      vertical
-                          ? PdfScrollMode.horizontal
-                          : PdfScrollMode.vertical,
+    return Theme(
+      data: PdfStudioTheme.dark(),
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: PdfStudioColors.background,
+          body: Stack(
+            children: [
+              Positioned.fill(child: _body(context, settings)),
+              if (_chromeVisible && handle != null)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: PdfStudioTopBar(
+                    title: title,
+                    favorite: entry?.favorite ?? false,
+                    canFavorite: entry != null,
+                    page: _page + 1,
+                    pageCount: handle.pageCount,
+                    zoom: _zoomLabel,
+                    onBack: () => Navigator.of(context).maybePop(),
+                    onMenu: _openDocumentMenu,
+                    onSearch: _openSearch,
+                    onFavorite:
+                        entry == null ? null : () => _toggleFavorite(entry),
+                    onPreviousPage: () => _goToPage(_page - 1),
+                    onNextPage: () => _goToPage(_page + 1),
+                    onJump: () => _jumpToPage(handle.pageCount),
+                    onZoomOut: () => _zoomBy(-0.25),
+                    onZoomIn: () => _zoomBy(0.25),
+                    onFit: _fitPage,
+                  ),
+                ),
+              if (_chromeVisible && handle != null)
+                Positioned(
+                  right: ZakerSpacing.md,
+                  bottom: 152,
+                  child: PdfStudioViewControls(
+                    vertical: vertical,
+                    nightMode: settings.nightMode,
+                    onMode: () =>
+                        ref.read(pdfSettingsProvider.notifier).setScrollMode(
+                              vertical
+                                  ? PdfScrollMode.horizontal
+                                  : PdfScrollMode.vertical,
+                            ),
+                    onRotate: () {
+                      setState(
+                        () => _quarterTurns = (_quarterTurns + 1) % 4,
+                      );
+                      _scheduleMarkOpened();
+                    },
+                    onNight: () => ref
+                        .read(pdfSettingsProvider.notifier)
+                        .setNightMode(!settings.nightMode),
+                    onSettings: () => showPdfSettingsSheet(context),
+                  ),
+                ),
+              if (_chromeVisible && handle != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: SafeArea(
+                    top: false,
+                    child: PdfStudioBottomChrome(
+                      page: _page + 1,
+                      pageCount: handle.pageCount,
+                      onJump: () => _jumpToPage(handle.pageCount),
+                      onScrub: (page) {
+                        setState(() => _page = page - 1);
+                        _scheduleMarkOpened();
+                      },
+                      canUndo: _undoStack.isNotEmpty,
+                      canRedo: _redoStack.isNotEmpty,
+                      onTools: _openTools,
+                      onPages: _openPageGrid,
+                      onUndo: _undoAnnotation,
+                      onRedo: _redoAnnotation,
                     ),
-                onRotate: () {
-                  setState(() => _quarterTurns = (_quarterTurns + 1) % 4);
-                  _scheduleMarkOpened();
-                },
-                onNight: () => ref
-                    .read(pdfSettingsProvider.notifier)
-                    .setNightMode(!settings.nightMode),
-                onSettings: () => showPdfSettingsSheet(context),
-              ),
-            ),
-        ],
+                  ),
+                ),
+              if (_chromeVisible && _activeKind != null)
+                Positioned(
+                  top: MediaQuery.paddingOf(context).top + 112,
+                  left: 16,
+                  right: 16,
+                  child: PdfStudioHintBanner(
+                    message: _hintFor(_activeKind!),
+                    onClose: () => setState(() => _activeKind = null),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _body(BuildContext context, PdfReaderSettings settings) {
-    final theme = Theme.of(context);
     if (_failure != null) {
       return EmptyState(
         icon: Icons.error_outline_rounded,
@@ -660,7 +1432,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
       behavior: HitTestBehavior.opaque,
       onTap: _toggleChrome,
       child: ColoredBox(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        color: PdfStudioColors.background,
         child: PdfReaderViewport(
           handle: _handle!,
           geometry: _geometry,
@@ -677,10 +1449,16 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
           initialZoom: _zoom,
           onZoomChanged: (value) {
             _zoom = value;
+            _zoomLabel.value = value;
             _scheduleMarkOpened();
           },
           highlights: _highlights,
           highlightPage: _highlightPage,
+          annotations: _annotations,
+          onPageLongPress: (page, point) =>
+              unawaited(_onPageLongPress(page, point)),
+          onAnnotationTap: (annotation) =>
+              unawaited(_editAnnotation(annotation)),
         ),
       ),
     );
@@ -689,7 +1467,8 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   String get _failureMessage {
     return switch (_failure) {
       PdfRenderFailure.passwordRequired ||
-      PdfRenderFailure.wrongPassword => 'الملف محمي بكلمة سر ومقدرناش نفتحه.',
+      PdfRenderFailure.wrongPassword =>
+        'الملف محمي بكلمة سر ومقدرناش نفتحه.',
       PdfRenderFailure.passwordUnsupported =>
         'الملف محمي بكلمة سر، وفتحه محتاج أندرويد 15 أو أحدث.',
       PdfRenderFailure.unavailable => 'قارئ PDF مش متاح على الجهاز ده.',
@@ -699,173 +1478,51 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   }
 }
 
-/// Auto-hiding bar with the back button, the name and the favourite toggle.
-class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.title,
-    required this.favorite,
-    required this.canFavorite,
-    required this.onBack,
-    required this.onSearch,
-    required this.onFavorite,
+/// One row in the document menu sheet.
+class _StudioMenuTile extends StatelessWidget {
+  const _StudioMenuTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
   });
 
-  final String title;
-  final bool favorite;
-  final bool canFavorite;
-  final VoidCallback onBack;
-  final VoidCallback onSearch;
-  final VoidCallback? onFavorite;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.surface,
-      elevation: 2,
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          children: [
-            IconButton(
-              tooltip: 'رجوع',
-              onPressed: onBack,
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            Expanded(
-              child: TrText(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: PdfStudioColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: PdfStudioColors.cyanText),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: TrText(
+                    label,
+                    style: const TextStyle(
+                      color: PdfStudioColors.text,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            IconButton(
-              tooltip: 'بحث جوه الملف',
-              onPressed: onSearch,
-              icon: const Icon(Icons.search_rounded),
-            ),
-            IconButton(
-              tooltip: favorite ? 'شيل من المفضلة' : 'ضيف للمفضلة',
-              onPressed: canFavorite ? onFavorite : null,
-              icon: Icon(
-                favorite ? Icons.star_rounded : Icons.star_border_rounded,
-                color: favorite ? ZakerColors.accent : null,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Mode, rotation and night-mode toggles floating above the bottom bar.
-class _ReaderControls extends StatelessWidget {
-  const _ReaderControls({
-    required this.vertical,
-    required this.nightMode,
-    required this.onMode,
-    required this.onRotate,
-    required this.onNight,
-    required this.onSettings,
-  });
-
-  final bool vertical;
-  final bool nightMode;
-  final VoidCallback onMode;
-  final VoidCallback onRotate;
-  final VoidCallback onNight;
-  final VoidCallback onSettings;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.surface,
-      elevation: 3,
-      borderRadius: BorderRadius.circular(ZakerRadius.lg),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: vertical ? 'صفحة واحدة' : 'عرض مستمر',
-            onPressed: onMode,
-            icon: Icon(
-              vertical
-                  ? Icons.crop_portrait_rounded
-                  : Icons.view_agenda_rounded,
-            ),
-          ),
-          IconButton(
-            tooltip: 'تدوير الصفحة',
-            onPressed: onRotate,
-            icon: const Icon(Icons.rotate_right_rounded),
-          ),
-          IconButton(
-            tooltip: 'الوضع الليلي',
-            onPressed: onNight,
-            icon: Icon(
-              nightMode ? Icons.dark_mode_rounded : Icons.dark_mode_outlined,
-              color: nightMode ? ZakerColors.accent : null,
-            ),
-          ),
-          IconButton(
-            tooltip: 'إعدادات القراءة',
-            onPressed: onSettings,
-            icon: const Icon(Icons.tune_rounded),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Slider, page counter and page jump.
-class _BottomBar extends StatelessWidget {
-  const _BottomBar({
-    required this.page,
-    required this.pageCount,
-    required this.onJump,
-    required this.onScrub,
-  });
-
-  final int page;
-  final int pageCount;
-  final VoidCallback onJump;
-  final ValueChanged<int> onScrub;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.surface,
-      elevation: 2,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: ZakerSpacing.sm,
-            vertical: ZakerSpacing.xs,
-          ),
-          child: Row(
-            children: [
-              TextButton(
-                onPressed: onJump,
-                child: TrText('صفحة $page من $pageCount'),
-              ),
-              Expanded(
-                child: Slider(
-                  value: page.toDouble().clamp(1, pageCount.toDouble()),
-                  min: 1,
-                  max: pageCount < 2 ? 2 : pageCount.toDouble(),
-                  divisions: pageCount < 2 ? 1 : pageCount - 1,
-                  onChanged: (value) => onScrub(value.round()),
+                const Icon(
+                  Icons.chevron_left_rounded,
+                  size: 19,
+                  color: PdfStudioColors.muted,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

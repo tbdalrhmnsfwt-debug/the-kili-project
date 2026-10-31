@@ -268,6 +268,11 @@ jobs:
       - name: Verify PDF library
         run: dart run tool/verify_pdf_library.dart
 
+      # The annotation codec and ZIP container have no widget coverage; the
+      # flattening path needs Flutter and is covered by `flutter test`.
+      - name: Verify PDF Studio data layer
+        run: dart run tool/verify_pdf_studio.dart
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
